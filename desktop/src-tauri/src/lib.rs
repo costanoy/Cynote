@@ -94,7 +94,9 @@ fn toggle_window(window: &tauri::WebviewWindow) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyN);
+    // Ctrl+Shift+N was the original pick, but that's the universal "new incognito
+    // window" shortcut in every browser, so it kept fighting with that instead.
+    let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -110,7 +112,11 @@ pub fn run() {
                 .build(),
         )
         .setup(move |app| {
-            app.global_shortcut().register(toggle_shortcut)?;
+            // Best-effort: a stale instance or another app can already hold this hotkey.
+            // That shouldn't stop Cynote from launching, just leave the shortcut inactive.
+            if let Err(e) = app.global_shortcut().register(toggle_shortcut) {
+                eprintln!("Failed to register global shortcut: {e}");
+            }
 
             if let Ok(identity) = identity::load_or_create(app.handle()) {
                 sync::start(app.handle().clone(), identity);
