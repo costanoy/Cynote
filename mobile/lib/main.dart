@@ -46,6 +46,7 @@ class _CynoteRootState extends State<CynoteRoot> {
   CyScreen _returnScreen = CyScreen.home;
   bool _darkMode = true;
   List<Note> _notes = seedNotes();
+  SyncState _syncStatus = SyncState.synced;
   String? _activeNoteId;
   Timer? _saveDebounce;
   DeviceIdentity? _identity;
@@ -143,8 +144,13 @@ class _CynoteRootState extends State<CynoteRoot> {
   }
 
   void _scheduleSave() {
+    setState(() => _syncStatus = SyncState.syncing);
     _saveDebounce?.cancel();
-    _saveDebounce = Timer(_autosaveDelay, () => notes_store.saveNotes(_notes));
+    _saveDebounce = Timer(_autosaveDelay, () async {
+      await notes_store.saveNotes(_notes);
+      if (!mounted) return;
+      setState(() => _syncStatus = SyncState.synced);
+    });
   }
 
   Note? get _activeNote {
@@ -240,6 +246,7 @@ class _CynoteRootState extends State<CynoteRoot> {
           key: ValueKey(_activeNoteId),
           t: t,
           note: _activeNote!,
+          syncStatus: _syncStatus,
           onBack: _closeEditor,
           onTitleChanged: _onTitleChanged,
           onBodyChanged: _onBodyChanged,

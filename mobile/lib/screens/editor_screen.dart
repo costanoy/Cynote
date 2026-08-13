@@ -4,9 +4,12 @@ import '../icons.dart';
 import '../models/note.dart';
 import '../theme.dart';
 
+enum SyncState { synced, syncing, error }
+
 class EditorScreen extends StatefulWidget {
   final CyColors t;
   final Note note;
+  final SyncState syncStatus;
   final VoidCallback onBack;
   final void Function(String title) onTitleChanged;
   final void Function(String body) onBodyChanged;
@@ -15,6 +18,7 @@ class EditorScreen extends StatefulWidget {
     super.key,
     required this.t,
     required this.note,
+    required this.syncStatus,
     required this.onBack,
     required this.onTitleChanged,
     required this.onBodyChanged,
@@ -119,11 +123,11 @@ class _EditorScreenState extends State<EditorScreen> {
                 ),
                 const Spacer(),
                 Tooltip(
-                  message: _syncLabel(widget.note.sync),
+                  message: _syncLabel(widget.syncStatus),
                   child: Container(
                     width: 7,
                     height: 7,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: _colors[widget.note.sync]),
+                    decoration: BoxDecoration(shape: BoxShape.circle, color: _colors[widget.syncStatus]),
                   ),
                 ),
               ],
