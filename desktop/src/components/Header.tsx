@@ -1,4 +1,14 @@
-import { CloseIcon, DrawIcon, FormatIcon, LogoIcon, MaximizeIcon, MinimizeIcon, PinIcon, SettingsIcon } from "../icons";
+import {
+  CloseIcon,
+  DrawIcon,
+  ExportIcon,
+  FormatIcon,
+  LogoIcon,
+  MaximizeIcon,
+  MinimizeIcon,
+  PinIcon,
+  SettingsIcon,
+} from "../icons";
 
 type Props = {
   formatMenuOpen: boolean;
@@ -7,6 +17,7 @@ type Props = {
   drawingOpen: boolean;
   onToggleDrawing: () => void;
   onToggleSettings: () => void;
+  onExportTxt: () => void;
   pinned: boolean;
   onTogglePin: () => void;
   onMinimize: () => void;
@@ -21,6 +32,7 @@ export function Header({
   drawingOpen,
   onToggleDrawing,
   onToggleSettings,
+  onExportTxt,
   pinned,
   onTogglePin,
   onMinimize,
@@ -47,6 +59,17 @@ export function Header({
                 <em>i</em>
                 <span>Itálico</span>
                 <span className="format-key">Ctrl+I</span>
+              </div>
+              <div className="format-divider" />
+              <div
+                className="format-item"
+                onClick={() => {
+                  onExportTxt();
+                  onCloseFormatMenu();
+                }}
+              >
+                <ExportIcon />
+                <span>Salvar como .txt</span>
               </div>
             </div>
           </>

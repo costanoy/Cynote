@@ -10,6 +10,7 @@ import { DrawingOverlay } from "./components/DrawingOverlay";
 import { StatusBar } from "./components/StatusBar";
 import { hideAppWindow, minimizeAppWindow, setAppAlwaysOnTop, toggleMaximizeAppWindow } from "./tauriWindow";
 import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
+import { exportNoteAsTxt } from "./export";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
 import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
@@ -253,6 +254,11 @@ function App() {
     });
   };
 
+  const exportActiveNoteTxt = () => {
+    const tab = tabs[activeTab];
+    exportNoteAsTxt(tab.title, tab.body);
+  };
+
   const insertSketch = (_canvas: HTMLCanvasElement) => {
     setTabs((prev) => {
       const next = prev.slice();
@@ -281,6 +287,7 @@ function App() {
         drawingOpen={drawingOpen}
         onToggleDrawing={() => setDrawingOpen((v) => !v)}
         onToggleSettings={() => setShowSettings((v) => !v)}
+        onExportTxt={exportActiveNoteTxt}
         pinned={pinned}
         onTogglePin={() => setPinned((v) => !v)}
         onMinimize={minimizeAppWindow}

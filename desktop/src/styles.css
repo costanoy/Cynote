@@ -114,6 +114,11 @@ button:focus-visible,
   font-size: 10.5px;
   color: var(--subtle-text);
 }
+.format-divider {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--panel-border);
+}
 
 /* Tab bar */
 .tab-bar {
