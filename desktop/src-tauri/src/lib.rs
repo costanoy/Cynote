@@ -36,6 +36,13 @@ fn save_window_geometry(app: &AppHandle, window: &tauri::Window) {
     }
     LAST_GEOMETRY_SAVE_MS.store(now, Ordering::Relaxed);
 
+    // Windows reports a minimized window's position/size as a placeholder far
+    // off-screen (e.g. -32000,-32000) rather than its real bounds. Saving that
+    // verbatim would make the window unreachable on every future launch.
+    if window.is_minimized().unwrap_or(false) {
+        return;
+    }
+
     if let (Ok(pos), Ok(size)) = (window.outer_position(), window.outer_size()) {
         let scale = window.scale_factor().unwrap_or(1.0);
         let geometry = serde_json::json!({
@@ -55,11 +62,18 @@ fn restore_window_geometry(app: &AppHandle, window: &tauri::WebviewWindow) {
     let Ok(contents) = fs::read_to_string(&path) else { return };
     let Ok(geometry) = serde_json::from_str::<serde_json::Value>(&contents) else { return };
 
+    // Safety net against corrupted/stale state (e.g. an old minimized-window
+    // sentinel position from before this was guarded against) putting the
+    // window somewhere the user can never see or reach again.
     if let (Some(x), Some(y)) = (geometry["x"].as_f64(), geometry["y"].as_f64()) {
-        let _ = window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(x, y)));
+        if x > -10000.0 && y > -10000.0 {
+            let _ = window.set_position(tauri::Position::Logical(tauri::LogicalPosition::new(x, y)));
+        }
     }
     if let (Some(width), Some(height)) = (geometry["width"].as_f64(), geometry["height"].as_f64()) {
-        let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)));
+        if width >= 420.0 && height >= 320.0 {
+            let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize::new(width, height)));
+        }
     }
 }
 
