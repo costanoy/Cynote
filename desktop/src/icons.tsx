@@ -115,6 +115,23 @@ export function ExportIcon({ size = 13 }: IconProps) {
   );
 }
 
+export function FolderIcon({ size = 15 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M3 6.5A1.5 1.5 0 014.5 5h5l2 2.5h8A1.5 1.5 0 0121 9v9a1.5 1.5 0 01-1.5 1.5h-15A1.5 1.5 0 013 18z" />
+    </svg>
+  );
+}
+
+export function NoteFileIcon({ size = 15 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+      <path d="M6 3h9l5 5v13a1 1 0 01-1 1H6a1 1 0 01-1-1V4a1 1 0 011-1z" />
+      <path d="M15 3v5h5" />
+    </svg>
+  );
+}
+
 export function ReadingIcon({ size = 13 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">

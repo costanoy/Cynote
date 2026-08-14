@@ -1,3 +1,4 @@
+mod dashboard;
 mod identity;
 mod sync;
 
@@ -121,6 +122,35 @@ fn toggle_window(window: &tauri::WebviewWindow) {
     }
 }
 
+/// The Desktop shortcut launches with --popup for a compact, frameless panel;
+/// the Start Menu one omits it and gets a normal decorated window instead.
+fn show_dashboard_window(app: &AppHandle, popup: bool) {
+    if let Some(window) = app.get_webview_window("dashboard") {
+        let _ = window.show();
+        let _ = window.set_focus();
+        return;
+    }
+
+    let mut builder =
+        tauri::WebviewWindowBuilder::new(app, "dashboard", tauri::WebviewUrl::App("index.html".into()))
+            .title("Cynote Dashboard");
+
+    builder = if popup {
+        builder
+            .decorations(false)
+            .transparent(true)
+            .inner_size(560.0, 480.0)
+            .resizable(false)
+            .skip_taskbar(true)
+    } else {
+        builder.decorations(true).inner_size(780.0, 580.0).resizable(true)
+    };
+
+    if let Ok(window) = builder.build() {
+        let _ = window.set_focus();
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Ctrl+Shift+N was the original pick, but that's the universal "new incognito
@@ -128,6 +158,15 @@ pub fn run() {
     let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
+            let popup = argv.iter().any(|a| a == "--popup");
+            if argv.iter().any(|a| a == "--dashboard") {
+                show_dashboard_window(app, popup);
+            } else if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
             tauri_plugin_autostart::MacosLauncher::LaunchAgent,
@@ -153,13 +192,24 @@ pub fn run() {
             }
 
             enable_autostart_on_first_run(app.handle());
+            dashboard::create_dashboard_shortcuts_once(app.handle());
 
             if let Ok(identity) = identity::load_or_create(app.handle()) {
                 sync::start(app.handle().clone(), identity);
             }
 
+            let args: Vec<String> = std::env::args().collect();
+            let launched_as_dashboard = args.iter().any(|a| a == "--dashboard");
+
             if let Some(window) = app.get_webview_window("main") {
                 restore_window_geometry(app.handle(), &window);
+                if !launched_as_dashboard {
+                    let _ = window.show();
+                }
+            }
+            if launched_as_dashboard {
+                let popup = args.iter().any(|a| a == "--popup");
+                show_dashboard_window(app.handle(), popup);
             }
 
             let show_hide = MenuItem::with_id(app, "show_hide", "Mostrar/Ocultar", true, None::<&str>)?;
@@ -197,21 +247,31 @@ pub fn run() {
 
             Ok(())
         })
-        .on_window_event(|window, event| match event {
-            WindowEvent::CloseRequested { api, .. } => {
-                api.prevent_close();
-                save_window_geometry(window.app_handle(), window);
-                let _ = window.hide();
+        .on_window_event(|window, event| {
+            // The dashboard window is a lightweight, disposable panel - only
+            // "main" hides-to-tray and remembers its geometry across launches.
+            if window.label() != "main" {
+                return;
             }
-            WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
-                save_window_geometry(window.app_handle(), window);
+            match event {
+                WindowEvent::CloseRequested { api, .. } => {
+                    api.prevent_close();
+                    save_window_geometry(window.app_handle(), window);
+                    let _ = window.hide();
+                }
+                WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
+                    save_window_geometry(window.app_handle(), window);
+                }
+                _ => {}
             }
-            _ => {}
         })
         .invoke_handler(tauri::generate_handler![
             save_notes,
             load_notes,
             export_note_txt,
+            dashboard::scan_txt_notes,
+            dashboard::read_txt_file,
+            dashboard::open_note_in_main,
             identity::get_device_identity,
             sync::list_discovered_devices,
             sync::list_trusted_devices,

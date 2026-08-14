@@ -11,6 +11,7 @@ import { StatusBar } from "./components/StatusBar";
 import { hideAppWindow, minimizeAppWindow, setAppAlwaysOnTop, toggleMaximizeAppWindow } from "./tauriWindow";
 import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
 import { saveNoteAsTxt, writeTxtFile } from "./export";
+import { onOpenNoteFile, readTxtFile } from "./dashboardApi";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
 import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
@@ -252,6 +253,38 @@ function App() {
     setTabs((prev) => [...prev, makeBlankTab(deviceId)]);
     setActiveTab(tabs.length);
   };
+
+  // Reached from the Dashboard window: focus the tab if this file is already
+  // open, otherwise read it fresh and open it linked (Ctrl+S keeps saving here).
+  const openNoteFile = async (path: string) => {
+    const existingIndex = tabsRef.current.findIndex((t) => t.txtPath === path);
+    if (existingIndex !== -1) {
+      setActiveTab(existingIndex);
+      return;
+    }
+    if (!deviceId) return;
+    const { title, body } = await readTxtFile(path);
+    const note: TabData = {
+      id: "n" + Date.now(),
+      title,
+      body,
+      favorite: false,
+      sketches: [],
+      updatedAt: Date.now(),
+      originDeviceId: deviceId,
+      txtPath: path,
+    };
+    const newIndex = tabsRef.current.length;
+    setTabs((prev) => [...prev, note]);
+    setActiveTab(newIndex);
+  };
+
+  useEffect(() => {
+    return onOpenNoteFile((path) => {
+      openNoteFile(path);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceId]);
 
   const closeTab = (i: number) => {
     if (tabs.length <= 1) return;
