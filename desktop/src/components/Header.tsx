@@ -70,6 +70,7 @@ export function Header({
               >
                 <ExportIcon />
                 <span>Salvar como .txt</span>
+                <span className="format-key">Ctrl+Shift+S</span>
               </div>
             </div>
           </>

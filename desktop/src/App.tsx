@@ -111,6 +111,11 @@ function App() {
     tabsRef.current = tabs;
   }, [tabs]);
 
+  const activeTabRef = useRef(activeTab);
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
   const runSyncCycle = async (myDeviceId: string) => {
     const peers = await listReachableTrustedDevices();
     if (peers.length === 0) return;
@@ -189,7 +194,11 @@ function App() {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
         e.preventDefault();
-        saveNow();
+        if (e.shiftKey) {
+          exportActiveNoteTxt();
+        } else {
+          saveNow();
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -255,7 +264,7 @@ function App() {
   };
 
   const exportActiveNoteTxt = () => {
-    const tab = tabs[activeTab];
+    const tab = tabsRef.current[activeTabRef.current];
     exportNoteAsTxt(tab.title, tab.body);
   };
 
