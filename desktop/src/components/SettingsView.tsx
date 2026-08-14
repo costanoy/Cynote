@@ -9,6 +9,8 @@ type Props = {
   onToggleDarkMode: () => void;
   spellCheckEnabled: boolean;
   onToggleSpellCheck: () => void;
+  autoStartEnabled: boolean;
+  onToggleAutoStart: () => void;
 };
 
 export function SettingsView({
@@ -17,6 +19,8 @@ export function SettingsView({
   onToggleDarkMode,
   spellCheckEnabled,
   onToggleSpellCheck,
+  autoStartEnabled,
+  onToggleAutoStart,
 }: Props) {
   const [discovered, setDiscovered] = useState<PeerInfo[]>([]);
   const [trusted, setTrusted] = useState<PeerInfo[]>([]);
@@ -66,6 +70,19 @@ export function SettingsView({
         </div>
         <button className={"switch-track" + (spellCheckEnabled ? " on" : "")} onClick={onToggleSpellCheck}>
           <span className={"switch-thumb" + (spellCheckEnabled ? " on" : "")} />
+        </button>
+      </div>
+
+      <div className="settings-row">
+        <div>
+          <div className="settings-row-label">Iniciar com o Windows</div>
+          <div className="settings-row-hint">
+            Abre o Cynote em segundo plano ao ligar o computador, para o atalho Ctrl+Shift+Space
+            estar sempre disponível
+          </div>
+        </div>
+        <button className={"switch-track" + (autoStartEnabled ? " on" : "")} onClick={onToggleAutoStart}>
+          <span className={"switch-thumb" + (autoStartEnabled ? " on" : "")} />
         </button>
       </div>
 

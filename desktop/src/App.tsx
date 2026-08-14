@@ -9,6 +9,7 @@ import { ContentArea } from "./components/ContentArea";
 import { DrawingOverlay } from "./components/DrawingOverlay";
 import { StatusBar } from "./components/StatusBar";
 import { hideAppWindow, minimizeAppWindow, setAppAlwaysOnTop, toggleMaximizeAppWindow } from "./tauriWindow";
+import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
 import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
@@ -59,6 +60,19 @@ function App() {
   const [loaded, setLoaded] = useState(false);
   const [pairingRequests, setPairingRequests] = useState<PeerInfo[]>([]);
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(loadSpellCheckPref);
+  const [autoStartEnabled, setAutoStartOn] = useState(false);
+
+  useEffect(() => {
+    // The first-run enable itself happens on the Rust side (so it still runs
+    // even if the webview fails to load) - this just reflects current state.
+    isAutoStartEnabled().then(setAutoStartOn);
+  }, []);
+
+  const toggleAutoStart = () => {
+    const next = !autoStartEnabled;
+    setAutoStartOn(next);
+    setAutoStartEnabled(next);
+  };
 
   const toggleSpellCheck = () => {
     setSpellCheckEnabled((v) => {
@@ -294,6 +308,8 @@ function App() {
           onToggleDarkMode={() => setDarkMode((v) => !v)}
           spellCheckEnabled={spellCheckEnabled}
           onToggleSpellCheck={toggleSpellCheck}
+          autoStartEnabled={autoStartEnabled}
+          onToggleAutoStart={toggleAutoStart}
         />
       ) : (
         <div className="content-shell">

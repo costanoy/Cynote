@@ -83,6 +83,27 @@ fn load_notes(app: AppHandle) -> Result<Option<String>, String> {
     fs::read_to_string(path).map(Some).map_err(|e| e.to_string())
 }
 
+/// First launch after this feature shipped: turn autostart on so the global
+/// shortcut is always available, even after a reboot, without the user having
+/// to find the setting. Runs in Rust (not JS) so it still happens even if the
+/// webview fails to load. A marker file makes this a one-time nudge — if the
+/// user turns it back off in Settings, we don't fight them on the next launch.
+fn enable_autostart_on_first_run(app: &AppHandle) {
+    use tauri_plugin_autostart::ManagerExt;
+    let Ok(dir) = app.path().app_data_dir() else { return };
+    if fs::create_dir_all(&dir).is_err() {
+        return;
+    }
+    let marker = dir.join("autostart_initialized");
+    if marker.exists() {
+        return;
+    }
+    if let Err(e) = app.autolaunch().enable() {
+        eprintln!("Failed to enable autostart: {e}");
+    }
+    let _ = fs::write(marker, "");
+}
+
 fn toggle_window(window: &tauri::WebviewWindow) {
     if window.is_visible().unwrap_or(false) {
         let _ = window.hide();
@@ -100,6 +121,10 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_autostart::init(
+            tauri_plugin_autostart::MacosLauncher::LaunchAgent,
+            None,
+        ))
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_handler(move |app, shortcut, event| {
@@ -117,6 +142,8 @@ pub fn run() {
             if let Err(e) = app.global_shortcut().register(toggle_shortcut) {
                 eprintln!("Failed to register global shortcut: {e}");
             }
+
+            enable_autostart_on_first_run(app.handle());
 
             if let Ok(identity) = identity::load_or_create(app.handle()) {
                 sync::start(app.handle().clone(), identity);
