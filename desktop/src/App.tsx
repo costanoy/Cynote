@@ -10,7 +10,7 @@ import { DrawingOverlay } from "./components/DrawingOverlay";
 import { StatusBar } from "./components/StatusBar";
 import { hideAppWindow, minimizeAppWindow, setAppAlwaysOnTop, toggleMaximizeAppWindow } from "./tauriWindow";
 import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
-import { exportNoteAsTxt } from "./export";
+import { saveNoteAsTxt, writeTxtFile } from "./export";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
 import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
@@ -163,15 +163,35 @@ function App() {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  const setTabTxtPath = (index: number, path: string) => {
+    setTabs((prev) => {
+      const next = prev.slice();
+      next[index] = { ...next[index], txtPath: path };
+      return next;
+    });
+  };
+
+  // Notepad-style save: an internal save always happens, and once a note is
+  // linked to a .txt file (via a prior Save/Save As), Ctrl+S keeps that file
+  // in sync too - silently if already linked, prompting once if not.
   const saveNow = () => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
       saveTimerRef.current = null;
     }
     setSyncStatus("syncing");
-    saveNotes(tabsRef.current).then(() => {
+    saveNotes(tabsRef.current).then(async () => {
       setSyncStatus("synced");
       if (deviceId) runSyncCycle(deviceId);
+
+      const i = activeTabRef.current;
+      const tab = tabsRef.current[i];
+      if (tab.txtPath) {
+        writeTxtFile(tab.txtPath, tab.title, tab.body);
+      } else {
+        const path = await saveNoteAsTxt(tab.title, tab.body);
+        if (path) setTabTxtPath(i, path);
+      }
     });
   };
 
@@ -263,9 +283,12 @@ function App() {
     });
   };
 
-  const exportActiveNoteTxt = () => {
-    const tab = tabsRef.current[activeTabRef.current];
-    exportNoteAsTxt(tab.title, tab.body);
+  // Notepad-style "Save As": always prompts, and links this note to the chosen file for future Ctrl+S.
+  const exportActiveNoteTxt = async () => {
+    const i = activeTabRef.current;
+    const tab = tabsRef.current[i];
+    const path = await saveNoteAsTxt(tab.title, tab.body);
+    if (path) setTabTxtPath(i, path);
   };
 
   const insertSketch = (_canvas: HTMLCanvasElement) => {

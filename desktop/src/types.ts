@@ -14,6 +14,8 @@ export interface TabData {
   updatedAt: number;
   originDeviceId: string;
   forkedFrom?: ForkedFrom;
+  /** Path of the .txt file this note is linked to, once saved there (Notepad-style: set on first Save/Save As, reused by later Ctrl+S). */
+  txtPath?: string;
 }
 
 export interface DeviceIdentity {

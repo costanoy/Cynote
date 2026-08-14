@@ -10,15 +10,24 @@ function safeFileName(title: string): string {
   return trimmed.replace(/[\\/:*?"<>|]/g, "-");
 }
 
-/** Returns true if the note was actually written, false if the user cancelled the dialog. */
-export async function exportNoteAsTxt(title: string, body: string): Promise<boolean> {
-  if (!isTauri()) return false;
+function txtContents(title: string, body: string): string {
+  return title.trim() ? `${title}\n\n${body}` : body;
+}
+
+/** Notepad-style "Save As": always prompts. Returns the chosen path, or null if the user cancelled. */
+export async function saveNoteAsTxt(title: string, body: string): Promise<string | null> {
+  if (!isTauri()) return null;
   const path = await save({
     defaultPath: `${safeFileName(title)}.txt`,
     filters: [{ name: "Texto", extensions: ["txt"] }],
   });
-  if (!path) return false;
-  const contents = title.trim() ? `${title}\n\n${body}` : body;
-  await invoke("export_note_txt", { path, contents });
-  return true;
+  if (!path) return null;
+  await invoke("export_note_txt", { path, contents: txtContents(title, body) });
+  return path;
+}
+
+/** Notepad-style "Save": silently overwrites a path a previous Save/Save As already established. */
+export async function writeTxtFile(path: string, title: string, body: string): Promise<void> {
+  if (!isTauri()) return;
+  await invoke("export_note_txt", { path, contents: txtContents(title, body) });
 }
