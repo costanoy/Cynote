@@ -406,9 +406,9 @@ function App() {
           <div
             className={"content-wrap" + (readingMode ? " reading" : "")}
             style={{
-              fontSize: (readingMode ? 15 : 13.5) * (zoom / 100) + "px",
-              lineHeight: readingMode ? 1.85 : 1.55,
-              letterSpacing: readingMode ? "0.01em" : "normal",
+              fontSize: (readingMode ? 15 : 14.5) * (zoom / 100) + "px",
+              lineHeight: readingMode ? 1.85 : 1.65,
+              letterSpacing: readingMode ? "0.01em" : "0.005em",
             }}
           >
             <ContentArea
