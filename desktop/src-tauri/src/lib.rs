@@ -162,6 +162,14 @@ fn show_dashboard_window(app: &AppHandle, popup: bool) {
     };
 
     if let Ok(window) = builder.build() {
+        // Distinct taskbar icon so a visible Dashboard window doesn't look
+        // like a second copy of the main Cynote window - both share the same
+        // .exe icon by default unless overridden here.
+        if let Some(icon_path) = dashboard::dashboard_icon_path(app) {
+            if let Ok(icon) = tauri::image::Image::from_path(&icon_path) {
+                let _ = window.set_icon(icon);
+            }
+        }
         let _ = window.set_focus();
     }
 }

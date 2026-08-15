@@ -27,7 +27,9 @@ export function ContentArea({ body, sketches, spellCheck, onBodyInput }: Props) 
         suppressContentEditableWarning
         spellCheck={spellCheck}
         className="note-body"
-        onInput={(e) => onBodyInput(e.currentTarget.innerText)}
+        // innerText reports line breaks as "\r\n" on Windows, which counts as
+        // 2 characters per Enter press instead of 1 - normalize to "\n".
+        onInput={(e) => onBodyInput(e.currentTarget.innerText.replace(/\r\n/g, "\n"))}
       />
 
       {sketches.length > 0 && (

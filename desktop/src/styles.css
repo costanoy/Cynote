@@ -438,6 +438,9 @@ button:focus-visible,
   color: var(--text);
   background: var(--reading-bg);
 }
+.content-wrap.reading .note-body {
+  font-family: Georgia, Cambria, "Times New Roman", Times, serif;
+}
 .note-body {
   min-height: 100%;
   outline: none;

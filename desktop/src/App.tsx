@@ -288,16 +288,34 @@ function App() {
 
   const closeTab = (i: number) => {
     if (tabs.length <= 1) return;
-    setTabs((prev) => {
-      const next = prev.slice();
-      next.splice(i, 1);
-      return next;
-    });
-    setActiveTab((prev) => {
-      if (i === prev) return Math.max(0, i - 1);
-      if (i < prev) return prev - 1;
-      return prev;
-    });
+
+    const removeTab = () => {
+      setTabs((prev) => {
+        const next = prev.slice();
+        next.splice(i, 1);
+        return next;
+      });
+      setActiveTab((prev) => {
+        if (i === prev) return Math.max(0, i - 1);
+        if (i < prev) return prev - 1;
+        return prev;
+      });
+    };
+
+    // Never let a tab vanish before its latest edits actually reach disk:
+    // flush a pending debounced autosave first, then close.
+    if (saveTimerRef.current) {
+      clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+      setSyncStatus("syncing");
+      saveNotes(tabsRef.current).then(() => {
+        setSyncStatus("synced");
+        if (deviceId) runSyncCycle(deviceId);
+        removeTab();
+      });
+    } else {
+      removeTab();
+    }
   };
 
   const renameTab = (i: number, title: string) => {

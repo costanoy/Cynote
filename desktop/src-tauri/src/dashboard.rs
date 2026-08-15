@@ -106,7 +106,7 @@ pub fn open_note_in_main(app: AppHandle, path: String) -> Result<(), String> {
     app.emit("open-note-file", path).map_err(|e| e.to_string())
 }
 
-fn dashboard_icon_path(app: &AppHandle) -> Option<std::path::PathBuf> {
+pub fn dashboard_icon_path(app: &AppHandle) -> Option<std::path::PathBuf> {
     let dir = app.path().resource_dir().ok()?;
     let path = dir.join("icons").join("dashboard.ico");
     if path.exists() {
