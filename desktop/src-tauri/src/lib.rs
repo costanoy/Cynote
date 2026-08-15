@@ -136,8 +136,10 @@ fn toggle_window(window: &tauri::WebviewWindow) {
     }
 }
 
-/// The Desktop shortcut launches with --popup for a compact, frameless panel;
-/// the Start Menu one omits it and gets a normal decorated window instead.
+/// The Desktop shortcut launches with --popup for a compact panel that stays
+/// out of the taskbar; the Start Menu one omits it and behaves like a normal
+/// app window. Both are frameless now - the frontend draws its own liquid-
+/// glass title bar and window controls instead of relying on native chrome.
 fn show_dashboard_window(app: &AppHandle, popup: bool) {
     if let Some(window) = app.get_webview_window("dashboard") {
         let _ = window.show();
@@ -145,19 +147,18 @@ fn show_dashboard_window(app: &AppHandle, popup: bool) {
         return;
     }
 
-    let mut builder =
-        tauri::WebviewWindowBuilder::new(app, "dashboard", tauri::WebviewUrl::App("index.html".into()))
-            .title("Cynote Dashboard");
+    let url = if popup { "index.html?dashboard-popup=1" } else { "index.html" };
+    let mut builder = tauri::WebviewWindowBuilder::new(app, "dashboard", tauri::WebviewUrl::App(url.into()))
+        .title("Cynote Dashboard")
+        .decorations(false)
+        .transparent(true)
+        .shadow(false)
+        .resizable(true);
 
     builder = if popup {
-        builder
-            .decorations(false)
-            .transparent(true)
-            .inner_size(560.0, 480.0)
-            .resizable(false)
-            .skip_taskbar(true)
+        builder.inner_size(560.0, 480.0).skip_taskbar(true)
     } else {
-        builder.decorations(true).inner_size(780.0, 580.0).resizable(true)
+        builder.inner_size(780.0, 580.0).skip_taskbar(false)
     };
 
     if let Ok(window) = builder.build() {

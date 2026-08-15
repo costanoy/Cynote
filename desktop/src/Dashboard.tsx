@@ -3,17 +3,18 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./theme.css";
 import "./dashboard.css";
 import { scanTxtNotes, openNoteInMain, type ScannedNote } from "./dashboardApi";
-import { FolderIcon, NoteFileIcon, BackChevronIcon, LogoIcon } from "./icons";
+import { FolderIcon, NoteFileIcon, BackChevronIcon, LogoIcon, MinimizeIcon, MaximizeIcon, CloseIcon } from "./icons";
 
 function noteSegments(note: ScannedNote): string[] {
   return [note.rootLabel, ...note.relativeDirs];
 }
 
+const isPopup = new URLSearchParams(window.location.search).has("dashboard-popup");
+
 export default function Dashboard() {
   const [notes, setNotes] = useState<ScannedNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [path, setPath] = useState<string[]>([]);
-  const [popup, setPopup] = useState(false);
   const [opening, setOpening] = useState<string | null>(null);
 
   useEffect(() => {
@@ -21,10 +22,6 @@ export default function Dashboard() {
     scanTxtNotes()
       .then(setNotes)
       .finally(() => setLoading(false));
-    getCurrentWindow()
-      .isDecorated()
-      .then((decorated) => setPopup(!decorated))
-      .catch(() => {});
   }, []);
 
   const { folders, files } = useMemo(() => {
@@ -48,7 +45,7 @@ export default function Dashboard() {
     setOpening(note.fullPath);
     await openNoteInMain(note.fullPath);
     setOpening(null);
-    if (popup) {
+    if (isPopup) {
       getCurrentWindow()
         .hide()
         .catch(() => {});
@@ -60,6 +57,29 @@ export default function Dashboard() {
       <div className="dash-header" data-tauri-drag-region>
         <LogoIcon />
         <span className="dash-title heading-font">Cynote Dashboard</span>
+        <div className="dash-window-controls">
+          <button
+            className="dash-win-btn dash-win-btn-min"
+            title="Minimizar"
+            onClick={() => getCurrentWindow().minimize()}
+          >
+            <MinimizeIcon size={10} />
+          </button>
+          <button
+            className="dash-win-btn dash-win-btn-max"
+            title="Maximizar"
+            onClick={() => getCurrentWindow().toggleMaximize()}
+          >
+            <MaximizeIcon size={9} />
+          </button>
+          <button
+            className="dash-win-btn dash-win-btn-close"
+            title="Fechar"
+            onClick={() => getCurrentWindow().close()}
+          >
+            <CloseIcon size={10} />
+          </button>
+        </div>
       </div>
 
       <div className="dash-breadcrumb">
