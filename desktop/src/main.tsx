@@ -8,6 +8,7 @@ import "@fontsource/manrope/800.css";
 import "@fontsource/bricolage-grotesque/400.css";
 import "@fontsource/bricolage-grotesque/700.css";
 import "@fontsource/bricolage-grotesque/800.css";
+import "@fontsource/source-serif-4/300.css";
 import App from "./App";
 import Dashboard from "./Dashboard";
 
