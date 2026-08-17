@@ -12,7 +12,7 @@ function isNoteSketch(s: unknown): s is NoteSketch {
 /** Backfills fields added after some notes.json files were already written on disk. */
 function migrate(tabs: unknown[], fallbackDeviceId: string): TabData[] {
   return tabs.map((raw) => {
-    const t = raw as Partial<TabData>;
+    const t = raw as Partial<TabData> & { txtPath?: string };
     return {
       id: t.id ?? "n" + Date.now(),
       title: t.title ?? "Nova nota",
@@ -24,7 +24,8 @@ function migrate(tabs: unknown[], fallbackDeviceId: string): TabData[] {
       updatedAt: t.updatedAt ?? Date.now(),
       originDeviceId: t.originDeviceId ?? fallbackDeviceId,
       forkedFrom: t.forkedFrom,
-      txtPath: t.txtPath,
+      // `filePath` was named `txtPath` before the .cynote format existed.
+      filePath: t.filePath ?? t.txtPath,
       titleIsCustom: t.titleIsCustom,
     };
   });

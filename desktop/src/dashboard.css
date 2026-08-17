@@ -234,6 +234,18 @@
     0 14px 30px rgba(255, 100, 20, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
+.dash-tile-note-imported {
+  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-top-color: rgba(255, 255, 255, 0.22);
+  color: var(--text);
+  box-shadow:
+    0 8px 20px rgba(0, 0, 0, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+}
+.dash-tile-note-imported:hover {
+  border-color: rgba(255, 255, 255, 0.22);
+}
 .dash-tile-note:disabled {
   opacity: 0.6;
   cursor: default;

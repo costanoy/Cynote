@@ -10,8 +10,9 @@ import { DrawingOverlay } from "./components/DrawingOverlay";
 import { StatusBar } from "./components/StatusBar";
 import { hideAppWindow, minimizeAppWindow, setAppAlwaysOnTop, toggleMaximizeAppWindow } from "./tauriWindow";
 import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
-import { saveNoteAsTxt, writeTxtFile } from "./export";
-import { onOpenNoteFile, readTxtFile } from "./dashboardApi";
+import { saveNoteAsCynote, writeCynoteFile } from "./export";
+import { onOpenNoteFile, readNoteFileRaw } from "./dashboardApi";
+import { parseNoteFile } from "./cynoteFormat";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
 import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
@@ -188,14 +189,14 @@ function App() {
   const setTabSavedPath = (index: number, path: string) => {
     setTabs((prev) => {
       const next = prev.slice();
-      next[index] = { ...next[index], txtPath: path, title: basenameNoExt(path), titleIsCustom: true };
+      next[index] = { ...next[index], filePath: path, title: basenameNoExt(path), titleIsCustom: true };
       return next;
     });
   };
 
   // Notepad-style save: an internal save always happens, and once a note is
-  // linked to a .txt file (via a prior Save/Save As), Ctrl+S keeps that file
-  // in sync too - silently if already linked, prompting once if not.
+  // linked to a .cynote file (via a prior Save/Save As), Ctrl+S keeps that
+  // file in sync too - silently if already linked, prompting once if not.
   const saveNow = () => {
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
@@ -208,10 +209,10 @@ function App() {
 
       const i = activeTabRef.current;
       const tab = tabsRef.current[i];
-      if (tab.txtPath) {
-        writeTxtFile(tab.txtPath, tab.title, tab.body);
+      if (tab.filePath) {
+        writeCynoteFile(tab.filePath, tab);
       } else {
-        const path = await saveNoteAsTxt(tab.title, tab.body);
+        const path = await saveNoteAsCynote(tab);
         if (path) setTabSavedPath(i, path);
       }
     });
@@ -281,23 +282,35 @@ function App() {
   // Reached from the Dashboard window: focus the tab if this file is already
   // open, otherwise read it fresh and open it linked (Ctrl+S keeps saving here).
   const openNoteFile = async (path: string) => {
-    const existingIndex = tabsRef.current.findIndex((t) => t.txtPath === path);
+    const existingIndex = tabsRef.current.findIndex((t) => t.filePath === path);
     if (existingIndex !== -1) {
       setActiveTab(existingIndex);
       return;
     }
     if (!deviceId) return;
-    const { title, body } = await readTxtFile(path);
+    const raw = await readNoteFileRaw(path);
+    const { title, body, meta } = parseNoteFile(raw, basenameNoExt(path));
+    // A .cynote file carries its own stable id - reusing it (instead of
+    // minting a fresh one) is what lets the Dashboard and sync recognize
+    // "this file IS that note" across reopens and devices. If it's already
+    // open under a different path (e.g. moved on disk), just focus that tab.
+    if (meta) {
+      const byId = tabsRef.current.findIndex((t) => t.id === meta.id);
+      if (byId !== -1) {
+        setActiveTab(byId);
+        return;
+      }
+    }
     const note: TabData = {
-      id: "n" + Date.now(),
+      id: meta?.id ?? "n" + Date.now(),
       title,
       body,
-      favorite: false,
-      sketches: [],
-      updatedAt: Date.now(),
-      originDeviceId: deviceId,
-      txtPath: path,
-      titleIsCustom: true,
+      favorite: meta?.favorite ?? false,
+      sketches: meta?.sketches ?? [],
+      updatedAt: meta?.updatedAt ?? Date.now(),
+      originDeviceId: meta?.originDeviceId ?? deviceId,
+      filePath: path,
+      titleIsCustom: meta?.titleIsCustom ?? true,
     };
     const newIndex = tabsRef.current.length;
     setTabs((prev) => [...prev, note]);
@@ -369,7 +382,7 @@ function App() {
   const exportActiveNoteTxt = async () => {
     const i = activeTabRef.current;
     const tab = tabsRef.current[i];
-    const path = await saveNoteAsTxt(tab.title, tab.body);
+    const path = await saveNoteAsCynote(tab);
     if (path) setTabSavedPath(i, path);
   };
 

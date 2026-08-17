@@ -23,13 +23,9 @@ export async function openNoteInMain(path: string): Promise<void> {
   await invoke("open_note_in_main", { path });
 }
 
-export interface NoteFileContents {
-  title: string;
-  body: string;
-}
-
-export async function readTxtFile(path: string): Promise<NoteFileContents> {
-  return invoke<NoteFileContents>("read_txt_file", { path });
+/** Raw file text - the frontend (cynoteFormat.ts) splits title/body/metadata from it. */
+export async function readNoteFileRaw(path: string): Promise<string> {
+  return invoke<string>("read_txt_file", { path });
 }
 
 /** Fired by open_note_in_main (Rust) at the "main" window when a note is picked in the Dashboard. */

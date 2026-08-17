@@ -9,6 +9,15 @@ function noteSegments(note: ScannedNote): string[] {
   return [note.rootLabel, ...note.relativeDirs];
 }
 
+const NOTE_EXT_RE = /\.(cynote|txt|md)$/i;
+
+/** Only .cynote files carry the format's id/metadata, so only they're what
+ * the sync engine can actually recognize as "this device's copy of note X" -
+ * imported .txt/.md are readable here but stay outside that identity. */
+function isNativeFormat(note: ScannedNote): boolean {
+  return note.fileName.toLowerCase().endsWith(".cynote");
+}
+
 const isPopup = new URLSearchParams(window.location.search).has("dashboard-popup");
 
 export default function Dashboard() {
@@ -107,7 +116,7 @@ export default function Dashboard() {
         ) : folders.length === 0 && files.length === 0 ? (
           <div className="dash-empty">
             {path.length === 0
-              ? "Nenhuma nota .txt encontrada na Área de Trabalho ou em Documentos."
+              ? "Nenhuma nota encontrada na Área de Trabalho ou em Documentos."
               : "Pasta vazia."}
           </div>
         ) : (
@@ -121,12 +130,13 @@ export default function Dashboard() {
             {files.map((note) => (
               <button
                 key={note.fullPath}
-                className="dash-tile dash-tile-note"
+                className={"dash-tile dash-tile-note" + (isNativeFormat(note) ? "" : " dash-tile-note-imported")}
                 onClick={() => openNote(note)}
                 disabled={opening === note.fullPath}
+                title={isNativeFormat(note) ? "Nota Cynote" : "Arquivo de texto importado"}
               >
                 <NoteFileIcon size={22} />
-                <span className="dash-tile-label">{note.fileName.replace(/\.txt$/i, "")}</span>
+                <span className="dash-tile-label">{note.fileName.replace(NOTE_EXT_RE, "")}</span>
               </button>
             ))}
           </div>

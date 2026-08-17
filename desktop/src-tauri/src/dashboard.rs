@@ -36,6 +36,14 @@ const SKIP_DIR_NAMES: &[&str] = &[
     "obj",
 ];
 
+/// `.cynote` is Cynote's own format (every Save/Save As writes one); `.txt`
+/// and `.md` are imported read/write as plain text, for notes that came
+/// from elsewhere.
+fn has_note_extension(name: &str) -> bool {
+    let lower = name.to_lowercase();
+    lower.ends_with(".cynote") || lower.ends_with(".txt") || lower.ends_with(".md")
+}
+
 fn collect_txt_files(dir: &Path, root_label: &str, rel: &mut Vec<String>, depth: u32, out: &mut Vec<ScannedNote>) {
     if depth > 8 {
         return;
@@ -54,7 +62,7 @@ fn collect_txt_files(dir: &Path, root_label: &str, rel: &mut Vec<String>, depth:
             rel.push(name);
             collect_txt_files(&entry.path(), root_label, rel, depth + 1, out);
             rel.pop();
-        } else if file_type.is_file() && name.to_lowercase().ends_with(".txt") {
+        } else if file_type.is_file() && has_note_extension(&name) {
             out.push(ScannedNote {
                 full_path: entry.path().to_string_lossy().to_string(),
                 root_label: root_label.to_string(),
@@ -79,20 +87,12 @@ pub fn scan_txt_notes(app: AppHandle) -> Vec<ScannedNote> {
     out
 }
 
-#[derive(Serialize)]
-pub struct NoteFileContents {
-    pub title: String,
-    pub body: String,
-}
-
+/// Returns the file's raw text - title/body/metadata splitting now happens
+/// on the frontend (src/cynoteFormat.ts), since it has to run there anyway
+/// to render sketches and needs a single source of truth for the format.
 #[tauri::command]
-pub fn read_txt_file(path: String) -> Result<NoteFileContents, String> {
-    let contents = fs::read_to_string(&path).map_err(|e| e.to_string())?;
-    let title = Path::new(&path)
-        .file_stem()
-        .map(|s| s.to_string_lossy().to_string())
-        .unwrap_or_else(|| "Nota".to_string());
-    Ok(NoteFileContents { title, body: contents })
+pub fn read_txt_file(path: String) -> Result<String, String> {
+    fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
 /// Brings the main window to front and hands it the note to open; the
