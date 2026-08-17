@@ -378,6 +378,10 @@ function App() {
     const aspect = canvas.height / canvas.width;
     const width = Math.min(SKETCH_MAX_WIDTH, canvas.width);
     const height = Math.round(width * aspect);
+    // Capture the image now, synchronously - the setTabs updater below may
+    // run after the caller clears the canvas, which would otherwise insert
+    // a blank image.
+    const dataUrl = canvas.toDataURL("image/png");
 
     setTabs((prev) => {
       const next = prev.slice();
@@ -385,7 +389,7 @@ function App() {
       const cascade = (tab.sketches.length % 6) * 22;
       const sketch: NoteSketch = {
         id: "sk" + Date.now(),
-        dataUrl: canvas.toDataURL("image/png"),
+        dataUrl,
         x: 16 + cascade,
         y: 16 + cascade,
         width,
