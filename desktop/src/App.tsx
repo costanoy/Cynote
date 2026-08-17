@@ -30,7 +30,25 @@ function makeBlankTab(deviceId: string): TabData {
     sketches: [],
     updatedAt: Date.now(),
     originDeviceId: deviceId,
+    titleIsCustom: false,
   };
+}
+
+const AUTO_TITLE_MAX_LEN = 40;
+
+// Notepad-style: until the tab is explicitly named (rename, or Save/Save As),
+// its title is just a live suggestion made of the first words typed.
+function deriveTitleFromBody(body: string): string {
+  const firstLine = body.split(/\r?\n/, 1)[0].trim();
+  if (!firstLine) return "Nova nota";
+  return firstLine.length > AUTO_TITLE_MAX_LEN
+    ? firstLine.slice(0, AUTO_TITLE_MAX_LEN).trimEnd() + "…"
+    : firstLine;
+}
+
+function basenameNoExt(path: string): string {
+  const base = path.split(/[\\/]/).pop() ?? path;
+  return base.replace(/\.[^./\\]+$/, "");
 }
 
 const AUTOSAVE_DELAY_MS = 1500;
@@ -164,10 +182,12 @@ function App() {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const setTabTxtPath = (index: number, path: string) => {
+  // Called after a Save/Save As picks a real file - like Notepad, the tab
+  // title locks to that filename from now on (no longer auto-suggested).
+  const setTabSavedPath = (index: number, path: string) => {
     setTabs((prev) => {
       const next = prev.slice();
-      next[index] = { ...next[index], txtPath: path };
+      next[index] = { ...next[index], txtPath: path, title: basenameNoExt(path), titleIsCustom: true };
       return next;
     });
   };
@@ -191,7 +211,7 @@ function App() {
         writeTxtFile(tab.txtPath, tab.title, tab.body);
       } else {
         const path = await saveNoteAsTxt(tab.title, tab.body);
-        if (path) setTabTxtPath(i, path);
+        if (path) setTabSavedPath(i, path);
       }
     });
   };
@@ -273,6 +293,7 @@ function App() {
       updatedAt: Date.now(),
       originDeviceId: deviceId,
       txtPath: path,
+      titleIsCustom: true,
     };
     const newIndex = tabsRef.current.length;
     setTabs((prev) => [...prev, note]);
@@ -321,7 +342,7 @@ function App() {
   const renameTab = (i: number, title: string) => {
     setTabs((prev) => {
       const next = prev.slice();
-      next[i] = { ...next[i], title, updatedAt: Date.now() };
+      next[i] = { ...next[i], title, titleIsCustom: true, updatedAt: Date.now() };
       return next;
     });
   };
@@ -329,7 +350,13 @@ function App() {
   const onBodyInput = (value: string) => {
     setTabs((prev) => {
       const next = prev.slice();
-      next[activeTab] = { ...next[activeTab], body: value, updatedAt: Date.now() };
+      const tab = next[activeTab];
+      next[activeTab] = {
+        ...tab,
+        body: value,
+        updatedAt: Date.now(),
+        title: tab.titleIsCustom ? tab.title : deriveTitleFromBody(value),
+      };
       return next;
     });
   };
@@ -339,7 +366,7 @@ function App() {
     const i = activeTabRef.current;
     const tab = tabsRef.current[i];
     const path = await saveNoteAsTxt(tab.title, tab.body);
-    if (path) setTabTxtPath(i, path);
+    if (path) setTabSavedPath(i, path);
   };
 
   const insertSketch = (_canvas: HTMLCanvasElement) => {

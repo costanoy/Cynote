@@ -106,25 +106,21 @@ fn export_note_txt(path: String, contents: String) -> Result<(), String> {
     fs::write(path, contents).map_err(|e| e.to_string())
 }
 
-/// First launch after this feature shipped: turn autostart on so the global
-/// shortcut is always available, even after a reboot, without the user having
-/// to find the setting. Runs in Rust (not JS) so it still happens even if the
-/// webview fails to load. A marker file makes this a one-time nudge — if the
-/// user turns it back off in Settings, we don't fight them on the next launch.
-fn enable_autostart_on_first_run(app: &AppHandle) {
+/// One-time cleanup: earlier builds force-enabled autostart on first run and
+/// left an `autostart_initialized` marker behind. That default was removed,
+/// but the marker (and the Run key it caused) can still be sitting on a
+/// machine that already hit it - undo it once so autostart actually goes
+/// back to off, then delete the marker so a later deliberate choice in
+/// Settings is never touched by this again.
+fn undo_forced_autostart_once(app: &AppHandle) {
     use tauri_plugin_autostart::ManagerExt;
     let Ok(dir) = app.path().app_data_dir() else { return };
-    if fs::create_dir_all(&dir).is_err() {
-        return;
-    }
     let marker = dir.join("autostart_initialized");
-    if marker.exists() {
+    if !marker.exists() {
         return;
     }
-    if let Err(e) = app.autolaunch().enable() {
-        eprintln!("Failed to enable autostart: {e}");
-    }
-    let _ = fs::write(marker, "");
+    let _ = app.autolaunch().disable();
+    let _ = fs::remove_file(marker);
 }
 
 fn toggle_window(window: &tauri::WebviewWindow) {
@@ -214,7 +210,7 @@ pub fn run() {
                 eprintln!("Failed to register global shortcut: {e}");
             }
 
-            enable_autostart_on_first_run(app.handle());
+            undo_forced_autostart_once(app.handle());
             dashboard::create_dashboard_shortcuts_once(app.handle());
 
             if let Ok(identity) = identity::load_or_create(app.handle()) {

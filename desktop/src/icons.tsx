@@ -33,11 +33,19 @@ export function FormatIcon({ size = 15 }: IconProps) {
   );
 }
 
-export function DrawIcon({ size = 15 }: IconProps) {
+export function DrawIcon({ size = 16 }: IconProps) {
   return (
-    <svg width={size * 1.2} height={size} viewBox="0 0 28 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-      <path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4z" />
-      <path d="M10 21c1.2-1 2.4-1 3.6 0s2.4 1 3.6 0 2.4-1 3.6 0" />
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <path
+        d="M17.7 3.3a2.4 2.4 0 013.4 3.4L9.6 18.2a2 2 0 01-.9.53l-4.2 1.27a.5.5 0 01-.62-.62l1.27-4.2a2 2 0 01.53-.9z"
+        fill="currentColor"
+        fillOpacity="0.14"
+        stroke="currentColor"
+        strokeWidth="1.6"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M15.3 5.7l3.4 3.4" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" />
     </svg>
   );
 }
