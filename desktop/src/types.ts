@@ -25,7 +25,7 @@ export interface TabData {
   updatedAt: number;
   originDeviceId: string;
   forkedFrom?: ForkedFrom;
-  /** Path of the .cynote (or imported .txt/.md) file this note is linked to, once saved there (Notepad-style: set on first Save/Save As, reused by later Ctrl+S). */
+  /** Path of the .cyte (or imported .txt/.md) file this note is linked to, once saved there (Notepad-style: set on first Save/Save As, reused by later Ctrl+S). */
   filePath?: string;
   /** True once the title was explicitly set (renamed, or saved to a file) - until then, the title is just a live suggestion derived from the first line typed. */
   titleIsCustom?: boolean;

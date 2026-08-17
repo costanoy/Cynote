@@ -195,7 +195,7 @@ function App() {
   };
 
   // Notepad-style save: an internal save always happens, and once a note is
-  // linked to a .cynote file (via a prior Save/Save As), Ctrl+S keeps that
+  // linked to a .cyte file (via a prior Save/Save As), Ctrl+S keeps that
   // file in sync too - silently if already linked, prompting once if not.
   const saveNow = () => {
     if (saveTimerRef.current) {
@@ -290,7 +290,7 @@ function App() {
     if (!deviceId) return;
     const raw = await readNoteFileRaw(path);
     const { title, body, meta } = parseNoteFile(raw, basenameNoExt(path));
-    // A .cynote file carries its own stable id - reusing it (instead of
+    // A .cyte file carries its own stable id - reusing it (instead of
     // minting a fresh one) is what lets the Dashboard and sync recognize
     // "this file IS that note" across reopens and devices. If it's already
     // open under a different path (e.g. moved on disk), just focus that tab.

@@ -36,12 +36,12 @@ const SKIP_DIR_NAMES: &[&str] = &[
     "obj",
 ];
 
-/// `.cynote` is Cynote's own format (every Save/Save As writes one); `.txt`
+/// `.cyte` is Cynote's own format (every Save/Save As writes one); `.txt`
 /// and `.md` are imported read/write as plain text, for notes that came
 /// from elsewhere.
 fn has_note_extension(name: &str) -> bool {
     let lower = name.to_lowercase();
-    lower.ends_with(".cynote") || lower.ends_with(".txt") || lower.ends_with(".md")
+    lower.ends_with(".cyte") || lower.ends_with(".txt") || lower.ends_with(".md")
 }
 
 fn collect_txt_files(dir: &Path, root_label: &str, rel: &mut Vec<String>, depth: u32, out: &mut Vec<ScannedNote>) {

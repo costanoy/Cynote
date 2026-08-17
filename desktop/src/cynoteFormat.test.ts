@@ -58,7 +58,7 @@ describe("cynoteFormat", () => {
     expect(parsed.body).toBe(raw);
   });
 
-  it("recognizes the footer even without the .cynote extension (renamed file)", () => {
+  it("recognizes the footer even without the .cyte extension (renamed file)", () => {
     const raw = serializeCynoteNote(tab({ title: "Renamed" }));
     const parsed = parseNoteFile(raw, "whatever-the-filename-is");
 

@@ -9,13 +9,13 @@ function noteSegments(note: ScannedNote): string[] {
   return [note.rootLabel, ...note.relativeDirs];
 }
 
-const NOTE_EXT_RE = /\.(cynote|txt|md)$/i;
+const NOTE_EXT_RE = /\.(cyte|txt|md)$/i;
 
-/** Only .cynote files carry the format's id/metadata, so only they're what
+/** Only .cyte files carry the format's id/metadata, so only they're what
  * the sync engine can actually recognize as "this device's copy of note X" -
  * imported .txt/.md are readable here but stay outside that identity. */
 function isNativeFormat(note: ScannedNote): boolean {
-  return note.fileName.toLowerCase().endsWith(".cynote");
+  return note.fileName.toLowerCase().endsWith(".cyte");
 }
 
 const isPopup = new URLSearchParams(window.location.search).has("dashboard-popup");

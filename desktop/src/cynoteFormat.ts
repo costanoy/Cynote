@@ -1,7 +1,7 @@
 import type { NoteSketch, TabData } from "./types";
 
 /**
- * The .cynote file format: a plain-text file that reads just like a .txt
+ * The .cyte file format: a plain-text file that reads just like a .txt
  * (title on the first line, blank line, then the body) with one addition -
  * a trailing HTML-comment-style block carrying the note's id and everything
  * a .txt can't hold (sketches, favorite, titleIsCustom, origin device...).
@@ -47,7 +47,7 @@ export function serializeCynoteNote(tab: TabData): string {
 
 /**
  * Reads any text file Cynote can open. Files with a Cynote footer (any
- * extension - a .cynote file renamed to .txt still round-trips correctly)
+ * extension - a .cyte file renamed to .txt still round-trips correctly)
  * get the full title/body/metadata split. Anything else is treated as
  * opaque plain text, exactly like before: the whole file becomes the body
  * and `fallbackTitle` (normally the filename) is used as-is, so a random

@@ -16,8 +16,8 @@ function safeFileName(title: string): string {
 export async function saveNoteAsCynote(tab: TabData): Promise<string | null> {
   if (!isTauri()) return null;
   const path = await save({
-    defaultPath: `${safeFileName(tab.title)}.cynote`,
-    filters: [{ name: "Nota Cynote", extensions: ["cynote"] }],
+    defaultPath: `${safeFileName(tab.title)}.cyte`,
+    filters: [{ name: "Nota Cynote", extensions: ["cyte"] }],
   });
   if (!path) return null;
   await invoke("export_note_txt", { path, contents: serializeCynoteNote(tab) });

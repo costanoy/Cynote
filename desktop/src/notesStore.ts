@@ -24,7 +24,7 @@ function migrate(tabs: unknown[], fallbackDeviceId: string): TabData[] {
       updatedAt: t.updatedAt ?? Date.now(),
       originDeviceId: t.originDeviceId ?? fallbackDeviceId,
       forkedFrom: t.forkedFrom,
-      // `filePath` was named `txtPath` before the .cynote format existed.
+      // `filePath` was named `txtPath` before the .cyte format existed.
       filePath: t.filePath ?? t.txtPath,
       titleIsCustom: t.titleIsCustom,
     };
