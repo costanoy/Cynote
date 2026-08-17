@@ -3,8 +3,22 @@ type IconProps = { size?: number };
 export function LogoIcon({ size = 18 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
-      <rect x="3" y="3" width="18" height="18" rx="4" fill="#ff8c3a" />
-      <path d="M8 8h8M8 12h8M8 16h5" stroke="#fff" strokeWidth="1.6" strokeLinecap="round" />
+      <defs>
+        <linearGradient id="logoBg" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffa452" />
+          <stop offset="1" stopColor="#f2711a" />
+        </linearGradient>
+        <linearGradient id="logoSheen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.28" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+        <clipPath id="logoClip">
+          <rect x="2.5" y="2.5" width="19" height="19" rx="6" />
+        </clipPath>
+      </defs>
+      <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="url(#logoBg)" />
+      <ellipse cx="12" cy="6" rx="9" ry="5" fill="url(#logoSheen)" clipPath="url(#logoClip)" />
+      <path d="M7.6 8.8h8.8M7.6 12.2h8.8M7.6 15.6h5.6" stroke="#fffaf3" strokeWidth="1.5" strokeLinecap="round" />
     </svg>
   );
 }

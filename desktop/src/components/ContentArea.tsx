@@ -15,7 +15,20 @@ export function ContentArea({ body, sketches, spellCheck, onBodyInput }: Props) 
   // or the caret resets to the start on every keystroke (looks like typing
   // "backwards" and stuck on the first line).
   useEffect(() => {
-    if (ref.current) ref.current.innerText = body;
+    const el = ref.current;
+    if (!el) return;
+    el.innerText = body;
+    el.focus();
+    // Land the caret at the end of any existing text rather than the start,
+    // so switching tabs (or opening a fresh blank one) is ready to type into.
+    const selection = window.getSelection();
+    if (selection) {
+      const range = document.createRange();
+      range.selectNodeContents(el);
+      range.collapse(false);
+      selection.removeAllRanges();
+      selection.addRange(range);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

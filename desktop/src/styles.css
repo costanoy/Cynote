@@ -443,8 +443,15 @@ button:focus-visible,
   outline: none;
   white-space: pre-wrap;
   word-break: break-word;
-  font-family: "Source Serif 4", Georgia, Cambria, "Times New Roman", Times, serif;
-  font-weight: 300;
+  color: var(--content-text-body);
+}
+/* The `!important` guards against Chromium inserting a fresh <div> with its
+   own inline font styling when you press Enter in a contentEditable - without
+   it, the new line silently falls back to the browser's default font. */
+.note-body,
+.note-body * {
+  font-family: "Source Serif 4", Georgia, Cambria, "Times New Roman", Times, serif !important;
+  font-weight: 400 !important;
 }
 .sketches-row {
   display: flex;

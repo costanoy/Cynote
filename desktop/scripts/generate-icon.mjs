@@ -10,8 +10,22 @@ mkdirSync(outDir, { recursive: true });
 // Same mark used in-app (see src/icons.tsx LogoIcon), rasterized at high res for `tauri icon`.
 const svg = `
 <svg width="1024" height="1024" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-  <rect x="3" y="3" width="18" height="18" rx="5" fill="#ff8c3a"/>
-  <path d="M8 8h8M8 12h8M8 16h5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
+  <defs>
+    <linearGradient id="bg" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#ffa452"/>
+      <stop offset="1" stop-color="#f2711a"/>
+    </linearGradient>
+    <linearGradient id="sheen" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#ffffff" stop-opacity="0"/>
+    </linearGradient>
+    <clipPath id="cardClip">
+      <rect x="2.5" y="2.5" width="19" height="19" rx="6"/>
+    </clipPath>
+  </defs>
+  <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="url(#bg)"/>
+  <ellipse cx="12" cy="6" rx="9" ry="5" fill="url(#sheen)" clip-path="url(#cardClip)"/>
+  <path d="M7.6 8.8h8.8M7.6 12.2h8.8M7.6 15.6h5.6" stroke="#fffaf3" stroke-width="1.5" stroke-linecap="round"/>
 </svg>`;
 
 const outPath = join(outDir, "icon-source.png");
