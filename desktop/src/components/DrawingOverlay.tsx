@@ -8,6 +8,8 @@ const MIN_WIDTH = 1.1;
 const WIDTH_SMOOTHING = 0.35;
 const INK_ALPHA = 0.86;
 
+type Point = { x: number; y: number };
+
 type Props = {
   open: boolean;
   darkMode: boolean;
@@ -20,9 +22,9 @@ type Props = {
 export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel, onInsert }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cssSize = useRef({ w: 0, h: 0 });
-  const isDrawing = useRef(false);
-  const lastPoint = useRef({ x: 0, y: 0 });
+  const points = useRef<Point[]>([]);
   const currentWidth = useRef(MAX_WIDTH * 0.6);
+
   const colors = darkMode ? COLORS_DARK : COLORS_LIGHT;
 
   // Keep the canvas's real pixel buffer matching its displayed CSS size (at
@@ -33,7 +35,7 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
     const canvas = canvasRef.current;
     if (!canvas) return;
     const resize = () => {
-      if (isDrawing.current) return;
+      if (points.current.length > 0) return;
       const rect = canvas.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return;
       const dpr = window.devicePixelRatio || 1;
@@ -49,32 +51,39 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
     return () => ro.disconnect();
   }, []);
 
-  const getPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
+  const posFromEvent = (e: { clientX: number; clientY: number }): Point => {
+    const rect = canvasRef.current!.getBoundingClientRect();
     return { x: e.clientX - rect.left, y: e.clientY - rect.top };
   };
 
-  const onDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    isDrawing.current = true;
-    lastPoint.current = getPos(e);
-    currentWidth.current = MAX_WIDTH * 0.6;
+  const dot = (p: Point) => {
+    const ctx = canvasRef.current?.getContext("2d");
+    if (!ctx) return;
+    ctx.globalAlpha = INK_ALPHA;
+    ctx.fillStyle = drawColor;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, currentWidth.current / 2, 0, Math.PI * 2);
+    ctx.fill();
   };
 
   // Smooths freehand input into a soft, continuous stroke - like a signature
-  // pad: each new point curves through the midpoint of the last two samples
-  // instead of connecting them with a straight (faceted) line, and the line
-  // width eases toward a speed-based target so fast strokes taper thin and
-  // slow ones stay fuller - closer to a real pen's feel than a flat 4px line.
-  const onMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!isDrawing.current || !canvasRef.current) return;
-    const ctx = canvasRef.current.getContext("2d");
-    if (!ctx) return;
+  // pad, every new point curves through a rolling window of the last three
+  // samples (midpoint -> real point -> midpoint) instead of connecting raw
+  // points with straight (faceted) segments, and the line width eases toward
+  // a speed-based target so fast strokes taper thin and slow ones stay
+  // fuller - closer to a real pen's feel than a flat, straight-edged line.
+  const drawSegment = () => {
+    const ctx = canvasRef.current?.getContext("2d");
+    const pts = points.current;
+    const n = pts.length;
+    if (!ctx || n < 3) return;
+    const p0 = pts[n - 3];
+    const p1 = pts[n - 2];
+    const p2 = pts[n - 1];
+    const start = { x: (p0.x + p1.x) / 2, y: (p0.y + p1.y) / 2 };
+    const end = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 };
 
-    const pos = getPos(e);
-    const last = lastPoint.current;
-    const mid = { x: (last.x + pos.x) / 2, y: (last.y + pos.y) / 2 };
-
-    const dist = Math.hypot(pos.x - last.x, pos.y - last.y);
+    const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
     const targetWidth = Math.max(MIN_WIDTH, MAX_WIDTH - dist * 0.25);
     currentWidth.current += (targetWidth - currentWidth.current) * WIDTH_SMOOTHING;
 
@@ -84,15 +93,37 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
     ctx.beginPath();
-    ctx.moveTo(last.x, last.y);
-    ctx.quadraticCurveTo(last.x, last.y, mid.x, mid.y);
+    ctx.moveTo(start.x, start.y);
+    ctx.quadraticCurveTo(p1.x, p1.y, end.x, end.y);
     ctx.stroke();
-
-    lastPoint.current = pos;
   };
 
-  const onUp = () => {
-    isDrawing.current = false;
+  // Mouse listeners live on the window (not just the canvas) for the
+  // duration of a stroke, so a fast drag that briefly leaves the canvas
+  // bounds keeps drawing instead of the stroke silently cutting off.
+  const onDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const pos = posFromEvent(e);
+    points.current = [pos];
+    currentWidth.current = MAX_WIDTH * 0.6;
+
+    const onMove = (ev: MouseEvent) => {
+      points.current.push(posFromEvent(ev));
+      drawSegment();
+    };
+    const endStroke = () => {
+      if (points.current.length > 0 && points.current.length <= 2) dot(points.current[0]);
+      points.current = [];
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", endStroke);
+      window.removeEventListener("blur", endStroke);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", endStroke);
+    // If the mouse button is released outside this window entirely (e.g. the
+    // drag ends over another app), we'll never see that mouseup - losing
+    // focus is the fallback signal to stop the stroke instead of leaving it
+    // stuck "drawing" until the next click.
+    window.addEventListener("blur", endStroke);
   };
 
   const clearCanvas = () => {
@@ -125,9 +156,6 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
           background: `repeating-linear-gradient(0deg, var(--canvas-bg), var(--canvas-bg) 27px, var(--canvas-line) 28px)`,
         }}
         onMouseDown={onDown}
-        onMouseMove={onMove}
-        onMouseUp={onUp}
-        onMouseLeave={onUp}
       />
       <div className="overlay-footer">
         <button className="cancel-btn" onClick={onCancel}>
