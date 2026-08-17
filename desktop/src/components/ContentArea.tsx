@@ -50,6 +50,15 @@ export function ContentArea({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Strip whatever formatting the source had (fonts, colors, bold, links...)
+  // so pasted text always matches the note's own style, instead of dragging
+  // in a webpage's or Word doc's original look.
+  const onPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text/plain");
+    document.execCommand("insertText", false, text);
+  };
+
   return (
     <>
       <div
@@ -58,6 +67,7 @@ export function ContentArea({
         suppressContentEditableWarning
         spellCheck={spellCheck}
         className="note-body"
+        onPaste={onPaste}
         // innerText reports line breaks as "\r\n" on Windows, which counts as
         // 2 characters per Enter press instead of 1 - normalize to "\n".
         onInput={(e) => onBodyInput(e.currentTarget.innerText.replace(/\r\n/g, "\n"))}
