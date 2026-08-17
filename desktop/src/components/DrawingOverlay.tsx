@@ -7,6 +7,9 @@ const MAX_WIDTH = 3.2;
 const MIN_WIDTH = 1.1;
 const WIDTH_SMOOTHING = 0.35;
 const INK_ALPHA = 0.86;
+const TAPER_STEPS = 6;
+const TAPER_LENGTH = 9;
+const TAPER_SHRINK = 0.7;
 
 type Point = { x: number; y: number };
 
@@ -98,6 +101,40 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
     ctx.stroke();
   };
 
+  // Tapers the last bit of the stroke down to a point instead of ending
+  // abruptly at whatever width was last drawn - like lifting a real pen off
+  // the page, and softens fast strokes that end thin-but-square.
+  const taperEnd = () => {
+    const ctx = canvasRef.current?.getContext("2d");
+    const pts = points.current;
+    if (!ctx || pts.length < 2) return;
+    const p1 = pts[pts.length - 2];
+    const p2 = pts[pts.length - 1];
+    const len = Math.hypot(p2.x - p1.x, p2.y - p1.y) || 1;
+    const dirX = (p2.x - p1.x) / len;
+    const dirY = (p2.y - p1.y) / len;
+    const stepLen = TAPER_LENGTH / TAPER_STEPS;
+
+    let x = p2.x;
+    let y = p2.y;
+    let width = currentWidth.current;
+    ctx.globalAlpha = INK_ALPHA;
+    ctx.strokeStyle = drawColor;
+    ctx.lineCap = "round";
+    for (let i = 0; i < TAPER_STEPS; i++) {
+      const nx = x + dirX * stepLen;
+      const ny = y + dirY * stepLen;
+      width *= TAPER_SHRINK;
+      ctx.lineWidth = Math.max(width, 0.4);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(nx, ny);
+      ctx.stroke();
+      x = nx;
+      y = ny;
+    }
+  };
+
   // Mouse listeners live on the window (not just the canvas) for the
   // duration of a stroke, so a fast drag that briefly leaves the canvas
   // bounds keeps drawing instead of the stroke silently cutting off.
@@ -111,7 +148,8 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
       drawSegment();
     };
     const endStroke = () => {
-      if (points.current.length > 0 && points.current.length <= 2) dot(points.current[0]);
+      if (points.current.length > 2) taperEnd();
+      else if (points.current.length > 0) dot(points.current[0]);
       points.current = [];
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", endStroke);
