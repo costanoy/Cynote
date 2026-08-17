@@ -76,7 +76,11 @@ export function Header({
           </>
         )}
       </div>
-      <button className={"draw-btn" + (drawingOpen ? " active" : "")} onClick={onToggleDrawing} title="Note Styling">
+      <button
+        className={"draw-btn" + (drawingOpen ? " active" : "")}
+        onClick={onToggleDrawing}
+        title="Note Styling (Ctrl+Shift+D)"
+      >
         <DrawIcon />
       </button>
       <div style={{ flex: 1 }} />

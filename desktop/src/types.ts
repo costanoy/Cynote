@@ -5,12 +5,23 @@ export interface ForkedFrom {
   noteId: string;
 }
 
+/** A drawing inserted from Note Styling, positioned freely within the note. */
+export interface NoteSketch {
+  id: string;
+  /** PNG data URL of the drawing. */
+  dataUrl: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 export interface TabData {
   id: string;
   title: string;
   body: string;
   favorite: boolean;
-  sketches: number[];
+  sketches: NoteSketch[];
   updatedAt: number;
   originDeviceId: string;
   forkedFrom?: ForkedFrom;

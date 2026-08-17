@@ -453,24 +453,17 @@ button:focus-visible,
   font-family: "Source Serif 4", Georgia, Cambria, "Times New Roman", Times, serif !important;
   font-weight: 400 !important;
 }
-.sketches-row {
-  display: flex;
-  gap: 8px;
-  flex-wrap: wrap;
-  margin-top: 6px;
-}
-.sketch-thumb {
-  width: 64px;
-  height: 48px;
+.note-sketch {
+  position: absolute;
   border-radius: 8px;
-  background: linear-gradient(135deg, #ffb37a, #ff8c3a);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: rgba(255, 255, 255, 0.85);
-  font-size: 10px;
-  font-weight: 700;
-  box-shadow: 0 4px 10px rgba(255, 140, 58, 0.25);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
+  cursor: grab;
+  user-select: none;
+  -webkit-user-drag: none;
+  background: var(--canvas-bg);
+}
+.note-sketch:active {
+  cursor: grabbing;
 }
 
 /* Drawing overlay */

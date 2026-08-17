@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import "./theme.css";
 import "./styles.css";
-import type { TabData } from "./types";
+import type { NoteSketch, TabData } from "./types";
 import { Header } from "./components/Header";
 import { TabBar } from "./components/TabBar";
 import { SettingsView } from "./components/SettingsView";
@@ -240,6 +240,9 @@ function App() {
         } else {
           saveNow();
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "d") {
+        e.preventDefault();
+        setDrawingOpen((v) => !v);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -369,17 +372,46 @@ function App() {
     if (path) setTabSavedPath(i, path);
   };
 
-  const insertSketch = (_canvas: HTMLCanvasElement) => {
+  const SKETCH_MAX_WIDTH = 220;
+
+  const insertSketch = (canvas: HTMLCanvasElement) => {
+    const aspect = canvas.height / canvas.width;
+    const width = Math.min(SKETCH_MAX_WIDTH, canvas.width);
+    const height = Math.round(width * aspect);
+
     setTabs((prev) => {
       const next = prev.slice();
+      const tab = next[activeTab];
+      const cascade = (tab.sketches.length % 6) * 22;
+      const sketch: NoteSketch = {
+        id: "sk" + Date.now(),
+        dataUrl: canvas.toDataURL("image/png"),
+        x: 16 + cascade,
+        y: 16 + cascade,
+        width,
+        height,
+      };
       next[activeTab] = {
-        ...next[activeTab],
-        sketches: [...next[activeTab].sketches, Date.now()],
+        ...tab,
+        sketches: [...tab.sketches, sketch],
         updatedAt: Date.now(),
       };
       return next;
     });
     setDrawingOpen(false);
+  };
+
+  const moveSketch = (sketchId: string, x: number, y: number) => {
+    setTabs((prev) => {
+      const next = prev.slice();
+      const tab = next[activeTab];
+      next[activeTab] = {
+        ...tab,
+        sketches: tab.sketches.map((s) => (s.id === sketchId ? { ...s, x, y } : s)),
+        updatedAt: Date.now(),
+      };
+      return next;
+    });
   };
 
   if (!loaded || tabs.length === 0) {
@@ -444,6 +476,7 @@ function App() {
               sketches={tabs[activeTab].sketches}
               spellCheck={spellCheckEnabled}
               onBodyInput={onBodyInput}
+              onMoveSketch={moveSketch}
             />
           </div>
 

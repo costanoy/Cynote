@@ -1,13 +1,15 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import type { NoteSketch } from "../types";
 
 type Props = {
   body: string;
-  sketches: number[];
+  sketches: NoteSketch[];
   spellCheck: boolean;
   onBodyInput: (value: string) => void;
+  onMoveSketch: (id: string, x: number, y: number) => void;
 };
 
-export function ContentArea({ body, sketches, spellCheck, onBodyInput }: Props) {
+export function ContentArea({ body, sketches, spellCheck, onBodyInput, onMoveSketch }: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Set the initial text once on mount only. The div is intentionally left
@@ -45,15 +47,54 @@ export function ContentArea({ body, sketches, spellCheck, onBodyInput }: Props) 
         onInput={(e) => onBodyInput(e.currentTarget.innerText.replace(/\r\n/g, "\n"))}
       />
 
-      {sketches.length > 0 && (
-        <div className="sketches-row">
-          {sketches.map((id) => (
-            <div key={id} className="sketch-thumb">
-              sketch
-            </div>
-          ))}
-        </div>
-      )}
+      {sketches.map((sketch) => (
+        <DraggableSketch key={sketch.id} sketch={sketch} onMove={onMoveSketch} />
+      ))}
     </>
+  );
+}
+
+function DraggableSketch({
+  sketch,
+  onMove,
+}: {
+  sketch: NoteSketch;
+  onMove: (id: string, x: number, y: number) => void;
+}) {
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const dragStart = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });
+
+  const onMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    dragStart.current = { mouseX: e.clientX, mouseY: e.clientY, x: sketch.x, y: sketch.y };
+
+    const onMouseMove = (ev: MouseEvent) => {
+      const dx = ev.clientX - dragStart.current.mouseX;
+      const dy = ev.clientY - dragStart.current.mouseY;
+      setDragPos({ x: dragStart.current.x + dx, y: dragStart.current.y + dy });
+    };
+    const onMouseUp = (ev: MouseEvent) => {
+      const dx = ev.clientX - dragStart.current.mouseX;
+      const dy = ev.clientY - dragStart.current.mouseY;
+      onMove(sketch.id, dragStart.current.x + dx, dragStart.current.y + dy);
+      setDragPos(null);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
+  const pos = dragPos ?? { x: sketch.x, y: sketch.y };
+
+  return (
+    <img
+      src={sketch.dataUrl}
+      alt=""
+      draggable={false}
+      className="note-sketch"
+      style={{ left: pos.x, top: pos.y, width: sketch.width, height: sketch.height }}
+      onMouseDown={onMouseDown}
+    />
   );
 }

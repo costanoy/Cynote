@@ -1,8 +1,12 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { TabData } from "./types";
+import type { NoteSketch, TabData } from "./types";
 
 function isTauri() {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+}
+
+function isNoteSketch(s: unknown): s is NoteSketch {
+  return typeof s === "object" && s !== null && typeof (s as NoteSketch).dataUrl === "string";
 }
 
 /** Backfills fields added after some notes.json files were already written on disk. */
@@ -14,10 +18,14 @@ function migrate(tabs: unknown[], fallbackDeviceId: string): TabData[] {
       title: t.title ?? "Nova nota",
       body: t.body ?? "",
       favorite: t.favorite ?? false,
-      sketches: t.sketches ?? [],
+      // Older notes.json files stored sketches as bare timestamp numbers -
+      // drop those instead of rendering a broken image.
+      sketches: Array.isArray(t.sketches) ? t.sketches.filter(isNoteSketch) : [],
       updatedAt: t.updatedAt ?? Date.now(),
       originDeviceId: t.originDeviceId ?? fallbackDeviceId,
       forkedFrom: t.forkedFrom,
+      txtPath: t.txtPath,
+      titleIsCustom: t.titleIsCustom,
     };
   });
 }
