@@ -463,6 +463,19 @@ function App() {
     });
   };
 
+  const resizeSketch = (sketchId: string, width: number, height: number) => {
+    setTabs((prev) => {
+      const next = prev.slice();
+      const tab = next[activeTab];
+      next[activeTab] = {
+        ...tab,
+        sketches: tab.sketches.map((s) => (s.id === sketchId ? { ...s, width, height } : s)),
+        updatedAt: Date.now(),
+      };
+      return next;
+    });
+  };
+
   if (!loaded || tabs.length === 0) {
     return <div className="cy-panel" />;
   }
@@ -526,6 +539,7 @@ function App() {
               spellCheck={spellCheckEnabled}
               onBodyInput={onBodyInput}
               onMoveSketch={moveSketch}
+              onResizeSketch={resizeSketch}
               onEditSketch={editSketch}
               onDeleteSketch={deleteSketch}
             />

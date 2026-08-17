@@ -2,12 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import type { NoteSketch } from "../types";
 import { DrawIcon, TrashIcon } from "../icons";
 
+const MIN_SKETCH_SIZE = 40;
+const MAX_SKETCH_SIZE = 480;
+
 type Props = {
   body: string;
   sketches: NoteSketch[];
   spellCheck: boolean;
   onBodyInput: (value: string) => void;
   onMoveSketch: (id: string, x: number, y: number) => void;
+  onResizeSketch: (id: string, width: number, height: number) => void;
   onEditSketch: (id: string) => void;
   onDeleteSketch: (id: string) => void;
 };
@@ -18,6 +22,7 @@ export function ContentArea({
   spellCheck,
   onBodyInput,
   onMoveSketch,
+  onResizeSketch,
   onEditSketch,
   onDeleteSketch,
 }: Props) {
@@ -63,6 +68,7 @@ export function ContentArea({
           key={sketch.id}
           sketch={sketch}
           onMove={onMoveSketch}
+          onResize={onResizeSketch}
           onEdit={onEditSketch}
           onDelete={onDeleteSketch}
         />
@@ -74,16 +80,20 @@ export function ContentArea({
 function DraggableSketch({
   sketch,
   onMove,
+  onResize,
   onEdit,
   onDelete,
 }: {
   sketch: NoteSketch;
   onMove: (id: string, x: number, y: number) => void;
+  onResize: (id: string, width: number, height: number) => void;
   onEdit: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
+  const [resizeDims, setResizeDims] = useState<{ width: number; height: number } | null>(null);
   const dragStart = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });
+  const resizeStart = useRef({ mouseX: 0, width: 0, height: 0, aspect: 1 });
 
   const onMouseDown = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -106,11 +116,49 @@ function DraggableSketch({
     window.addEventListener("mouseup", onMouseUp);
   };
 
+  // Drags the bottom-right handle to scale the sketch up or down, keeping
+  // its original aspect ratio instead of stretching it out of shape.
+  const onResizeMouseDown = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    resizeStart.current = {
+      mouseX: e.clientX,
+      width: sketch.width,
+      height: sketch.height,
+      aspect: sketch.width / sketch.height,
+    };
+
+    const computeSize = (clientX: number) => {
+      const dx = clientX - resizeStart.current.mouseX;
+      const width = Math.min(MAX_SKETCH_SIZE, Math.max(MIN_SKETCH_SIZE, resizeStart.current.width + dx));
+      const height = width / resizeStart.current.aspect;
+      return { width, height };
+    };
+    const onMouseMove = (ev: MouseEvent) => setResizeDims(computeSize(ev.clientX));
+    const onMouseUp = (ev: MouseEvent) => {
+      const size = computeSize(ev.clientX);
+      onResize(sketch.id, size.width, size.height);
+      setResizeDims(null);
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  };
+
   const pos = dragPos ?? { x: sketch.x, y: sketch.y };
+  const size = resizeDims ?? { width: sketch.width, height: sketch.height };
 
   return (
-    <div className="note-sketch-wrap" style={{ left: pos.x, top: pos.y, width: sketch.width, height: sketch.height }}>
-      <img src={sketch.dataUrl} alt="" draggable={false} className="note-sketch" onMouseDown={onMouseDown} />
+    <div className="note-sketch-wrap" style={{ left: pos.x, top: pos.y, width: size.width, height: size.height }}>
+      <img
+        src={sketch.dataUrl}
+        alt=""
+        draggable={false}
+        className="note-sketch"
+        onMouseDown={onMouseDown}
+        onDoubleClick={() => onEdit(sketch.id)}
+      />
       <div className="sketch-toolbar">
         <button
           className="sketch-tool-btn"
@@ -129,6 +177,7 @@ function DraggableSketch({
           <TrashIcon size={11} />
         </button>
       </div>
+      <div className="sketch-resize-handle" title="Redimensionar" onMouseDown={onResizeMouseDown} />
     </div>
   );
 }

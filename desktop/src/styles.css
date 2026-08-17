@@ -508,6 +508,22 @@ button:focus-visible,
   color: #e05252;
   border-color: #e05252;
 }
+.sketch-resize-handle {
+  position: absolute;
+  right: -5px;
+  bottom: -5px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--panel-bg);
+  border: 1px solid var(--accent-border);
+  cursor: nwse-resize;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+.note-sketch-wrap:hover .sketch-resize-handle {
+  opacity: 1;
+}
 
 /* Drawing overlay */
 .overlay {
