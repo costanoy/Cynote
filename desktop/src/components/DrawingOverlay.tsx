@@ -20,9 +20,11 @@ type Props = {
   onSetColor: (c: string) => void;
   onCancel: () => void;
   onInsert: (canvas: HTMLCanvasElement) => void;
+  /** When set, the canvas opens pre-loaded with this sketch instead of blank, for editing. */
+  initialImage?: string;
 };
 
-export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel, onInsert }: Props) {
+export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel, onInsert, initialImage }: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cssSize = useRef({ w: 0, h: 0 });
   const points = useRef<Point[]>([]);
@@ -53,6 +55,28 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
     ro.observe(canvas);
     return () => ro.disconnect();
   }, []);
+
+  // Each time the overlay opens, start from a clean canvas - editing an
+  // existing sketch loads its image scaled to fit; a brand-new sketch stays
+  // blank instead of showing whatever was left over from a prior session.
+  useEffect(() => {
+    if (!open) return;
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext("2d");
+    if (!canvas || !ctx) return;
+    ctx.clearRect(0, 0, cssSize.current.w, cssSize.current.h);
+    if (!initialImage) return;
+    const img = new Image();
+    img.onload = () => {
+      const cw = cssSize.current.w;
+      const ch = cssSize.current.h;
+      const scale = Math.min(cw / img.width, ch / img.height, 1);
+      const w = img.width * scale;
+      const h = img.height * scale;
+      ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+    };
+    img.src = initialImage;
+  }, [open, initialImage]);
 
   const posFromEvent = (e: { clientX: number; clientY: number }): Point => {
     const rect = canvasRef.current!.getBoundingClientRect();

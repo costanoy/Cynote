@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { NoteSketch } from "../types";
+import { DrawIcon, TrashIcon } from "../icons";
 
 type Props = {
   body: string;
@@ -7,9 +8,19 @@ type Props = {
   spellCheck: boolean;
   onBodyInput: (value: string) => void;
   onMoveSketch: (id: string, x: number, y: number) => void;
+  onEditSketch: (id: string) => void;
+  onDeleteSketch: (id: string) => void;
 };
 
-export function ContentArea({ body, sketches, spellCheck, onBodyInput, onMoveSketch }: Props) {
+export function ContentArea({
+  body,
+  sketches,
+  spellCheck,
+  onBodyInput,
+  onMoveSketch,
+  onEditSketch,
+  onDeleteSketch,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   // Set the initial text once on mount only. The div is intentionally left
@@ -48,7 +59,13 @@ export function ContentArea({ body, sketches, spellCheck, onBodyInput, onMoveSke
       />
 
       {sketches.map((sketch) => (
-        <DraggableSketch key={sketch.id} sketch={sketch} onMove={onMoveSketch} />
+        <DraggableSketch
+          key={sketch.id}
+          sketch={sketch}
+          onMove={onMoveSketch}
+          onEdit={onEditSketch}
+          onDelete={onDeleteSketch}
+        />
       ))}
     </>
   );
@@ -57,9 +74,13 @@ export function ContentArea({ body, sketches, spellCheck, onBodyInput, onMoveSke
 function DraggableSketch({
   sketch,
   onMove,
+  onEdit,
+  onDelete,
 }: {
   sketch: NoteSketch;
   onMove: (id: string, x: number, y: number) => void;
+  onEdit: (id: string) => void;
+  onDelete: (id: string) => void;
 }) {
   const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const dragStart = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });
@@ -88,13 +109,26 @@ function DraggableSketch({
   const pos = dragPos ?? { x: sketch.x, y: sketch.y };
 
   return (
-    <img
-      src={sketch.dataUrl}
-      alt=""
-      draggable={false}
-      className="note-sketch"
-      style={{ left: pos.x, top: pos.y, width: sketch.width, height: sketch.height }}
-      onMouseDown={onMouseDown}
-    />
+    <div className="note-sketch-wrap" style={{ left: pos.x, top: pos.y, width: sketch.width, height: sketch.height }}>
+      <img src={sketch.dataUrl} alt="" draggable={false} className="note-sketch" onMouseDown={onMouseDown} />
+      <div className="sketch-toolbar">
+        <button
+          className="sketch-tool-btn"
+          title="Editar desenho"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => onEdit(sketch.id)}
+        >
+          <DrawIcon size={11} />
+        </button>
+        <button
+          className="sketch-tool-btn delete"
+          title="Excluir desenho"
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={() => onDelete(sketch.id)}
+        >
+          <TrashIcon size={11} />
+        </button>
+      </div>
+    </div>
   );
 }

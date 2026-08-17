@@ -50,6 +50,20 @@ export function DrawIcon({ size = 16 }: IconProps) {
   );
 }
 
+export function TrashIcon({ size = 14 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+      <path d="M4.5 7h15M9.5 7V4.5a1 1 0 011-1h3a1 1 0 011 1V7" strokeLinecap="round" strokeLinejoin="round" />
+      <path
+        d="M6.5 7v12a1.5 1.5 0 001.5 1.5h8a1.5 1.5 0 001.5-1.5V7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+      <path d="M10 11v5.5M14 11v5.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function SettingsIcon({ size = 14 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.1">

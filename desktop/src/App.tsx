@@ -68,6 +68,7 @@ function App() {
   const [deviceId, setDeviceId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState(0);
   const [drawingOpen, setDrawingOpen] = useState(false);
+  const [editingSketchId, setEditingSketchId] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
@@ -242,7 +243,7 @@ function App() {
         }
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "d") {
         e.preventDefault();
-        setDrawingOpen((v) => !v);
+        toggleDrawing();
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -374,35 +375,79 @@ function App() {
 
   const SKETCH_MAX_WIDTH = 220;
 
+  // Opens a blank canvas for a brand-new sketch - any in-progress edit of an
+  // existing one is dropped so re-opening never lands back in edit mode.
+  const toggleDrawing = () => {
+    setEditingSketchId(null);
+    setDrawingOpen((v) => !v);
+  };
+
+  const closeDrawing = () => {
+    setDrawingOpen(false);
+    setEditingSketchId(null);
+  };
+
+  const editSketch = (sketchId: string) => {
+    setEditingSketchId(sketchId);
+    setDrawingOpen(true);
+  };
+
+  const deleteSketch = (sketchId: string) => {
+    setTabs((prev) => {
+      const next = prev.slice();
+      const tab = next[activeTab];
+      next[activeTab] = {
+        ...tab,
+        sketches: tab.sketches.filter((s) => s.id !== sketchId),
+        updatedAt: Date.now(),
+      };
+      return next;
+    });
+  };
+
   const insertSketch = (canvas: HTMLCanvasElement) => {
-    const aspect = canvas.height / canvas.width;
-    const width = Math.min(SKETCH_MAX_WIDTH, canvas.width);
-    const height = Math.round(width * aspect);
     // Capture the image now, synchronously - the setTabs updater below may
     // run after the caller clears the canvas, which would otherwise insert
     // a blank image.
     const dataUrl = canvas.toDataURL("image/png");
 
-    setTabs((prev) => {
-      const next = prev.slice();
-      const tab = next[activeTab];
-      const cascade = (tab.sketches.length % 6) * 22;
-      const sketch: NoteSketch = {
-        id: "sk" + Date.now(),
-        dataUrl,
-        x: 16 + cascade,
-        y: 16 + cascade,
-        width,
-        height,
-      };
-      next[activeTab] = {
-        ...tab,
-        sketches: [...tab.sketches, sketch],
-        updatedAt: Date.now(),
-      };
-      return next;
-    });
-    setDrawingOpen(false);
+    if (editingSketchId) {
+      const id = editingSketchId;
+      setTabs((prev) => {
+        const next = prev.slice();
+        const tab = next[activeTab];
+        next[activeTab] = {
+          ...tab,
+          sketches: tab.sketches.map((s) => (s.id === id ? { ...s, dataUrl } : s)),
+          updatedAt: Date.now(),
+        };
+        return next;
+      });
+    } else {
+      const aspect = canvas.height / canvas.width;
+      const width = Math.min(SKETCH_MAX_WIDTH, canvas.width);
+      const height = Math.round(width * aspect);
+      setTabs((prev) => {
+        const next = prev.slice();
+        const tab = next[activeTab];
+        const cascade = (tab.sketches.length % 6) * 22;
+        const sketch: NoteSketch = {
+          id: "sk" + Date.now(),
+          dataUrl,
+          x: 16 + cascade,
+          y: 16 + cascade,
+          width,
+          height,
+        };
+        next[activeTab] = {
+          ...tab,
+          sketches: [...tab.sketches, sketch],
+          updatedAt: Date.now(),
+        };
+        return next;
+      });
+    }
+    closeDrawing();
   };
 
   const moveSketch = (sketchId: string, x: number, y: number) => {
@@ -431,7 +476,7 @@ function App() {
         onToggleFormatMenu={() => setFormatMenuOpen((v) => !v)}
         onCloseFormatMenu={() => setFormatMenuOpen(false)}
         drawingOpen={drawingOpen}
-        onToggleDrawing={() => setDrawingOpen((v) => !v)}
+        onToggleDrawing={toggleDrawing}
         onToggleSettings={() => setShowSettings((v) => !v)}
         onExportTxt={exportActiveNoteTxt}
         pinned={pinned}
@@ -481,6 +526,8 @@ function App() {
               spellCheck={spellCheckEnabled}
               onBodyInput={onBodyInput}
               onMoveSketch={moveSketch}
+              onEditSketch={editSketch}
+              onDeleteSketch={deleteSketch}
             />
           </div>
 
@@ -489,8 +536,11 @@ function App() {
             darkMode={darkMode}
             drawColor={drawColor}
             onSetColor={setDrawColor}
-            onCancel={() => setDrawingOpen(false)}
+            onCancel={closeDrawing}
             onInsert={insertSketch}
+            initialImage={
+              editingSketchId ? tabs[activeTab].sketches.find((s) => s.id === editingSketchId)?.dataUrl : undefined
+            }
           />
         </div>
       )}
