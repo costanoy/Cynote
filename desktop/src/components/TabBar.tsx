@@ -13,6 +13,7 @@ type Props = {
   onToggleMenu: () => void;
   onCloseMenu: () => void;
   onRename: (i: number, title: string) => void;
+  isDirty: (tab: TabData) => boolean;
 };
 
 export function TabBar({
@@ -26,6 +27,7 @@ export function TabBar({
   onToggleMenu,
   onCloseMenu,
   onRename,
+  isDirty,
 }: Props) {
   const rowRef = useRef<HTMLDivElement>(null);
   const isPanning = useRef(false);
@@ -125,8 +127,12 @@ export function TabBar({
             ) : (
               <span className="tab-label">{tab.title}</span>
             )}
+            {renamingIndex !== i && isDirty(tab) && (
+              <span className="tab-dirty-dot" title="Alterações não salvas" />
+            )}
             <span
               className="tab-close"
+              title="Fechar (Ctrl+W)"
               onClick={(e) => {
                 e.stopPropagation();
                 onClose(i);
@@ -171,13 +177,14 @@ export function TabBar({
                   >
                     {tab.title}
                   </span>
+                  {isDirty(tab) && <span className="tab-dirty-dot" title="Alterações não salvas" />}
                 </div>
               ))}
             </div>
           </>
         )}
       </div>
-      <button className="plus-btn" onClick={onAdd}>
+      <button className="plus-btn" onClick={onAdd} title="Nova guia (Ctrl+N)">
         +
       </button>
     </div>

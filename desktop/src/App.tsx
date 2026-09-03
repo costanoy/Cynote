@@ -8,7 +8,14 @@ import { SettingsView } from "./components/SettingsView";
 import { ContentArea } from "./components/ContentArea";
 import { DrawingOverlay } from "./components/DrawingOverlay";
 import { StatusBar } from "./components/StatusBar";
-import { hideAppWindow, minimizeAppWindow, setAppAlwaysOnTop, toggleMaximizeAppWindow } from "./tauriWindow";
+import {
+  hideAppWindow,
+  minimizeAppWindow,
+  onQuitRequested,
+  quitApp,
+  setAppAlwaysOnTop,
+  toggleMaximizeAppWindow,
+} from "./tauriWindow";
 import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
 import { saveNoteAsCynote, writeCynoteFile } from "./export";
 import { onOpenNoteFile, readNoteFileRaw } from "./dashboardApi";
@@ -18,6 +25,7 @@ import { getDeviceIdentity } from "./deviceIdentity";
 import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
 import { mergeFromPeer } from "./merge";
 import { loadBookkeeping, saveBookkeeping } from "./bookkeeping";
+import { isDirty as isTabDirtyAgainst, snapshotOf, tabHasContent, type SavedSnapshot } from "./dirtyTracking";
 import type { PeerInfo } from "./types";
 
 const SYNC_INTERVAL_MS = 25000;
@@ -132,6 +140,20 @@ function App() {
     tabsRef.current = tabs;
   }, [tabs]);
 
+  // Tracks, per tab, the title/body/sketches as they were the last time this
+  // device actually wrote them to a real file (or as loaded at launch, which
+  // counts as "saved" since it's already durably on disk in notes.json).
+  // Deliberately not React state - it's an internal bookkeeping detail that
+  // doesn't need to trigger a render on its own; isTabDirty is called during
+  // render and reads it directly.
+  const savedSnapshots = useRef<Map<string, SavedSnapshot>>(new Map());
+
+  const isTabDirty = (tab: TabData): boolean => isTabDirtyAgainst(tab, savedSnapshots.current.get(tab.id));
+
+  const markSaved = (tab: TabData) => {
+    savedSnapshots.current.set(tab.id, snapshotOf(tab));
+  };
+
   const activeTabRef = useRef(activeTab);
   useEffect(() => {
     activeTabRef.current = activeTab;
@@ -169,7 +191,11 @@ function App() {
     getDeviceIdentity().then(async (identity) => {
       setDeviceId(identity.deviceId);
       const saved = await loadNotes(identity.deviceId);
-      setTabs(saved && saved.length > 0 ? saved : [makeBlankTab(identity.deviceId)]);
+      const initial = saved && saved.length > 0 ? saved : [makeBlankTab(identity.deviceId)];
+      // Whatever was loaded from notes.json is durably on disk already -
+      // start every tab clean, not flagged as having unsaved changes.
+      initial.forEach((t) => savedSnapshots.current.set(t.id, snapshotOf(t)));
+      setTabs(initial);
       setLoaded(true);
     });
   }, []);
@@ -186,10 +212,13 @@ function App() {
 
   // Called after a Save/Save As picks a real file - like Notepad, the tab
   // title locks to that filename from now on (no longer auto-suggested).
+  // Also marks the tab clean: this IS the save that made the file match it.
   const setTabSavedPath = (index: number, path: string) => {
     setTabs((prev) => {
       const next = prev.slice();
-      next[index] = { ...next[index], filePath: path, title: basenameNoExt(path), titleIsCustom: true };
+      const updated = { ...next[index], filePath: path, title: basenameNoExt(path), titleIsCustom: true };
+      next[index] = updated;
+      markSaved(updated);
       return next;
     });
   };
@@ -210,7 +239,8 @@ function App() {
       const i = activeTabRef.current;
       const tab = tabsRef.current[i];
       if (tab.filePath) {
-        writeCynoteFile(tab.filePath, tab);
+        await writeCynoteFile(tab.filePath, tab);
+        markSaved(tab);
       } else {
         const path = await saveNoteAsCynote(tab);
         if (path) setTabSavedPath(i, path);
@@ -245,6 +275,12 @@ function App() {
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "d") {
         e.preventDefault();
         toggleDrawing();
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        addTab();
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "w") {
+        e.preventDefault();
+        closeTab(activeTabRef.current);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -275,8 +311,10 @@ function App() {
 
   const addTab = () => {
     if (!deviceId) return;
+    // tabsRef (not the closure's `tabs`) so this stays correct even called
+    // from a long-lived handler like the Ctrl+N shortcut below.
+    setActiveTab(tabsRef.current.length);
     setTabs((prev) => [...prev, makeBlankTab(deviceId)]);
-    setActiveTab(tabs.length);
   };
 
   // Reached from the Dashboard window: focus the tab if this file is already
@@ -312,6 +350,7 @@ function App() {
       filePath: path,
       titleIsCustom: meta?.titleIsCustom ?? true,
     };
+    markSaved(note);
     const newIndex = tabsRef.current.length;
     setTabs((prev) => [...prev, note]);
     setActiveTab(newIndex);
@@ -324,8 +363,52 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId]);
 
-  const closeTab = (i: number) => {
-    if (tabs.length <= 1) return;
+  const dirtyTabsWithContent = () => tabsRef.current.filter((t) => isTabDirty(t) && tabHasContent(t));
+
+  // Quitting (tray "Sair") is the one exit path that actually ends the
+  // process - unlike the window's own close button, which just hides to
+  // tray. Same protection as closing a tab, applied to everything at once.
+  const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
+
+  useEffect(() => {
+    return onQuitRequested(() => {
+      if (dirtyTabsWithContent().length === 0) {
+        quitApp();
+      } else {
+        setQuitConfirmOpen(true);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const cancelQuit = () => setQuitConfirmOpen(false);
+
+  const quitWithoutSaving = () => {
+    setQuitConfirmOpen(false);
+    quitApp();
+  };
+
+  const saveAllAndQuit = async () => {
+    for (const dirty of dirtyTabsWithContent()) {
+      const i = tabsRef.current.findIndex((t) => t.id === dirty.id);
+      if (i === -1) continue;
+      const current = tabsRef.current[i];
+      if (current.filePath) {
+        await writeCynoteFile(current.filePath, current);
+        markSaved(current);
+      } else {
+        const path = await saveNoteAsCynote(current);
+        if (path) setTabSavedPath(i, path);
+      }
+    }
+    setQuitConfirmOpen(false);
+    quitApp();
+  };
+
+  // The actual removal, once we're sure it's safe (nothing to lose, or the
+  // user already decided to save or discard via the confirm dialog below).
+  const performCloseTab = (i: number) => {
+    if (tabsRef.current.length <= 1) return;
 
     const removeTab = () => {
       setTabs((prev) => {
@@ -354,6 +437,54 @@ function App() {
     } else {
       removeTab();
     }
+  };
+
+  // A tab whose only home is Cynote's internal store (never saved to a real
+  // file, or edited since the last time it was) would just vanish with no
+  // way back if closed outright - so instead of closing immediately, ask.
+  const [closeConfirmId, setCloseConfirmId] = useState<string | null>(null);
+  const closeConfirmTab = closeConfirmId ? tabs.find((t) => t.id === closeConfirmId) ?? null : null;
+
+  const closeTab = (i: number) => {
+    // tabsRef (not the closure's `tabs`) so this stays correct even called
+    // from a long-lived handler like the Ctrl+W shortcut below.
+    if (tabsRef.current.length <= 1) return;
+    const tab = tabsRef.current[i];
+    if (!tab) return;
+    if (isTabDirty(tab) && tabHasContent(tab)) {
+      setCloseConfirmId(tab.id);
+      return;
+    }
+    performCloseTab(i);
+  };
+
+  const cancelCloseConfirm = () => setCloseConfirmId(null);
+
+  const discardAndCloseConfirmed = () => {
+    if (!closeConfirmId) return;
+    const i = tabsRef.current.findIndex((t) => t.id === closeConfirmId);
+    setCloseConfirmId(null);
+    if (i !== -1) performCloseTab(i);
+  };
+
+  const saveAndCloseConfirmed = async () => {
+    if (!closeConfirmId) return;
+    const i = tabsRef.current.findIndex((t) => t.id === closeConfirmId);
+    if (i === -1) {
+      setCloseConfirmId(null);
+      return;
+    }
+    const tab = tabsRef.current[i];
+    if (tab.filePath) {
+      await writeCynoteFile(tab.filePath, tab);
+      markSaved(tab);
+    } else {
+      const path = await saveNoteAsCynote(tab);
+      if (!path) return; // dialog cancelled - leave the confirm prompt open
+      setTabSavedPath(i, path);
+    }
+    setCloseConfirmId(null);
+    performCloseTab(i);
   };
 
   const renameTab = (i: number, title: string) => {
@@ -494,6 +625,7 @@ function App() {
   }
 
   const charCount = tabs[activeTab].body.length;
+  const dirtyCount = tabs.filter((t) => isTabDirty(t) && tabHasContent(t)).length;
 
   return (
     <div className="cy-panel">
@@ -523,6 +655,7 @@ function App() {
         onToggleMenu={() => setTabsMenuOpen((v) => !v)}
         onCloseMenu={() => setTabsMenuOpen(false)}
         onRename={renameTab}
+        isDirty={isTabDirty}
       />
 
       {showSettings ? (
@@ -596,6 +729,50 @@ function App() {
               </button>
               <button className="insert-btn" onClick={() => respondPairing(pairingRequests[0].deviceId, true)}>
                 Aceitar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {closeConfirmTab && (
+        <div className="pairing-modal-backdrop">
+          <div className="pairing-modal" style={{ width: 300 }}>
+            <div className="pairing-modal-title heading-font">Alterações não salvas</div>
+            <div className="pairing-modal-text">
+              "{closeConfirmTab.title}" tem alterações não salvas. Deseja salvar antes de fechar?
+            </div>
+            <div className="pairing-modal-actions">
+              <button className="cancel-btn" onClick={cancelCloseConfirm}>
+                Cancelar
+              </button>
+              <button className="danger-btn" onClick={discardAndCloseConfirmed}>
+                Não salvar
+              </button>
+              <button className="insert-btn" onClick={saveAndCloseConfirmed}>
+                Salvar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {quitConfirmOpen && (
+        <div className="pairing-modal-backdrop">
+          <div className="pairing-modal" style={{ width: 300 }}>
+            <div className="pairing-modal-title heading-font">Alterações não salvas</div>
+            <div className="pairing-modal-text">
+              Você tem {dirtyCount} nota{dirtyCount === 1 ? "" : "s"} com alterações não salvas. Sair mesmo assim?
+            </div>
+            <div className="pairing-modal-actions">
+              <button className="cancel-btn" onClick={cancelQuit}>
+                Cancelar
+              </button>
+              <button className="danger-btn" onClick={quitWithoutSaving}>
+                Sair sem salvar
+              </button>
+              <button className="insert-btn" onClick={saveAllAndQuit}>
+                Salvar e sair
               </button>
             </div>
           </div>

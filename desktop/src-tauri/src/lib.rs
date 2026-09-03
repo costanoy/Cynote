@@ -8,7 +8,7 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{
     menu::{Menu, MenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, WindowEvent,
+    AppHandle, Emitter, Manager, WindowEvent,
 };
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
@@ -104,6 +104,13 @@ fn load_notes(app: AppHandle) -> Result<Option<String>, String> {
 #[tauri::command]
 fn export_note_txt(path: String, contents: String) -> Result<(), String> {
     fs::write(path, contents).map_err(|e| e.to_string())
+}
+
+/// Called by the frontend once it's confirmed (or had nothing to confirm)
+/// that quitting won't silently drop unsaved changes - see "quit-requested".
+#[tauri::command]
+fn quit_app(app: AppHandle) {
+    app.exit(0);
 }
 
 /// One-time cleanup: earlier builds force-enabled autostart on first run and
@@ -246,7 +253,14 @@ pub fn run() {
                         }
                     }
                     "quit" => {
-                        app.exit(0);
+                        // Don't drop unsaved work just because the tray menu
+                        // was clicked - let the frontend check for unsaved
+                        // tabs and confirm (or not) before we actually exit.
+                        if let Some(window) = app.get_webview_window("main") {
+                            let _ = window.emit("quit-requested", ());
+                        } else {
+                            app.exit(0);
+                        }
                     }
                     _ => {}
                 })
@@ -288,6 +302,7 @@ pub fn run() {
             save_notes,
             load_notes,
             export_note_txt,
+            quit_app,
             dashboard::scan_txt_notes,
             dashboard::read_txt_file,
             dashboard::open_note_in_main,

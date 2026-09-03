@@ -177,6 +177,13 @@ button:focus-visible,
   font-weight: 700;
   color: var(--text);
 }
+.tab-dirty-dot {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent-dark);
+}
 .tab-rename-input {
   all: unset;
   font-size: 12px;
@@ -598,6 +605,19 @@ button:focus-visible,
 }
 .cancel-btn:hover {
   background: var(--hover-bg);
+}
+.danger-btn {
+  all: unset;
+  cursor: pointer;
+  flex: 1;
+  text-align: center;
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  color: #e05252;
+}
+.danger-btn:hover {
+  background: rgba(224, 82, 82, 0.12);
 }
 .insert-btn {
   all: unset;
