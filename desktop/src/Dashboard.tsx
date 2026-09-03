@@ -3,7 +3,15 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./theme.css";
 import "./dashboard.css";
 import { scanTxtNotes, openNoteInMain, type ScannedNote } from "./dashboardApi";
-import { FolderIcon, NoteFileIcon, BackChevronIcon, LogoIcon, MinimizeIcon, MaximizeIcon, CloseIcon } from "./icons";
+import {
+  FolderIcon,
+  NoteFileIcon,
+  BackChevronIcon,
+  DashboardLogoIcon,
+  MinimizeIcon,
+  MaximizeIcon,
+  CloseIcon,
+} from "./icons";
 
 function noteSegments(note: ScannedNote): string[] {
   return [note.rootLabel, ...note.relativeDirs];
@@ -64,7 +72,7 @@ export default function Dashboard() {
   return (
     <div className="dash-root">
       <div className="dash-header" data-tauri-drag-region>
-        <LogoIcon />
+        <DashboardLogoIcon />
         <span className="dash-title heading-font">Cynote Dashboard</span>
         <div className="dash-window-controls">
           <button

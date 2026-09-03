@@ -23,6 +23,39 @@ export function LogoIcon({ size = 18 }: IconProps) {
   );
 }
 
+// Same card/gradient treatment as LogoIcon, but a folder-of-notes glyph
+// instead of note lines - keeps the Dashboard window's own header visually
+// distinct from the main Cynote window's, matching their separate taskbar icons.
+export function DashboardLogoIcon({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
+      <defs>
+        <linearGradient id="dashLogoBg" x1="3" y1="3" x2="21" y2="21" gradientUnits="userSpaceOnUse">
+          <stop offset="0" stopColor="#ffa452" />
+          <stop offset="1" stopColor="#f2711a" />
+        </linearGradient>
+        <linearGradient id="dashLogoSheen" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stopColor="#ffffff" stopOpacity="0.28" />
+          <stop offset="1" stopColor="#ffffff" stopOpacity="0" />
+        </linearGradient>
+        <clipPath id="dashLogoClip">
+          <rect x="2.5" y="2.5" width="19" height="19" rx="6" />
+        </clipPath>
+      </defs>
+      <rect x="2.5" y="2.5" width="19" height="19" rx="6" fill="url(#dashLogoBg)" />
+      <ellipse cx="12" cy="6" rx="9" ry="5" fill="url(#dashLogoSheen)" clipPath="url(#dashLogoClip)" />
+      <path
+        d="M5.5 9a1 1 0 011-1h3.4l1.3 1.3H18a1 1 0 011 1V17a1 1 0 01-1 1H6.5a1 1 0 01-1-1z"
+        fill="#fffaf3"
+      />
+      <rect x="7.3" y="10.6" width="3.7" height="2.8" rx="0.7" fill="#f2711a" fillOpacity="0.22" />
+      <rect x="11.7" y="10.6" width="3.7" height="2.8" rx="0.7" fill="#f2711a" fillOpacity="0.22" />
+      <rect x="7.3" y="14.1" width="3.7" height="2.8" rx="0.7" fill="#f2711a" fillOpacity="0.22" />
+      <rect x="11.7" y="14.1" width="3.7" height="2.8" rx="0.7" fill="#f2711a" fillOpacity="0.22" />
+    </svg>
+  );
+}
+
 export function FormatIcon({ size = 15 }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
