@@ -51,6 +51,11 @@
         "description": "Nota Cynote",
         "role": "Editor"
       }
-    ]
+    ],
+    "windows": {
+      "nsis": {
+        "installerHooks": "installer-hooks.nsh"
+      }
+    }
   }
 }
