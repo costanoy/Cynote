@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useReducer, useRef, useState } from "react";
 import "./theme.css";
 import "./styles.css";
 import type { NoteSketch, TabData } from "./types";
@@ -153,8 +153,14 @@ function App() {
 
   const isTabDirty = (tab: TabData): boolean => isTabDirtyAgainst(tab, savedSnapshots.current.get(tab.id));
 
+  // Bumping this forces a re-render so the dirty dot actually disappears the
+  // moment a save lands, even when markSaved fires alone (e.g. after an
+  // awaited writeCynoteFile) with no other state change to piggyback on.
+  const [, forceRerender] = useReducer((c: number) => c + 1, 0);
+
   const markSaved = (tab: TabData) => {
     savedSnapshots.current.set(tab.id, snapshotOf(tab));
+    forceRerender();
   };
 
   const activeTabRef = useRef(activeTab);
