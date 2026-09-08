@@ -187,6 +187,19 @@ button:focus-visible,
   border-radius: 50%;
   background: var(--accent-dark);
 }
+/* Inside a tab pill, pin the dot to the same corner the close button
+   occupies on hover, and swap between them there instead of leaving the
+   dot in normal flow - previously the two could end up rendered right on
+   top of each other when the title filled the pill (see tab-close below). */
+.tab .tab-dirty-dot {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  transition: opacity 0.12s ease;
+}
+.tab:hover .tab-dirty-dot {
+  opacity: 0;
+}
 .tab-rename-input {
   all: unset;
   font-size: 12px;
