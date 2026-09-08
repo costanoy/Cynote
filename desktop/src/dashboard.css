@@ -234,17 +234,23 @@
     0 14px 30px rgba(255, 100, 20, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.14);
 }
+/* Still visibly a *file*, not a folder - same warm family as .dash-tile-note,
+   just muted, so imported .txt/.md never gets mistaken for a folder tile. */
 .dash-tile-note-imported {
-  background: linear-gradient(160deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.02));
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-top-color: rgba(255, 255, 255, 0.22);
+  background: linear-gradient(160deg, rgba(255, 178, 122, 0.14), rgba(255, 178, 122, 0.04));
+  border: 1px solid rgba(255, 178, 122, 0.28);
+  border-top-color: rgba(255, 200, 150, 0.4);
   color: var(--text);
   box-shadow:
-    0 8px 20px rgba(0, 0, 0, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.09);
+    0 8px 20px rgba(0, 0, 0, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
 }
 .dash-tile-note-imported:hover {
-  border-color: rgba(255, 255, 255, 0.22);
+  transform: translateY(-3px);
+  border-color: rgba(255, 178, 122, 0.45);
+  box-shadow:
+    0 14px 28px rgba(0, 0, 0, 0.28),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 .dash-tile-note:disabled {
   opacity: 0.6;
