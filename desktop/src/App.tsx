@@ -18,7 +18,7 @@ import {
 } from "./tauriWindow";
 import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
 import { saveNoteAsCynote, writeCynoteFile } from "./export";
-import { onOpenNoteFile, readNoteFileRaw } from "./dashboardApi";
+import { onOpenNoteFile, readNoteFileRaw, takeStartupFile } from "./dashboardApi";
 import { parseNoteFile } from "./cynoteFormat";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
@@ -359,6 +359,18 @@ function App() {
   useEffect(() => {
     return onOpenNoteFile((path) => {
       openNoteFile(path);
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deviceId]);
+
+  // Explorer's "Open with" / double-click on a .cyte file launches Cynote
+  // with that path on the command line - the Rust side holds onto it until
+  // we're ready (an event fired at launch could race the app not having a
+  // listener attached yet), so pull it once as soon as we can actually open it.
+  useEffect(() => {
+    if (!deviceId) return;
+    takeStartupFile().then((path) => {
+      if (path) openNoteFile(path);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [deviceId]);

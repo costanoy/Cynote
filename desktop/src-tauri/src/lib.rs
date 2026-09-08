@@ -4,6 +4,7 @@ mod sync;
 
 use std::fs;
 use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{
     menu::{Menu, MenuItem},
@@ -113,6 +114,30 @@ fn quit_app(app: AppHandle) {
     app.exit(0);
 }
 
+/// Holds a file path handed to us on the command line (Explorer's "Open with"
+/// / double-click, via the .cyte file association) until the frontend is
+/// ready to consume it. Pushing this straight to the webview via an emitted
+/// event at launch is unreliable - the page may not have its listener
+/// attached yet - so the frontend pulls it once instead, via take_startup_file.
+struct StartupFile(Mutex<Option<String>>);
+
+/// A bare (non-flag) argument ending in one of the extensions Cynote can open.
+fn find_note_file_arg(argv: &[String]) -> Option<String> {
+    argv.iter()
+        .skip(1)
+        .find(|a| {
+            let lower = a.to_lowercase();
+            !a.starts_with("--")
+                && (lower.ends_with(".cyte") || lower.ends_with(".txt") || lower.ends_with(".md"))
+        })
+        .cloned()
+}
+
+#[tauri::command]
+fn take_startup_file(state: tauri::State<StartupFile>) -> Option<String> {
+    state.0.lock().unwrap().take()
+}
+
 /// One-time cleanup: earlier builds force-enabled autostart on first run and
 /// left an `autostart_initialized` marker behind. That default was removed,
 /// but the marker (and the Run key it caused) can still be sitting on a
@@ -184,6 +209,9 @@ pub fn run() {
     let toggle_shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::Space);
 
     tauri::Builder::default()
+        .manage(StartupFile(Mutex::new(find_note_file_arg(
+            &std::env::args().collect::<Vec<_>>(),
+        ))))
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
             let popup = argv.iter().any(|a| a == "--popup");
             if argv.iter().any(|a| a == "--dashboard") {
@@ -191,6 +219,12 @@ pub fn run() {
             } else if let Some(window) = app.get_webview_window("main") {
                 let _ = window.show();
                 let _ = window.set_focus();
+                // The app was already running - the frontend's listener is
+                // definitely attached by now, so pushing the event directly
+                // (rather than through StartupFile) is safe here.
+                if let Some(path) = find_note_file_arg(&argv) {
+                    let _ = window.emit("open-note-file", path);
+                }
             }
         }))
         .plugin(tauri_plugin_opener::init())
@@ -303,6 +337,7 @@ pub fn run() {
             load_notes,
             export_note_txt,
             quit_app,
+            take_startup_file,
             dashboard::scan_txt_notes,
             dashboard::read_txt_file,
             dashboard::open_note_in_main,

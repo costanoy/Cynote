@@ -28,6 +28,14 @@ export async function readNoteFileRaw(path: string): Promise<string> {
   return invoke<string>("read_txt_file", { path });
 }
 
+/** A file path passed on the command line at launch (Explorer "Open with" /
+ * double-click via the .cyte file association), if there was one. Only
+ * returns it once - call this exactly once, on startup. */
+export async function takeStartupFile(): Promise<string | null> {
+  if (!isTauri()) return null;
+  return invoke<string | null>("take_startup_file");
+}
+
 /** Fired by open_note_in_main (Rust) at the "main" window when a note is picked in the Dashboard. */
 export function onOpenNoteFile(callback: (path: string) => void): () => void {
   if (!isTauri()) return () => {};
