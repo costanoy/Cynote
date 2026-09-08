@@ -195,10 +195,12 @@ button:focus-visible,
   position: absolute;
   top: -2px;
   right: -2px;
-  transition: opacity 0.12s ease;
 }
+/* display:none (not opacity) so the swap is atomic - an opacity crossfade
+   left a brief frame where both the dot and the close button were partly
+   visible at once, which is exactly the overlap this was meant to fix. */
 .tab:hover .tab-dirty-dot {
-  opacity: 0;
+  display: none;
 }
 .tab-rename-input {
   all: unset;
