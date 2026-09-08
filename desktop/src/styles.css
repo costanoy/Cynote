@@ -156,6 +156,9 @@ button:focus-visible,
   padding: 6px 6px 6px 10px;
   border-radius: 999px;
   max-width: 108px;
+  /* Below this, the close button (top-right) and drag handle (bottom-left)
+     corners start overlapping - see .tab-close / .tab-move offsets. */
+  min-width: 34px;
   background: transparent;
   border: 1px solid transparent;
 }
