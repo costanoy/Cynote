@@ -26,7 +26,10 @@ import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchP
 import { mergeFromPeer } from "./merge";
 import { loadBookkeeping, saveBookkeeping } from "./bookkeeping";
 import { isDirty as isTabDirtyAgainst, snapshotOf, tabHasContent, type SavedSnapshot } from "./dirtyTracking";
+import { checkForUpdate, installUpdate, type Update } from "./updater";
 import type { PeerInfo } from "./types";
+
+const UPDATE_CHECK_DELAY_MS = 4000;
 
 const SYNC_INTERVAL_MS = 25000;
 
@@ -381,30 +384,9 @@ function App() {
 
   const dirtyTabsWithContent = () => tabsRef.current.filter((t) => isTabDirty(t) && tabHasContent(t));
 
-  // Quitting (tray "Sair") is the one exit path that actually ends the
-  // process - unlike the window's own close button, which just hides to
-  // tray. Same protection as closing a tab, applied to everything at once.
-  const [quitConfirmOpen, setQuitConfirmOpen] = useState(false);
-
-  useEffect(() => {
-    return onQuitRequested(() => {
-      if (dirtyTabsWithContent().length === 0) {
-        quitApp();
-      } else {
-        setQuitConfirmOpen(true);
-      }
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const cancelQuit = () => setQuitConfirmOpen(false);
-
-  const quitWithoutSaving = () => {
-    setQuitConfirmOpen(false);
-    quitApp();
-  };
-
-  const saveAllAndQuit = async () => {
+  // Saves every dirty tab (prompting Save As for ones never linked to a
+  // file), used before either exit path below actually proceeds.
+  const saveAllDirtyTabs = async () => {
     for (const dirty of dirtyTabsWithContent()) {
       const i = tabsRef.current.findIndex((t) => t.id === dirty.id);
       if (i === -1) continue;
@@ -417,8 +399,76 @@ function App() {
         if (path) setTabSavedPath(i, path);
       }
     }
-    setQuitConfirmOpen(false);
-    quitApp();
+  };
+
+  // Quitting (tray "Sair") and installing an update both end the process the
+  // same way an unsaved tab close would - so they share the same "you have
+  // unsaved changes" confirm dialog, just finishing with a different action.
+  const [pendingExitAction, setPendingExitAction] = useState<"quit" | "update" | null>(null);
+  const [availableUpdate, setAvailableUpdate] = useState<Update | null>(null);
+  const [updatePromptOpen, setUpdatePromptOpen] = useState(false);
+  const [installingUpdate, setInstallingUpdate] = useState(false);
+
+  const runExitAction = (action: "quit" | "update") => {
+    if (action === "quit") {
+      quitApp();
+    } else if (availableUpdate) {
+      setInstallingUpdate(true);
+      installUpdate(availableUpdate).catch(() => setInstallingUpdate(false));
+    }
+  };
+
+  useEffect(() => {
+    return onQuitRequested(() => {
+      if (dirtyTabsWithContent().length === 0) {
+        quitApp();
+      } else {
+        setPendingExitAction("quit");
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Checked once, a few seconds after launch (no need to race the note
+  // list loading in). A silent miss (offline, no release yet) is fine -
+  // this only ever surfaces something when there's actually a new version.
+  useEffect(() => {
+    if (!loaded) return;
+    const timer = setTimeout(() => {
+      checkForUpdate().then((update) => {
+        if (update) {
+          setAvailableUpdate(update);
+          setUpdatePromptOpen(true);
+        }
+      });
+    }, UPDATE_CHECK_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [loaded]);
+
+  const cancelUpdatePrompt = () => setUpdatePromptOpen(false);
+
+  const startUpdate = () => {
+    setUpdatePromptOpen(false);
+    if (dirtyTabsWithContent().length === 0) {
+      runExitAction("update");
+    } else {
+      setPendingExitAction("update");
+    }
+  };
+
+  const cancelPendingExit = () => setPendingExitAction(null);
+
+  const discardAndProceed = () => {
+    const action = pendingExitAction;
+    setPendingExitAction(null);
+    if (action) runExitAction(action);
+  };
+
+  const saveAllAndProceed = async () => {
+    await saveAllDirtyTabs();
+    const action = pendingExitAction;
+    setPendingExitAction(null);
+    if (action) runExitAction(action);
   };
 
   // The actual removal, once we're sure it's safe (nothing to lose, or the
@@ -773,24 +823,54 @@ function App() {
         </div>
       )}
 
-      {quitConfirmOpen && (
+      {pendingExitAction && (
         <div className="pairing-modal-backdrop">
           <div className="pairing-modal" style={{ width: 300 }}>
             <div className="pairing-modal-title heading-font">Alterações não salvas</div>
             <div className="pairing-modal-text">
-              Você tem {dirtyCount} nota{dirtyCount === 1 ? "" : "s"} com alterações não salvas. Sair mesmo assim?
+              Você tem {dirtyCount} nota{dirtyCount === 1 ? "" : "s"} com alterações não salvas.{" "}
+              {pendingExitAction === "quit" ? "Sair mesmo assim?" : "Atualizar mesmo assim?"}
             </div>
             <div className="pairing-modal-actions">
-              <button className="cancel-btn" onClick={cancelQuit}>
+              <button className="cancel-btn" onClick={cancelPendingExit}>
                 Cancelar
               </button>
-              <button className="danger-btn" onClick={quitWithoutSaving}>
-                Sair sem salvar
+              <button className="danger-btn" onClick={discardAndProceed}>
+                {pendingExitAction === "quit" ? "Sair sem salvar" : "Atualizar sem salvar"}
               </button>
-              <button className="insert-btn" onClick={saveAllAndQuit}>
-                Salvar e sair
+              <button className="insert-btn" onClick={saveAllAndProceed}>
+                {pendingExitAction === "quit" ? "Salvar e sair" : "Salvar e atualizar"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {updatePromptOpen && availableUpdate && (
+        <div className="pairing-modal-backdrop">
+          <div className="pairing-modal" style={{ width: 300 }}>
+            <div className="pairing-modal-title heading-font">Atualização disponível</div>
+            <div className="pairing-modal-text">
+              O Cynote {availableUpdate.version} está disponível (você tem a {availableUpdate.currentVersion}).
+              Atualizar agora? O app vai reiniciar sozinho.
+            </div>
+            <div className="pairing-modal-actions">
+              <button className="cancel-btn" onClick={cancelUpdatePrompt}>
+                Agora não
+              </button>
+              <button className="insert-btn" onClick={startUpdate}>
+                Atualizar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {installingUpdate && (
+        <div className="pairing-modal-backdrop">
+          <div className="pairing-modal" style={{ width: 260 }}>
+            <div className="pairing-modal-title heading-font">Atualizando…</div>
+            <div className="pairing-modal-text">Baixando a nova versão. O Cynote vai reiniciar em instantes.</div>
           </div>
         </div>
       )}

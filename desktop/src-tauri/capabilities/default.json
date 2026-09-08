@@ -16,6 +16,8 @@
     "core:window:allow-toggle-maximize",
     "core:window:allow-is-maximized",
     "autostart:default",
-    "dialog:default"
+    "dialog:default",
+    "updater:default",
+    "process:default"
   ]
 }
