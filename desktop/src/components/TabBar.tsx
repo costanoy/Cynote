@@ -184,7 +184,7 @@ export function TabBar({
           </>
         )}
       </div>
-      <button className="plus-btn" onClick={onAdd} title="Nova guia (Ctrl+N)">
+      <button className="plus-btn" onClick={onAdd} title="Nova guia (Ctrl+N ou Ctrl+T)">
         +
       </button>
     </div>

@@ -164,6 +164,28 @@ fn toggle_window(window: &tauri::WebviewWindow) {
     }
 }
 
+/// WebView2 treats a handful of Ctrl/F-key combos (Ctrl+N, Ctrl+W, Ctrl+F,
+/// F3, F5, F12...) as its own built-in "browser accelerator" shortcuts,
+/// handled before the page's own JavaScript ever sees the keydown event -
+/// this is why Ctrl+W/Ctrl+T for tabs silently did nothing no matter what
+/// the frontend's keydown handler did. Turning this off hands every key
+/// combo to the page, which is what we want since this app has no browser
+/// chrome of its own for WebView2's defaults to make sense of anyway.
+#[cfg(windows)]
+fn disable_browser_accelerator_keys(window: &tauri::WebviewWindow) {
+    use webview2_com::Microsoft::Web::WebView2::Win32::ICoreWebView2Settings3;
+    use windows::core::Interface;
+
+    let _ = window.with_webview(|webview| unsafe {
+        let controller = webview.controller();
+        let Ok(core) = controller.CoreWebView2() else { return };
+        let Ok(settings) = core.Settings() else { return };
+        if let Ok(settings3) = settings.cast::<ICoreWebView2Settings3>() {
+            let _ = settings3.SetAreBrowserAcceleratorKeysEnabled(false);
+        }
+    });
+}
+
 /// The Desktop shortcut launches with --popup for a compact panel that stays
 /// out of the taskbar; the Start Menu one omits it and behaves like a normal
 /// app window. Both are frameless now - the frontend draws its own liquid-
@@ -198,6 +220,8 @@ fn show_dashboard_window(app: &AppHandle, popup: bool) {
                 let _ = window.set_icon(icon);
             }
         }
+        #[cfg(windows)]
+        disable_browser_accelerator_keys(&window);
         let _ = window.set_focus();
     }
 }
@@ -263,6 +287,8 @@ pub fn run() {
 
             if let Some(window) = app.get_webview_window("main") {
                 restore_window_geometry(app.handle(), &window);
+                #[cfg(windows)]
+                disable_browser_accelerator_keys(&window);
                 if !launched_as_dashboard {
                     let _ = window.show();
                 }

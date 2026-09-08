@@ -275,7 +275,11 @@ function App() {
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "d") {
         e.preventDefault();
         toggleDrawing();
-      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "n") {
+      } else if (
+        (e.ctrlKey || e.metaKey) &&
+        !e.shiftKey &&
+        (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "t")
+      ) {
         e.preventDefault();
         addTab();
       } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "w") {
