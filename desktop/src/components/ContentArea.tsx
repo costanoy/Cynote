@@ -32,10 +32,22 @@ export function ContentArea({
   // uncontrolled after that — React must never touch its text content again,
   // or the caret resets to the start on every keystroke (looks like typing
   // "backwards" and stuck on the first line).
+  //
+  // Each line gets its own top-level <div> (matching what Chromium itself
+  // creates when the user presses Enter) instead of relying on the innerText
+  // setter's own line-break handling, which can produce a different, less
+  // predictable structure. The line-gutter's click handler depends on this
+  // one-line-per-top-level-child shape to know which line was clicked.
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    el.innerText = body;
+    el.innerHTML = "";
+    for (const line of body.split("\n")) {
+      const div = document.createElement("div");
+      if (line) div.textContent = line;
+      else div.appendChild(document.createElement("br"));
+      el.appendChild(div);
+    }
     el.focus();
     // Land the caret at the end of any existing text rather than the start,
     // so switching tabs (or opening a fresh blank one) is ready to type into.
@@ -59,19 +71,65 @@ export function ContentArea({
     document.execCommand("insertText", false, text);
   };
 
+  // Notepad-margin-click: pick whichever top-level line sits at the click's
+  // height, select it (so it's visibly highlighted, same as clicking there
+  // in Word) and copy it straight to the clipboard - a trailing newline is
+  // included unless it's the last line, so pasting elsewhere drops in a
+  // ready-made line rather than text that runs into whatever follows it.
+  const onGutterClick = (e: React.MouseEvent) => {
+    const el = ref.current;
+    if (!el || el.childNodes.length === 0) return;
+    const y = e.clientY;
+
+    let target: ChildNode = el.firstChild!;
+    let bestDist = Infinity;
+    for (const child of Array.from(el.childNodes)) {
+      const rect =
+        child.nodeType === Node.ELEMENT_NODE
+          ? (child as HTMLElement).getBoundingClientRect()
+          : (() => {
+              const r = document.createRange();
+              r.selectNodeContents(child);
+              return r.getBoundingClientRect();
+            })();
+      if (y >= rect.top && y <= rect.bottom) {
+        target = child;
+        break;
+      }
+      const dist = y < rect.top ? rect.top - y : y - rect.bottom;
+      if (dist < bestDist) {
+        bestDist = dist;
+        target = child;
+      }
+    }
+
+    const range = document.createRange();
+    range.selectNodeContents(target);
+    const selection = window.getSelection();
+    selection?.removeAllRanges();
+    selection?.addRange(range);
+
+    const isLast = target === el.lastChild;
+    const text = (target.textContent ?? "") + (isLast ? "" : "\n");
+    navigator.clipboard?.writeText(text).catch(() => {});
+  };
+
   return (
     <>
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        spellCheck={spellCheck}
-        className="note-body"
-        onPaste={onPaste}
-        // innerText reports line breaks as "\r\n" on Windows, which counts as
-        // 2 characters per Enter press instead of 1 - normalize to "\n".
-        onInput={(e) => onBodyInput(e.currentTarget.innerText.replace(/\r\n/g, "\n"))}
-      />
+      <div className="note-body-row">
+        <div className="line-gutter" title="Clique para copiar a linha" onClick={onGutterClick} />
+        <div
+          ref={ref}
+          contentEditable
+          suppressContentEditableWarning
+          spellCheck={spellCheck}
+          className="note-body"
+          onPaste={onPaste}
+          // innerText reports line breaks as "\r\n" on Windows, which counts as
+          // 2 characters per Enter press instead of 1 - normalize to "\n".
+          onInput={(e) => onBodyInput(e.currentTarget.innerText.replace(/\r\n/g, "\n"))}
+        />
+      </div>
 
       {sketches.map((sketch) => (
         <DraggableSketch
