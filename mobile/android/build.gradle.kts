@@ -5,15 +5,17 @@ allprojects {
     }
 }
 
-val newBuildDir: Directory =
-    rootProject.layout.buildDirectory
-        .dir("../../build")
-        .get()
-rootProject.layout.buildDirectory.value(newBuildDir)
+// Built as a plain java.io.File (not Gradle's Directory.dir("../../build")
+// relative-path resolution) - on a Windows account whose profile folder
+// name has a space in it ("Vinicius Costa"), that relative resolution
+// mangles the path into two segments ("Vinicius" + " Costa"), which then
+// fails to create because "C:\Users\Vinicius" isn't a real directory.
+val newBuildDir: File = File(rootDir.parentFile, "build")
+rootProject.layout.buildDirectory.set(newBuildDir)
 
 subprojects {
-    val newSubprojectBuildDir: Directory = newBuildDir.dir(project.name)
-    project.layout.buildDirectory.value(newSubprojectBuildDir)
+    val newSubprojectBuildDir = File(newBuildDir, project.name)
+    project.layout.buildDirectory.set(newSubprojectBuildDir)
 }
 subprojects {
     project.evaluationDependsOn(":app")
