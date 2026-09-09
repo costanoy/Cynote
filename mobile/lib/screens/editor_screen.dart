@@ -31,12 +31,17 @@ class EditorScreen extends StatefulWidget {
 class _EditorScreenState extends State<EditorScreen> {
   late final TextEditingController _titleController = TextEditingController(text: widget.note.title);
   late final TextEditingController _bodyController = TextEditingController(text: widget.note.body);
+  // Shared across both fields: Flutter tracks which one is focused and
+  // undoes/redoes into that field only, so one pair of buttons works for
+  // title and body without us having to track focus ourselves.
+  final UndoHistoryController _undoController = UndoHistoryController();
   bool _formatMenuOpen = false;
 
   @override
   void dispose() {
     _titleController.dispose();
     _bodyController.dispose();
+    _undoController.dispose();
     super.dispose();
   }
 
@@ -72,9 +77,42 @@ class _EditorScreenState extends State<EditorScreen> {
                 Expanded(
                   child: TextField(
                     controller: _titleController,
+                    undoController: _undoController,
                     onChanged: widget.onTitleChanged,
                     style: GoogleFonts.bricolageGrotesque(fontWeight: FontWeight.w700, fontSize: 15.5, color: t.text),
                     decoration: const InputDecoration(isDense: true, border: InputBorder.none),
+                  ),
+                ),
+                ValueListenableBuilder(
+                  valueListenable: _undoController,
+                  builder: (context, value, _) => GestureDetector(
+                    onTap: value.canUndo ? _undoController.undo : null,
+                    child: SizedBox(
+                      width: 30,
+                      height: 30,
+                      child: Center(
+                        child: Opacity(
+                          opacity: value.canUndo ? 1 : 0.35,
+                          child: UndoIcon(color: t.mutedText),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                ValueListenableBuilder(
+                  valueListenable: _undoController,
+                  builder: (context, value, _) => GestureDetector(
+                    onTap: value.canRedo ? _undoController.redo : null,
+                    child: SizedBox(
+                      width: 30,
+                      height: 30,
+                      child: Center(
+                        child: Opacity(
+                          opacity: value.canRedo ? 1 : 0.35,
+                          child: RedoIcon(color: t.mutedText),
+                        ),
+                      ),
+                    ),
                   ),
                 ),
                 Stack(
@@ -100,6 +138,7 @@ class _EditorScreenState extends State<EditorScreen> {
               padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
               child: TextField(
                 controller: _bodyController,
+                undoController: _undoController,
                 onChanged: widget.onBodyChanged,
                 maxLines: null,
                 expands: true,

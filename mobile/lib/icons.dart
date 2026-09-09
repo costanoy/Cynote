@@ -80,6 +80,34 @@ class PlusIcon extends StatelessWidget {
       );
 }
 
+class UndoIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+  const UndoIcon({super.key, this.size = 15, required this.color});
+
+  @override
+  Widget build(BuildContext context) => _mono(
+        '<path d="M7 7H16a5 5 0 010 10H11" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        '<path d="M10.5 3.5L6.5 7L10.5 10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+        size: size,
+        color: color,
+      );
+}
+
+class RedoIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+  const RedoIcon({super.key, this.size = 15, required this.color});
+
+  @override
+  Widget build(BuildContext context) => _mono(
+        '<path d="M17 7H8a5 5 0 000 10H13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>'
+        '<path d="M13.5 3.5L17.5 7L13.5 10.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+        size: size,
+        color: color,
+      );
+}
+
 class FormatIcon extends StatelessWidget {
   final double size;
   final Color color;

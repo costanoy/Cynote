@@ -6,6 +6,12 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev", "--prefix", "desktop"],
       "port": 1420
+    },
+    {
+      "name": "cynote-mobile-web-preview",
+      "runtimeExecutable": "cmd",
+      "runtimeArgs": ["/c", "cd /d mobile\\build\\web && python -m http.server 5174"],
+      "port": 5174
     }
   ]
 }
