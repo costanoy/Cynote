@@ -16,14 +16,8 @@ class LogoIcon extends StatelessWidget {
   const LogoIcon({super.key, this.size = 48});
 
   @override
-  Widget build(BuildContext context) {
-    const svg = '''
-<svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-  <rect x="3" y="3" width="18" height="18" rx="5" fill="#ff8c3a"/>
-  <path d="M8 8h8M8 12h8M8 16h5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
-</svg>''';
-    return SvgPicture.string(svg, width: size, height: size);
-  }
+  Widget build(BuildContext context) =>
+      Image.asset('assets/cynote-logo.png', width: size, height: size);
 }
 
 class SearchIcon extends StatelessWidget {
