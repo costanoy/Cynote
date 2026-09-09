@@ -120,6 +120,7 @@ fn handle_request(app: &AppHandle, state: &SyncState, mut request: tiny_http::Re
                     s.incoming.insert(device_id, (info.clone(), PairStatus::Pending));
                 }
                 let _ = app.emit("pairing-request", &info);
+                crate::flash_tray_icon(app);
                 json_response(200, "{\"status\":\"pending\"}")
             } else {
                 json_response(400, "{\"error\":\"invalid body\"}")

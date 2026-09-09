@@ -155,6 +155,31 @@ fn undo_forced_autostart_once(app: &AppHandle) {
     let _ = fs::remove_file(marker);
 }
 
+/// Toggles the tray icon a few times so Cynote calls attention to itself the
+/// moment a peer asks to sync - the tray icon is the one thing that's always
+/// present, whether the main window is shown, minimized, or hidden away
+/// (its usual state, since closing the window hides it to the tray instead
+/// of quitting).
+pub fn flash_tray_icon(app: &AppHandle) {
+    use tauri::tray::TrayIcon;
+    let Some(tray) = app.try_state::<TrayIcon<tauri::Wry>>() else { return };
+    let tray = tray.inner().clone();
+    let Some(normal) = app.default_window_icon().cloned().map(|i| i.to_owned()) else { return };
+    let blank = tauri::image::Image::new_owned(
+        vec![0u8; (normal.width() * normal.height() * 4) as usize],
+        normal.width(),
+        normal.height(),
+    );
+    std::thread::spawn(move || {
+        for _ in 0..4 {
+            let _ = tray.set_icon(Some(blank.clone()));
+            std::thread::sleep(std::time::Duration::from_millis(400));
+            let _ = tray.set_icon(Some(normal.clone()));
+            std::thread::sleep(std::time::Duration::from_millis(400));
+        }
+    });
+}
+
 fn toggle_window(window: &tauri::WebviewWindow) {
     if window.is_visible().unwrap_or(false) {
         let _ = window.hide();
@@ -304,7 +329,7 @@ pub fn run() {
             let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
             let tray_menu = Menu::with_items(app, &[&show_hide, &quit])?;
 
-            TrayIconBuilder::new()
+            let tray = TrayIconBuilder::new()
                 .icon(app.default_window_icon().unwrap().clone())
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
@@ -339,6 +364,7 @@ pub fn run() {
                     }
                 })
                 .build(app)?;
+            app.manage(tray);
 
             Ok(())
         })
