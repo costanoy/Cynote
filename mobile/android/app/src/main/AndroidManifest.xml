@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Lets the app launch the system installer on the APK it downloads
+         from GitHub Releases for self-updating - the user still gets the
+         normal Android "install this app?" confirmation, this just allows
+         Cynote itself (rather than only the Play Store) to trigger it. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <application
         android:label="Cynote"
         android:name="${applicationName}"

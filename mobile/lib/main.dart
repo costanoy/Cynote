@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import 'models/note.dart';
 import 'notes_store.dart' as notes_store;
 import 'device_identity.dart';
+import 'mobile_updater.dart';
 import 'sync/sync_service.dart';
 import 'sync/peer_info.dart';
 import 'theme.dart';
@@ -15,6 +16,7 @@ import 'screens/editor_screen.dart';
 import 'screens/settings_screen.dart';
 
 const _autosaveDelay = Duration(milliseconds: 1500);
+const _updateCheckDelay = Duration(seconds: 4);
 
 void main() {
   runApp(const CynoteApp());
@@ -58,10 +60,24 @@ class _CynoteRootState extends State<CynoteRoot> {
   SyncService? _syncService;
   String? _connectingToDeviceId;
   bool _pairingDialogShowing = false;
+  MobileUpdate? _availableUpdate;
+  bool _downloadingUpdate = false;
+  Timer? _updateCheckTimer;
 
   @override
   void initState() {
     super.initState();
+    // Checked once, a few seconds after launch - no need to race notes/sync
+    // startup, and a silent miss (offline, already up to date) is fine since
+    // this only ever surfaces something when there's actually a new build.
+    // A real Timer (not a bare Future.delayed) so dispose() can cancel it -
+    // otherwise it outlives a widget test's tear-down and fails the run.
+    _updateCheckTimer = Timer(_updateCheckDelay, () async {
+      final update = await checkForMobileUpdate();
+      if (!mounted || update == null) return;
+      setState(() => _availableUpdate = update);
+      _showUpdateDialog();
+    });
     getDeviceIdentity().then((identity) {
       if (!mounted) return;
       setState(() => _identity = identity);
@@ -83,6 +99,7 @@ class _CynoteRootState extends State<CynoteRoot> {
   @override
   void dispose() {
     _saveDebounce?.cancel();
+    _updateCheckTimer?.cancel();
     _syncService?.removeListener(_onSyncChanged);
     _syncService?.dispose();
     super.dispose();
@@ -136,6 +153,46 @@ class _CynoteRootState extends State<CynoteRoot> {
         ),
       );
     });
+  }
+
+  void _showUpdateDialog() {
+    final update = _availableUpdate;
+    if (update == null) return;
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Atualização disponível'),
+          content: Text(
+            _downloadingUpdate
+                ? 'Baixando a versão ${update.version}. O instalador do Android vai abrir em instantes.'
+                : 'O Cynote ${update.version} está disponível. Atualizar agora?',
+          ),
+          actions: _downloadingUpdate
+              ? const [Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator())]
+              : [
+                  TextButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Agora não'),
+                  ),
+                  TextButton(
+                    onPressed: () async {
+                      setDialogState(() => _downloadingUpdate = true);
+                      setState(() => _downloadingUpdate = true);
+                      try {
+                        await downloadAndInstallMobileUpdate(update);
+                      } finally {
+                        if (mounted) setState(() => _downloadingUpdate = false);
+                      }
+                      if (ctx.mounted) Navigator.of(ctx).pop();
+                    },
+                    child: const Text('Atualizar'),
+                  ),
+                ],
+        ),
+      ),
+    );
   }
 
   Future<void> _connectToDevice(PeerInfo peer) async {
