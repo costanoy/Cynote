@@ -180,12 +180,27 @@ pub fn flash_tray_icon(app: &AppHandle) {
     });
 }
 
+/// show() + set_focus() alone often leaves the window visible but stuck
+/// behind whatever already had focus (Explorer, another app...) - Windows
+/// silently refuses SetForegroundWindow for a process that isn't already
+/// foreground, which is exactly the case when a second launch of the app
+/// (e.g. from the desktop shortcut) redirects here via the single-instance
+/// plugin. Briefly forcing always-on-top isn't subject to that restriction,
+/// so it reliably pulls the window to the front even when focus doesn't
+/// follow.
+fn bring_to_front(window: &tauri::WebviewWindow) {
+    let _ = window.unminimize();
+    let _ = window.show();
+    let _ = window.set_always_on_top(true);
+    let _ = window.set_always_on_top(false);
+    let _ = window.set_focus();
+}
+
 fn toggle_window(window: &tauri::WebviewWindow) {
     if window.is_visible().unwrap_or(false) {
         let _ = window.hide();
     } else {
-        let _ = window.show();
-        let _ = window.set_focus();
+        bring_to_front(window);
     }
 }
 
@@ -217,8 +232,7 @@ fn disable_browser_accelerator_keys(window: &tauri::WebviewWindow) {
 /// glass title bar and window controls instead of relying on native chrome.
 fn show_dashboard_window(app: &AppHandle, popup: bool) {
     if let Some(window) = app.get_webview_window("dashboard") {
-        let _ = window.show();
-        let _ = window.set_focus();
+        bring_to_front(&window);
         return;
     }
 
@@ -266,8 +280,7 @@ pub fn run() {
             if argv.iter().any(|a| a == "--dashboard") {
                 show_dashboard_window(app, popup);
             } else if let Some(window) = app.get_webview_window("main") {
-                let _ = window.show();
-                let _ = window.set_focus();
+                bring_to_front(&window);
                 // The app was already running - the frontend's listener is
                 // definitely attached by now, so pushing the event directly
                 // (rather than through StartupFile) is safe here.
