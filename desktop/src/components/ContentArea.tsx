@@ -71,6 +71,35 @@ export function ContentArea({
     document.execCommand("insertText", false, text);
   };
 
+  // el.innerText miscounts blank lines in this browser: an empty
+  // <div><br></div> sometimes adds an extra "\n" beyond its block boundary,
+  // sometimes drops its line entirely, and it's worse with consecutive blank
+  // lines - each reopen-and-edit cycle could compound the drift into a
+  // growing gap of "phantom" blank lines nobody typed. Serialize from the
+  // DOM structure itself instead (one line per top-level child, matching
+  // what the mount effect above builds and what Enter/paste produce), which
+  // has no such ambiguity.
+  const getBodyText = (el: HTMLElement): string => {
+    const lines: string[] = [];
+    let current = "";
+    let hasCurrent = false;
+    for (const child of Array.from(el.childNodes)) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        current += child.textContent ?? "";
+        hasCurrent = true;
+      } else {
+        if (hasCurrent) {
+          lines.push(current);
+          current = "";
+          hasCurrent = false;
+        }
+        lines.push(child.textContent ?? "");
+      }
+    }
+    if (hasCurrent || lines.length === 0) lines.push(current);
+    return lines.join("\n");
+  };
+
   // Notepad-margin-click: pick whichever top-level line sits at the click's
   // height, select it (so it's visibly highlighted, same as clicking there
   // in Word) and copy it straight to the clipboard - a trailing newline is
@@ -125,9 +154,7 @@ export function ContentArea({
           spellCheck={spellCheck}
           className="note-body"
           onPaste={onPaste}
-          // innerText reports line breaks as "\r\n" on Windows, which counts as
-          // 2 characters per Enter press instead of 1 - normalize to "\n".
-          onInput={(e) => onBodyInput(e.currentTarget.innerText.replace(/\r\n/g, "\n"))}
+          onInput={(e) => onBodyInput(getBodyText(e.currentTarget))}
         />
       </div>
 
