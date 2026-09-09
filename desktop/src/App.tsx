@@ -294,6 +294,12 @@ function App() {
       } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === "w") {
         e.preventDefault();
         closeTab(activeTabRef.current);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === "Tab") {
+        e.preventDefault();
+        const count = tabsRef.current.length;
+        if (count <= 1) return;
+        setTabsMenuOpen(false);
+        setActiveTab((prev) => (e.shiftKey ? (prev - 1 + count) % count : (prev + 1) % count));
       }
     };
     window.addEventListener("keydown", onKeyDown);
