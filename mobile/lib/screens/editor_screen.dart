@@ -71,15 +71,23 @@ class _EditorScreenState extends State<EditorScreen> {
               children: [
                 GestureDetector(
                   onTap: widget.onBack,
-                  child: SizedBox(width: 30, height: 30, child: Center(child: BackChevronIcon(color: t.mutedText))),
+                  child: SizedBox(
+                    width: 30 * kScale,
+                    height: 30 * kScale,
+                    child: Center(child: BackChevronIcon(size: 17 * kScale, color: t.mutedText)),
+                  ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 6 * kScale),
                 Expanded(
                   child: TextField(
                     controller: _titleController,
                     undoController: _undoController,
                     onChanged: widget.onTitleChanged,
-                    style: GoogleFonts.bricolageGrotesque(fontWeight: FontWeight.w700, fontSize: 15.5, color: t.text),
+                    style: GoogleFonts.bricolageGrotesque(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 15.5 * kScale,
+                      color: t.text,
+                    ),
                     decoration: const InputDecoration(isDense: true, border: InputBorder.none),
                   ),
                 ),
@@ -88,12 +96,12 @@ class _EditorScreenState extends State<EditorScreen> {
                   builder: (context, value, _) => GestureDetector(
                     onTap: value.canUndo ? _undoController.undo : null,
                     child: SizedBox(
-                      width: 30,
-                      height: 30,
+                      width: 30 * kScale,
+                      height: 30 * kScale,
                       child: Center(
                         child: Opacity(
                           opacity: value.canUndo ? 1 : 0.35,
-                          child: UndoIcon(color: t.mutedText),
+                          child: UndoIcon(size: 15 * kScale, color: t.mutedText),
                         ),
                       ),
                     ),
@@ -104,12 +112,12 @@ class _EditorScreenState extends State<EditorScreen> {
                   builder: (context, value, _) => GestureDetector(
                     onTap: value.canRedo ? _undoController.redo : null,
                     child: SizedBox(
-                      width: 30,
-                      height: 30,
+                      width: 30 * kScale,
+                      height: 30 * kScale,
                       child: Center(
                         child: Opacity(
                           opacity: value.canRedo ? 1 : 0.35,
-                          child: RedoIcon(color: t.mutedText),
+                          child: RedoIcon(size: 15 * kScale, color: t.mutedText),
                         ),
                       ),
                     ),
@@ -120,11 +128,15 @@ class _EditorScreenState extends State<EditorScreen> {
                   children: [
                     GestureDetector(
                       onTap: () => setState(() => _formatMenuOpen = !_formatMenuOpen),
-                      child: SizedBox(width: 30, height: 30, child: Center(child: FormatIcon(color: t.mutedText))),
+                      child: SizedBox(
+                        width: 30 * kScale,
+                        height: 30 * kScale,
+                        child: Center(child: FormatIcon(size: 15 * kScale, color: t.mutedText)),
+                      ),
                     ),
                     if (_formatMenuOpen)
                       Positioned(
-                        top: 34,
+                        top: 34 * kScale,
                         right: 0,
                         child: _FormatMenu(t: t, onItemTap: () => setState(() => _formatMenuOpen = false)),
                       ),
@@ -143,7 +155,7 @@ class _EditorScreenState extends State<EditorScreen> {
                 maxLines: null,
                 expands: true,
                 textAlignVertical: TextAlignVertical.top,
-                style: GoogleFonts.manrope(fontSize: 14.5, height: 1.65, color: t.text),
+                style: GoogleFonts.manrope(fontSize: 14.5 * kScale, height: 1.65, color: t.text),
                 decoration: const InputDecoration(isDense: true, border: InputBorder.none),
               ),
             ),
@@ -157,15 +169,15 @@ class _EditorScreenState extends State<EditorScreen> {
                   valueListenable: _bodyController,
                   builder: (context, value, _) => Text(
                     '${value.text.length} caracteres',
-                    style: GoogleFonts.manrope(fontSize: 11, color: t.mutedText),
+                    style: GoogleFonts.manrope(fontSize: 11 * kScale, color: t.mutedText),
                   ),
                 ),
                 const Spacer(),
                 Tooltip(
                   message: _syncLabel(widget.syncStatus),
                   child: Container(
-                    width: 7,
-                    height: 7,
+                    width: 7 * kScale,
+                    height: 7 * kScale,
                     decoration: BoxDecoration(shape: BoxShape.circle, color: _colors[widget.syncStatus]),
                   ),
                 ),
@@ -186,7 +198,7 @@ class _FormatMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 170,
+      width: 170 * kScale,
       padding: const EdgeInsets.all(4),
       decoration: BoxDecoration(
         color: t.menuBg,
@@ -234,14 +246,14 @@ class _FormatItem extends StatelessWidget {
               style: GoogleFonts.manrope(
                 fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
                 fontStyle: bold ? FontStyle.normal : FontStyle.italic,
-                fontSize: 13,
+                fontSize: 13 * kScale,
                 color: t.text,
               ),
             ),
             const SizedBox(width: 8),
-            Text(label, style: GoogleFonts.manrope(fontSize: 13, color: t.text)),
+            Text(label, style: GoogleFonts.manrope(fontSize: 13 * kScale, color: t.text)),
             const Spacer(),
-            Text(shortcut, style: GoogleFonts.manrope(fontSize: 10.5, color: t.subtleText)),
+            Text(shortcut, style: GoogleFonts.manrope(fontSize: 10.5 * kScale, color: t.subtleText)),
           ],
         ),
       ),

@@ -34,20 +34,20 @@ class HomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(18, 40, 18, 20),
                 child: Row(
                   children: [
-                    const LogoIcon(size: 20),
-                    const SizedBox(width: 10),
+                    const LogoIcon(size: 20 * kScale),
+                    const SizedBox(width: 10 * kScale),
                     Text(
                       'Cynote',
                       style: GoogleFonts.bricolageGrotesque(
                         fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                        fontSize: 16 * kScale,
                         color: t.text,
                       ),
                     ),
                     const Spacer(),
-                    _TopIconBtn(t: t, onTap: onSearch, child: SearchIcon(color: t.mutedText)),
-                    const SizedBox(width: 8),
-                    _TopIconBtn(t: t, onTap: onSettings, child: SettingsIcon(color: t.mutedText)),
+                    _TopIconBtn(t: t, onTap: onSearch, child: SearchIcon(size: 16 * kScale, color: t.mutedText)),
+                    const SizedBox(width: 8 * kScale),
+                    _TopIconBtn(t: t, onTap: onSettings, child: SettingsIcon(size: 16 * kScale, color: t.mutedText)),
                   ],
                 ),
               ),
@@ -100,8 +100,8 @@ class _TopIconBtn extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 34,
-        height: 34,
+        width: 34 * kScale,
+        height: 34 * kScale,
         alignment: Alignment.center,
         decoration: BoxDecoration(
           color: t.cardBg,
@@ -126,7 +126,7 @@ class NoteCard extends StatelessWidget {
       onTap: onTap,
       child: Container(
         margin: const EdgeInsets.only(bottom: 10),
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(14 * kScale),
         decoration: BoxDecoration(
           color: t.cardBg,
           border: Border.all(color: t.cardBorder),
@@ -141,15 +141,15 @@ class NoteCard extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: GoogleFonts.bricolageGrotesque(
                   fontWeight: FontWeight.w700,
-                  fontSize: 14.5,
+                  fontSize: 14.5 * kScale,
                   color: t.text,
                 ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 8 * kScale),
             Text(
               note.time,
-              style: GoogleFonts.manrope(fontSize: 11, color: t.subtleText),
+              style: GoogleFonts.manrope(fontSize: 11 * kScale, color: t.subtleText),
             ),
           ],
         ),

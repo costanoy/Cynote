@@ -31,12 +31,20 @@ class SettingsScreen extends StatelessWidget {
               children: [
                 GestureDetector(
                   onTap: onBack,
-                  child: SizedBox(width: 30, height: 30, child: Center(child: BackChevronIcon(color: t.mutedText))),
+                  child: SizedBox(
+                    width: 30 * kScale,
+                    height: 30 * kScale,
+                    child: Center(child: BackChevronIcon(size: 17 * kScale, color: t.mutedText)),
+                  ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 6 * kScale),
                 Text(
                   'Configurações',
-                  style: GoogleFonts.bricolageGrotesque(fontWeight: FontWeight.w700, fontSize: 15.5, color: t.text),
+                  style: GoogleFonts.bricolageGrotesque(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15.5 * kScale,
+                    color: t.text,
+                  ),
                 ),
               ],
             ),
@@ -54,12 +62,16 @@ class SettingsScreen extends StatelessWidget {
                       children: [
                         Text(
                           'Tema escuro',
-                          style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13.5, color: t.text),
+                          style: GoogleFonts.manrope(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 13.5 * kScale,
+                            color: t.text,
+                          ),
                         ),
                         const SizedBox(height: 3),
                         Text(
                           'Ativa a interface escura do bloquinho',
-                          style: GoogleFonts.manrope(fontSize: 11.5, color: t.mutedText),
+                          style: GoogleFonts.manrope(fontSize: 11.5 * kScale, color: t.mutedText),
                         ),
                       ],
                     ),

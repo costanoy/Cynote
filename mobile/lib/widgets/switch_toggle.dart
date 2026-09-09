@@ -13,8 +13,8 @@ class SwitchToggle extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
-        width: 40,
-        height: 23,
+        width: 40 * kScale,
+        height: 23 * kScale,
         padding: const EdgeInsets.all(2),
         alignment: on ? Alignment.centerRight : Alignment.centerLeft,
         decoration: BoxDecoration(
@@ -22,8 +22,8 @@ class SwitchToggle extends StatelessWidget {
           borderRadius: BorderRadius.circular(999),
         ),
         child: Container(
-          width: 19,
-          height: 19,
+          width: 19 * kScale,
+          height: 19 * kScale,
           decoration: const BoxDecoration(
             color: Colors.white,
             shape: BoxShape.circle,

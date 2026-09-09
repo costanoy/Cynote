@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'models/note.dart';
 import 'notes_store.dart' as notes_store;
 import 'device_identity.dart';
@@ -262,41 +263,64 @@ class _CynoteRootState extends State<CynoteRoot> {
         break;
     }
 
-    return Scaffold(
-      body: LayoutBuilder(
-        builder: (context, constraints) {
-          final isPhoneSized = constraints.maxWidth <= 430;
-          final screenCard = ClipRRect(
-            borderRadius: BorderRadius.circular(isPhoneSized ? 0 : 20),
-            child: content,
-          );
+    // Whether the system back gesture/button should be handled by us
+    // instead of the OS default (which would exit the app, since this
+    // screen stack has no Navigator routes to pop) - only sync/home have
+    // nowhere of ours left to go back to.
+    final canSystemPop = _screen == CyScreen.home || _screen == CyScreen.sync;
 
-          if (isPhoneSized) {
-            return screenCard;
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // Status bar icons (clock, battery, notifications) need to stay light
+      // over the app's dark background - and switch to dark icons in light
+      // mode - or they blend in and become unreadable.
+      value: _darkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      child: PopScope(
+        canPop: canSystemPop,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          if (_screen == CyScreen.editor) {
+            _closeEditor();
+          } else {
+            _goHome();
           }
-
-          return Container(
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [Color(0xFFEEF0F3), Color(0xFFDFE2E7), Color(0xFFEEF0F3)],
-              ),
-            ),
-            child: Center(
-              child: Container(
-                width: 390,
-                height: 844,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: t.border),
-                  boxShadow: t.shadow,
-                ),
-                child: screenCard,
-              ),
-            ),
-          );
         },
+        child: Scaffold(
+          body: LayoutBuilder(
+            builder: (context, constraints) {
+              final isPhoneSized = constraints.maxWidth <= 430;
+              final screenCard = ClipRRect(
+                borderRadius: BorderRadius.circular(isPhoneSized ? 0 : 20),
+                child: content,
+              );
+
+              if (isPhoneSized) {
+                return screenCard;
+              }
+
+              return Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFEEF0F3), Color(0xFFDFE2E7), Color(0xFFEEF0F3)],
+                  ),
+                ),
+                child: Center(
+                  child: Container(
+                    width: 390,
+                    height: 844,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: t.border),
+                      boxShadow: t.shadow,
+                    ),
+                    child: screenCard,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
       ),
     );
   }

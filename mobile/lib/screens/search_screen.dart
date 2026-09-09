@@ -60,15 +60,15 @@ class _SearchScreenState extends State<SearchScreen> {
                 GestureDetector(
                   onTap: widget.onBack,
                   child: SizedBox(
-                    width: 30,
-                    height: 30,
-                    child: Center(child: BackChevronIcon(color: t.mutedText)),
+                    width: 30 * kScale,
+                    height: 30 * kScale,
+                    child: Center(child: BackChevronIcon(size: 17 * kScale, color: t.mutedText)),
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 6 * kScale),
                 Expanded(
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                    padding: const EdgeInsets.symmetric(horizontal: 14 * kScale, vertical: 9 * kScale),
                     decoration: BoxDecoration(
                       color: t.cardBg,
                       border: Border.all(color: t.cardBorder),
@@ -78,12 +78,12 @@ class _SearchScreenState extends State<SearchScreen> {
                       controller: _controller,
                       focusNode: _focusNode,
                       onChanged: (v) => setState(() => _query = v),
-                      style: GoogleFonts.manrope(fontSize: 13.5, color: t.text),
+                      style: GoogleFonts.manrope(fontSize: 13.5 * kScale, color: t.text),
                       decoration: InputDecoration(
                         isDense: true,
                         border: InputBorder.none,
                         hintText: 'Buscar notas',
-                        hintStyle: GoogleFonts.manrope(fontSize: 13.5, color: t.subtleText),
+                        hintStyle: GoogleFonts.manrope(fontSize: 13.5 * kScale, color: t.subtleText),
                       ),
                     ),
                   ),
@@ -98,7 +98,7 @@ class _SearchScreenState extends State<SearchScreen> {
                     child: Text(
                       'Nenhuma nota encontrada',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.manrope(fontSize: 13, color: t.subtleText),
+                      style: GoogleFonts.manrope(fontSize: 13 * kScale, color: t.subtleText),
                     ),
                   )
                 : ListView(

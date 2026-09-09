@@ -31,14 +31,14 @@ class SyncScreen extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              const LogoIcon(size: 48),
+              const LogoIcon(size: 48 * kScale),
               const SizedBox(height: 22),
               Text(
                 'Sincronize com seu computador',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.bricolageGrotesque(
                   fontWeight: FontWeight.w700,
-                  fontSize: 24,
+                  fontSize: 24 * kScale,
                   height: 1.25,
                   color: t.text,
                 ),
@@ -47,7 +47,7 @@ class SyncScreen extends StatelessWidget {
               Text(
                 'Abra o Cynote no computador conectado à mesma rede para sincronizar suas notas automaticamente.',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.manrope(fontSize: 13.5, height: 1.55, color: t.mutedText),
+                style: GoogleFonts.manrope(fontSize: 13.5 * kScale, height: 1.55, color: t.mutedText),
               ),
               const SizedBox(height: 24),
               if (discovered.isEmpty) ...[
@@ -55,15 +55,19 @@ class SyncScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     SizedBox(
-                      width: 14,
-                      height: 14,
+                      width: 14 * kScale,
+                      height: 14 * kScale,
                       child: CircularProgressIndicator(strokeWidth: 2, color: t.accent),
                     ),
                     const SizedBox(width: 10),
                     Flexible(
                       child: Text(
                         'Procurando dispositivos…',
-                        style: GoogleFonts.manrope(fontSize: 12.5, fontWeight: FontWeight.w600, color: t.accent),
+                        style: GoogleFonts.manrope(
+                          fontSize: 12.5 * kScale,
+                          fontWeight: FontWeight.w600,
+                          color: t.accent,
+                        ),
                       ),
                     ),
                   ],
@@ -88,7 +92,7 @@ class SyncScreen extends StatelessWidget {
                 onTap: onContinueWithoutSync,
                 child: Text(
                   'Continuar sem sincronizar',
-                  style: GoogleFonts.manrope(fontSize: 13, fontWeight: FontWeight.w600, color: t.mutedText),
+                  style: GoogleFonts.manrope(fontSize: 13 * kScale, fontWeight: FontWeight.w600, color: t.mutedText),
                 ),
               ),
             ],
@@ -123,15 +127,19 @@ class _DeviceRow extends StatelessWidget {
             Expanded(
               child: Text(
                 device.deviceName,
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13, color: t.text),
+                style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13 * kScale, color: t.text),
               ),
             ),
             if (connecting)
-              SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: t.accent))
+              SizedBox(
+                width: 14 * kScale,
+                height: 14 * kScale,
+                child: CircularProgressIndicator(strokeWidth: 2, color: t.accent),
+              )
             else
               Text(
                 'Conectar',
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 12.5, color: t.accentDark),
+                style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 12.5 * kScale, color: t.accentDark),
               ),
           ],
         ),

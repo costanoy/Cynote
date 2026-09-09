@@ -1,5 +1,10 @@
 import 'package:flutter/widgets.dart';
 
+/// Global upsize applied to fonts, icons and spacing across the app - the
+/// '+' add-note button is deliberately left out of this (kept at its
+/// original size) since it's already the most prominent element on screen.
+const double kScale = 1.15;
+
 class CyColors {
   final Color bg;
   final Color border;
