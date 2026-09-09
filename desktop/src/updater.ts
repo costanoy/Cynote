@@ -12,7 +12,11 @@ export async function checkForUpdate(): Promise<Update | null> {
   if (!isTauri()) return null;
   try {
     return await check();
-  } catch {
+  } catch (err) {
+    // Swallowed on purpose (an offline machine shouldn't nag the user) -
+    // logged so a genuine failure (bad signature, unreachable endpoint...)
+    // is still visible in devtools instead of silently vanishing.
+    console.error("Update check failed:", err);
     return null;
   }
 }
