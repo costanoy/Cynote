@@ -3,16 +3,23 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:mobile/main.dart';
 import 'package:mobile/icons.dart';
+import 'package:mobile/models/note.dart';
 
 void main() {
+  List<Note> testNotes() => [
+        Note(id: 't1', title: 'Bloquinho', time: 'Hoje, 14:32', body: 'Conteudo de teste 1'),
+        Note(id: 't2', title: 'Referências', time: 'Ontem, 21:10', body: 'Conteudo de teste 2'),
+        Note(id: 't3', title: 'Roteiro: Vídeo IA', time: 'Seg, 09:15', body: 'Conteudo de teste 3'),
+      ];
+
   Future<void> goToHome(WidgetTester tester) async {
-    await tester.pumpWidget(const CynoteApp());
+    await tester.pumpWidget(CynoteApp(initialNotes: testNotes()));
     await tester.tap(find.text('Continuar sem sincronizar'));
     await tester.pumpAndSettle();
   }
 
   testWidgets('Sync screen shows sync prompt and can be skipped to home', (tester) async {
-    await tester.pumpWidget(const CynoteApp());
+    await tester.pumpWidget(CynoteApp(initialNotes: testNotes()));
 
     expect(find.text('Sincronize com seu computador'), findsOneWidget);
     expect(find.text('Cynote'), findsNothing);

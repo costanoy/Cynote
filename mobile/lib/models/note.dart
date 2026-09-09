@@ -63,32 +63,3 @@ class Note {
             : null,
       );
 }
-
-List<Note> seedNotes() => [
-      Note(
-        id: 't1',
-        title: 'Bloquinho',
-        time: 'Hoje, 14:32',
-        body: 'TODOs — sprint sync\n\n'
-            'Terminar o debounce de 1.5s no auto-save. Testar em modo avião pra ver a fila de sync.\n\n'
-            'Registrar Shell Extension no Explorer.\n'
-            'Ícone de bandeja com status de sync.',
-      ),
-      Note(
-        id: 't2',
-        title: 'Referências',
-        time: 'Ontem, 21:10',
-        body: 'Referências — mestrado\n\n'
-            'Ler no ônibus, continuar sincronizado no notebook à noite.\n\n'
-            '[1] Kleppmann, M. — local-first software: por que apps deveriam sincronizar sem depender de tempo real colaborativo pra funcionar bem sozinho.\n\n'
-            'Shapiro & Preguiça — CRDTs como base pra sync multi-dispositivo sem conflito.',
-      ),
-      Note(
-        id: 't3',
-        title: 'Roteiro: Vídeo IA',
-        time: 'Seg, 09:15',
-        body: 'Roteiro: Vídeo IA\n\n'
-            'Gancho: "todo mundo já perdeu uma nota importante trocando de tela."\n\n'
-            'Mostrar o modo bloquinho abrindo instantâneo, depois o mesmo texto já no celular.',
-      ),
-    ];

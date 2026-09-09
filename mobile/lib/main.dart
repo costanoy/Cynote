@@ -21,14 +21,17 @@ void main() {
 }
 
 class CynoteApp extends StatelessWidget {
-  const CynoteApp({super.key});
+  /// Only ever populated by tests - a real launch always starts empty and
+  /// fills in from notes_store/sync, so nobody ever sees leftover demo notes.
+  final List<Note> initialNotes;
+  const CynoteApp({super.key, this.initialNotes = const []});
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       title: 'Cynote',
       debugShowCheckedModeBanner: false,
-      home: CynoteRoot(),
+      home: CynoteRoot(initialNotes: initialNotes),
     );
   }
 }
@@ -36,7 +39,8 @@ class CynoteApp extends StatelessWidget {
 enum CyScreen { sync, home, search, editor, settings }
 
 class CynoteRoot extends StatefulWidget {
-  const CynoteRoot({super.key});
+  final List<Note> initialNotes;
+  const CynoteRoot({super.key, this.initialNotes = const []});
 
   @override
   State<CynoteRoot> createState() => _CynoteRootState();
@@ -46,7 +50,7 @@ class _CynoteRootState extends State<CynoteRoot> {
   CyScreen _screen = CyScreen.sync;
   CyScreen _returnScreen = CyScreen.home;
   bool _darkMode = true;
-  List<Note> _notes = seedNotes();
+  late List<Note> _notes = widget.initialNotes;
   SyncState _syncStatus = SyncState.synced;
   String? _activeNoteId;
   Timer? _saveDebounce;
