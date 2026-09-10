@@ -492,6 +492,13 @@ button:focus-visible,
   word-break: break-word;
   color: var(--content-text-body);
 }
+/* Ctrl+D multi-select: every matched occurrence except the last (which carries
+   the real caret/selection) is faked with this background, since Chromium only
+   supports one real Selection range at a time. */
+.occurrence-highlight {
+  background: var(--accent-tint);
+  border-radius: 2px;
+}
 /* The `!important` guards against Chromium inserting a fresh <div> with its
    own inline font styling when you press Enter in a contentEditable - without
    it, the new line silently falls back to the browser's default font. */
