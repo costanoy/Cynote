@@ -158,6 +158,30 @@ function flatOffsetFromPoint(el: HTMLElement, node: Node, offset: number): numbe
   return total;
 }
 
+/** Which line (1-based) and column (1-based) the caret currently sits on, read straight
+ * from the DOM so it stays right even when React's `body` prop is a keystroke behind. */
+function caretLineCol(el: HTMLElement): { line: number; col: number } | null {
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0) return null;
+  const { focusNode, focusOffset } = sel;
+  if (!focusNode || !el.contains(focusNode)) return null;
+
+  const children = Array.from(el.childNodes);
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (child !== focusNode && !(child.nodeType === Node.ELEMENT_NODE && child.contains(focusNode))) continue;
+    if (child === focusNode && child.nodeType === Node.TEXT_NODE) return { line: i + 1, col: focusOffset + 1 };
+    const range = document.createRange();
+    range.selectNodeContents(child);
+    range.setEnd(focusNode, focusOffset);
+    return { line: i + 1, col: range.toString().length + 1 };
+  }
+
+  // Caret sitting directly on the editor itself (empty note, or between lines).
+  if (focusNode === el) return { line: Math.min(focusOffset + 1, Math.max(children.length, 1)), col: 1 };
+  return null;
+}
+
 function setSelectionRange(el: HTMLElement, start: number, end: number) {
   const sel = window.getSelection();
   if (!sel) return;
@@ -210,6 +234,7 @@ type Props = {
   sketches: NoteSketch[];
   spellCheck: boolean;
   onBodyInput: (value: string) => void;
+  onCaretChange: (line: number, col: number) => void;
   onMoveSketch: (id: string, x: number, y: number) => void;
   onResizeSketch: (id: string, width: number, height: number) => void;
   onEditSketch: (id: string) => void;
@@ -221,6 +246,7 @@ export function ContentArea({
   sketches,
   spellCheck,
   onBodyInput,
+  onCaretChange,
   onMoveSketch,
   onResizeSketch,
   onEditSketch,
@@ -259,6 +285,22 @@ export function ContentArea({
       selection.removeAllRanges();
       selection.addRange(range);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // selectionchange is the only event that catches every way the caret moves -
+  // typing, arrow keys, clicking, selecting - so the Ln/Col readout tracks all
+  // of them from one place.
+  useEffect(() => {
+    const report = () => {
+      const el = ref.current;
+      if (!el) return;
+      const pos = caretLineCol(el);
+      if (pos) onCaretChange(pos.line, pos.col);
+    };
+    report();
+    document.addEventListener("selectionchange", report);
+    return () => document.removeEventListener("selectionchange", report);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

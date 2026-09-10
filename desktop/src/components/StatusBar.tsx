@@ -2,6 +2,8 @@ import type { SyncStatus } from "../types";
 import { ReadingIcon } from "../icons";
 
 type Props = {
+  line: number;
+  col: number;
   charCount: number;
   zoom: number;
   onZoomIn: () => void;
@@ -25,6 +27,8 @@ const SYNC_LABEL: Record<SyncStatus, string> = {
 };
 
 export function StatusBar({
+  line,
+  col,
   charCount,
   zoom,
   onZoomIn,
@@ -36,7 +40,9 @@ export function StatusBar({
 }: Props) {
   return (
     <div className="status-bar">
-      <span>Ln 1, Col 1</span>
+      <span>
+        Ln {line}, Col {col}
+      </span>
       <span className="status-dot" />
       <span>{charCount} caracteres</span>
       <span className="status-dot" />

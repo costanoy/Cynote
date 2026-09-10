@@ -84,6 +84,9 @@ function App() {
   const [readingMode, setReadingMode] = useState(false);
   const [darkMode, setDarkMode] = useState(true);
   const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
+  // Caret position for the status bar's Ln/Col readout - reported by
+  // ContentArea, which is the only place that can see the live selection.
+  const [caret, setCaret] = useState({ line: 1, col: 1 });
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
@@ -762,6 +765,9 @@ function App() {
               sketches={tabs[activeTab].sketches}
               spellCheck={spellCheckEnabled}
               onBodyInput={onBodyInput}
+              onCaretChange={(line, col) =>
+                setCaret((prev) => (prev.line === line && prev.col === col ? prev : { line, col }))
+              }
               onMoveSketch={moveSketch}
               onResizeSketch={resizeSketch}
               onEditSketch={editSketch}
@@ -784,6 +790,8 @@ function App() {
       )}
 
       <StatusBar
+        line={caret.line}
+        col={caret.col}
         charCount={charCount}
         zoom={zoom}
         onZoomIn={() => setZoom((z) => Math.min(200, z + 10))}
