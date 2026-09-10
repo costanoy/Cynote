@@ -449,13 +449,36 @@ export function ContentArea({
       }
     }
 
+    const children = Array.from(el.childNodes);
+    const index = children.indexOf(target);
+    const isLast = target === el.lastChild;
+
+    // Select the line break along with the text, not just the text, so
+    // pressing Delete/Backspace afterwards removes the whole line instead
+    // of leaving an empty one behind - selectNodeContents alone only ever
+    // grabbed what's inside this line's own <div>, never the boundary that
+    // actually separates it from its neighbor.
     const range = document.createRange();
-    range.selectNodeContents(target);
+    if (children.length === 1) {
+      range.selectNodeContents(target);
+    } else if (!isLast) {
+      range.setStart(el, index);
+      range.setEnd(el, index + 1);
+    } else {
+      // Last line: there's no next line to extend into, so swallow the
+      // break *before* it instead. A parent-indexed boundary can only sit
+      // between whole siblings, so "before the previous line" (like the
+      // branch above) would pull that entire line in too - the break itself
+      // only exists at the *end* of the previous line's own content.
+      const prev = target.previousSibling!;
+      const prevEnd = prev.nodeType === Node.TEXT_NODE ? (prev.textContent?.length ?? 0) : prev.childNodes.length;
+      range.setStart(prev, prevEnd);
+      range.setEnd(el, index + 1);
+    }
     const selection = window.getSelection();
     selection?.removeAllRanges();
     selection?.addRange(range);
 
-    const isLast = target === el.lastChild;
     const text = (target.textContent ?? "") + (isLast ? "" : "\n");
     navigator.clipboard?.writeText(text).catch(() => {});
   };
