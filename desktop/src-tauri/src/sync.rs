@@ -4,10 +4,18 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::sync::{Arc, Mutex};
+use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
 use tiny_http::{Method, Response, Server};
 
 const SERVICE_TYPE: &str = "_cynote._tcp.local.";
+// A peer that's gone dark (phone locked/asleep, left the network...) should
+// fail fast instead of tying up whatever thread made the call - ureq has no
+// default timeout at all, and these commands run synchronously on the same
+// thread that services the webview's IPC, so an unbounded hang here used to
+// freeze the whole window (Windows would eventually report it as "not
+// responding").
+const HTTP_TIMEOUT: Duration = Duration::from_secs(5);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct PeerInfo {
@@ -270,51 +278,71 @@ pub fn list_reachable_trusted_devices(state: tauri::State<SyncState>) -> Vec<Pee
 }
 
 #[tauri::command]
-pub fn fetch_peer_notes(address: String, port: u16) -> Result<String, String> {
-    let url = format!("http://{}:{}/cynote/notes", address, port);
-    let resp = ureq::get(&url).call().map_err(|e| e.to_string())?;
-    resp.into_string().map_err(|e| e.to_string())
+pub async fn fetch_peer_notes(address: String, port: u16) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let url = format!("http://{}:{}/cynote/notes", address, port);
+        let resp = ureq::get(&url).timeout(HTTP_TIMEOUT).call().map_err(|e| e.to_string())?;
+        resp.into_string().map_err(|e| e.to_string())
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn request_pairing(app: AppHandle, state: tauri::State<SyncState>, device_id: String) -> Result<bool, String> {
+pub async fn request_pairing(
+    app: AppHandle,
+    state: tauri::State<'_, SyncState>,
+    device_id: String,
+) -> Result<bool, String> {
+    let sync_state: SyncState = state.inner().clone();
     let (peer, own, my_port) = {
-        let s = state.lock().unwrap();
+        let s = sync_state.lock().unwrap();
         let peer = s.discovered.get(&device_id).cloned().ok_or("device not found")?;
         (peer, s.own.clone(), s.my_port)
     };
+    let peer_id = peer.device_id.clone();
+    let peer_name = peer.device_name.clone();
 
-    let url = format!("http://{}:{}/cynote/pair-request", peer.address, peer.port);
-    let body = format!(
-        "{{\"deviceId\":{:?},\"deviceName\":{:?},\"port\":{}}}",
-        own.device_id, own.device_name, my_port
-    );
-    ureq::post(&url)
-        .set("Content-Type", "application/json")
-        .send_string(&body)
-        .map_err(|e| e.to_string())?;
+    let accepted = tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
+        let url = format!("http://{}:{}/cynote/pair-request", peer.address, peer.port);
+        let body = format!(
+            "{{\"deviceId\":{:?},\"deviceName\":{:?},\"port\":{}}}",
+            own.device_id, own.device_name, my_port
+        );
+        ureq::post(&url)
+            .timeout(HTTP_TIMEOUT)
+            .set("Content-Type", "application/json")
+            .send_string(&body)
+            .map_err(|e| e.to_string())?;
 
-    let status_url = format!(
-        "http://{}:{}/cynote/pair-status?deviceId={}",
-        peer.address, peer.port, own.device_id
-    );
-    for _ in 0..20 {
-        std::thread::sleep(std::time::Duration::from_millis(1000));
-        if let Ok(resp) = ureq::get(&status_url).call() {
-            if let Ok(text) = resp.into_string() {
-                if text.contains("accepted") {
-                    let mut s = state.lock().unwrap();
-                    s.trusted.insert(peer.device_id.clone(), peer.device_name.clone());
-                    save_trusted(&app, &s.trusted);
-                    return Ok(true);
-                }
-                if text.contains("declined") {
-                    return Ok(false);
+        let status_url = format!(
+            "http://{}:{}/cynote/pair-status?deviceId={}",
+            peer.address, peer.port, own.device_id
+        );
+        for _ in 0..20 {
+            std::thread::sleep(std::time::Duration::from_millis(1000));
+            if let Ok(resp) = ureq::get(&status_url).timeout(HTTP_TIMEOUT).call() {
+                if let Ok(text) = resp.into_string() {
+                    if text.contains("accepted") {
+                        return Ok(true);
+                    }
+                    if text.contains("declined") {
+                        return Ok(false);
+                    }
                 }
             }
         }
+        Ok(false)
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    if accepted {
+        let mut s = sync_state.lock().unwrap();
+        s.trusted.insert(peer_id, peer_name);
+        save_trusted(&app, &s.trusted);
     }
-    Ok(false)
+    Ok(accepted)
 }
 
 #[tauri::command]
