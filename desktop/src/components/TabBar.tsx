@@ -34,10 +34,12 @@ export function TabBar({
   const panMoved = useRef(false);
   const panStartX = useRef(0);
   const lastPanX = useRef(0);
-  const dragFromIndex = useRef<number | null>(null);
   const prevCount = useRef(tabs.length);
   const [renamingIndex, setRenamingIndex] = useState<number | null>(null);
   const renameInputRef = useRef<HTMLInputElement>(null);
+  // Which tab the grip is currently dragging, if any - used only to dim it a
+  // little for feedback while the drag is in progress.
+  const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
 
   useEffect(() => {
     if (tabs.length > prevCount.current && rowRef.current) {
@@ -90,6 +92,46 @@ export function TabBar({
     if (title) onRename(i, title);
   };
 
+  // Reordering by hand instead of native HTML5 drag-and-drop, which turned
+  // out unreliable inside WebView2 (kept fighting the row's own pan-to-scroll
+  // handler no matter how the two were kept from triggering together). This
+  // mirrors the plain mousedown/mousemove/mouseup approach DraggableSketch
+  // already uses elsewhere in the app - full control, no browser DnD quirks.
+  // Reorders live as the pointer crosses into a neighboring tab's slot,
+  // rather than only on drop.
+  const onGripMouseDown = (e: React.MouseEvent, startIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    let from = startIndex;
+    setDraggingIndex(from);
+
+    const onMove = (ev: MouseEvent) => {
+      const row = rowRef.current;
+      if (!row) return;
+      const tabEls = Array.from(row.querySelectorAll<HTMLElement>(".tab"));
+      let over = from;
+      for (let idx = 0; idx < tabEls.length; idx++) {
+        const r = tabEls[idx].getBoundingClientRect();
+        if (ev.clientX >= r.left && ev.clientX < r.right) {
+          over = idx;
+          break;
+        }
+      }
+      if (over !== from) {
+        onReorder(from, over);
+        from = over;
+        setDraggingIndex(over);
+      }
+    };
+    const onUp = () => {
+      setDraggingIndex(null);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   return (
     <div className="tab-bar">
       <div
@@ -103,7 +145,7 @@ export function TabBar({
         {tabs.map((tab, i) => (
           <div
             key={tab.id}
-            className={"tab" + (i === activeTab ? " active" : "")}
+            className={"tab" + (i === activeTab ? " active" : "") + (i === draggingIndex ? " dragging" : "")}
             onClick={() => select(i)}
             onDoubleClick={() => setRenamingIndex(i)}
             onMouseDown={(e) => {
@@ -111,12 +153,6 @@ export function TabBar({
                 e.preventDefault();
                 onClose(i);
               }
-            }}
-            onDragOver={(e) => e.preventDefault()}
-            onDrop={(e) => {
-              e.preventDefault();
-              if (dragFromIndex.current !== null) onReorder(dragFromIndex.current, i);
-              dragFromIndex.current = null;
             }}
           >
             {renamingIndex === i ? (
@@ -149,18 +185,8 @@ export function TabBar({
             </span>
             <span
               className="tab-move"
-              draggable
-              // Without this, the mousedown that starts a native drag also
-              // bubbles up to the row's own pan handler below, which starts
-              // scrolling the row out from under the drag at the same time -
-              // fighting the browser's native drag-and-drop and making the
-              // handle feel unresponsive.
-              onMouseDown={(e) => e.stopPropagation()}
-              onDragStart={(e) => {
-                dragFromIndex.current = i;
-                e.dataTransfer.effectAllowed = "move";
-              }}
-              title="Arraste para reordenar ou mover"
+              onMouseDown={(e) => onGripMouseDown(e, i)}
+              title="Arraste para reordenar"
             >
               <GripIcon />
             </span>

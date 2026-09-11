@@ -171,6 +171,9 @@ button:focus-visible,
   background: var(--hover-bg);
   border: 1px solid var(--panel-border);
 }
+.tab.dragging {
+  opacity: 0.55;
+}
 .tab-label {
   font-size: 12px;
   font-weight: 500;
