@@ -33,7 +33,7 @@ export function TabBar({
   const isPanning = useRef(false);
   const panMoved = useRef(false);
   const panStartX = useRef(0);
-  const panScrollStart = useRef(0);
+  const lastPanX = useRef(0);
   const dragFromIndex = useRef<number | null>(null);
   const prevCount = useRef(tabs.length);
   const [renamingIndex, setRenamingIndex] = useState<number | null>(null);
@@ -57,13 +57,20 @@ export function TabBar({
     isPanning.current = true;
     panMoved.current = false;
     panStartX.current = e.clientX;
-    panScrollStart.current = rowRef.current?.scrollLeft ?? 0;
+    lastPanX.current = e.clientX;
   };
+  // Scrolls by the *incremental* mouse delta each move, against whatever
+  // scrollLeft actually is right now - not a fixed "scrollLeft at mousedown
+  // minus total delta" baseline. That baseline goes stale the instant the
+  // browser clamps scrollLeft at either end, so dragging further in the same
+  // direction keeps computing a target past the clamp; reversing direction
+  // then has to "use up" that whole overshoot before the row visibly moves
+  // again, which is the sticking/dead-zone feeling at the ends.
   const onRowMove = (e: React.MouseEvent) => {
     if (!isPanning.current || !rowRef.current) return;
-    const dx = e.clientX - panStartX.current;
-    if (Math.abs(dx) > 4) panMoved.current = true;
-    rowRef.current.scrollLeft = panScrollStart.current - dx;
+    if (Math.abs(e.clientX - panStartX.current) > 4) panMoved.current = true;
+    rowRef.current.scrollLeft -= e.clientX - lastPanX.current;
+    lastPanX.current = e.clientX;
   };
   const onRowUp = () => {
     isPanning.current = false;
@@ -143,6 +150,12 @@ export function TabBar({
             <span
               className="tab-move"
               draggable
+              // Without this, the mousedown that starts a native drag also
+              // bubbles up to the row's own pan handler below, which starts
+              // scrolling the row out from under the drag at the same time -
+              // fighting the browser's native drag-and-drop and making the
+              // handle feel unresponsive.
+              onMouseDown={(e) => e.stopPropagation()}
               onDragStart={(e) => {
                 dragFromIndex.current = i;
                 e.dataTransfer.effectAllowed = "move";

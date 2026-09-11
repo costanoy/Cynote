@@ -142,6 +142,11 @@ button:focus-visible,
   user-select: none;
   padding-top: 6px;
   margin-top: -6px;
+  /* Mirrors the pair above, but for .tab-move's bottom:-6px corner - without
+     this the drag handle got clipped by overflow-y:hidden below, leaving
+     only a sliver of it visible (and clickable). */
+  padding-bottom: 6px;
+  margin-bottom: -6px;
 }
 .tab-row::-webkit-scrollbar {
   display: none;
