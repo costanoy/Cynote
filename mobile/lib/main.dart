@@ -7,6 +7,7 @@ import 'notes_store.dart' as notes_store;
 import 'device_identity.dart';
 import 'mobile_updater.dart';
 import 'sync/sync_service.dart';
+import 'sync/cloud_sync_service.dart';
 import 'sync/peer_info.dart';
 import 'theme.dart';
 import 'screens/sync_screen.dart';
@@ -58,6 +59,7 @@ class _CynoteRootState extends State<CynoteRoot> {
   Timer? _saveDebounce;
   DeviceIdentity? _identity;
   SyncService? _syncService;
+  CloudSyncService? _cloudSyncService;
   String? _connectingToDeviceId;
   bool _pairingDialogShowing = false;
   MobileUpdate? _availableUpdate;
@@ -87,6 +89,13 @@ class _CynoteRootState extends State<CynoteRoot> {
       service.addListener(_onSyncChanged);
       _syncService = service;
       service.start();
+
+      final cloudService = CloudSyncService(identity);
+      cloudService.notesProvider = () => _notes;
+      cloudService.onNotesMerged = _onNotesMerged;
+      cloudService.addListener(_onCloudSyncChanged);
+      _cloudSyncService = cloudService;
+      cloudService.start();
     });
     notes_store.loadNotes().then((saved) {
       if (!mounted) return;
@@ -102,6 +111,8 @@ class _CynoteRootState extends State<CynoteRoot> {
     _updateCheckTimer?.cancel();
     _syncService?.removeListener(_onSyncChanged);
     _syncService?.dispose();
+    _cloudSyncService?.removeListener(_onCloudSyncChanged);
+    _cloudSyncService?.dispose();
     super.dispose();
   }
 
@@ -109,6 +120,11 @@ class _CynoteRootState extends State<CynoteRoot> {
     if (!mounted) return;
     setState(() {});
     _maybeShowPairingDialog();
+  }
+
+  void _onCloudSyncChanged() {
+    if (!mounted) return;
+    setState(() {});
   }
 
   void _onNotesMerged(List<Note> notes) {
@@ -270,6 +286,20 @@ class _CynoteRootState extends State<CynoteRoot> {
 
   void _toggleDarkMode() => setState(() => _darkMode = !_darkMode);
 
+  Future<String> _generateCloudCode() async {
+    final service = _cloudSyncService;
+    if (service == null) return '';
+    return service.generateSyncId();
+  }
+
+  Future<void> _joinCloudCode(String code) async {
+    await _cloudSyncService?.setSyncId(code);
+  }
+
+  Future<void> _clearCloudCode() async {
+    await _cloudSyncService?.clearSyncId();
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = _darkMode ? CyColors.dark : CyColors.light;
@@ -320,6 +350,10 @@ class _CynoteRootState extends State<CynoteRoot> {
           darkMode: _darkMode,
           onBack: _goHome,
           onToggleDarkMode: _toggleDarkMode,
+          cloudSyncId: _cloudSyncService?.syncId,
+          onGenerateCloudCode: _generateCloudCode,
+          onJoinCloudCode: _joinCloudCode,
+          onClearCloudCode: _clearCloudCode,
         );
         break;
     }

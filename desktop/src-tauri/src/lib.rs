@@ -1,3 +1,4 @@
+mod cloud_sync;
 mod dashboard;
 mod identity;
 mod sync;
@@ -415,7 +416,13 @@ pub fn run() {
             sync::fetch_peer_notes,
             sync::request_pairing,
             sync::list_pairing_requests,
-            sync::respond_to_pairing
+            sync::respond_to_pairing,
+            cloud_sync::get_cloud_sync_id,
+            cloud_sync::generate_cloud_sync_id,
+            cloud_sync::set_cloud_sync_id,
+            cloud_sync::clear_cloud_sync_id,
+            cloud_sync::push_cloud_notes,
+            cloud_sync::fetch_cloud_peers
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

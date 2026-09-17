@@ -25,6 +25,7 @@ import { getDeviceIdentity } from "./deviceIdentity";
 import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
 import { mergeFromPeer } from "./merge";
 import { loadBookkeeping, saveBookkeeping } from "./bookkeeping";
+import { getCloudSyncId, pushCloudNotes, fetchCloudPeers } from "./cloudSync";
 import { isDirty as isTabDirtyAgainst, snapshotOf, tabHasContent, type SavedSnapshot } from "./dirtyTracking";
 import { checkForUpdate, installUpdate, type Update } from "./updater";
 import type { PeerInfo } from "./types";
@@ -78,6 +79,7 @@ function loadSpellCheckPref(): boolean {
 function App() {
   const [tabs, setTabs] = useState<TabData[]>([]);
   const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [deviceName, setDeviceName] = useState<string>("Computador");
   const [activeTab, setActiveTab] = useState(0);
   const [drawingOpen, setDrawingOpen] = useState(false);
   const [editingSketchId, setEditingSketchId] = useState<string | null>(null);
@@ -199,9 +201,45 @@ function App() {
     if (anyChange) setTabs(currentTabs);
   };
 
+  // Same merge logic as the LAN cycle above, just fetched over the internet
+  // instead of the local network - this is what still works when both
+  // devices are on a network that blocks device-to-device discovery (a
+  // work/guest Wi-Fi with client isolation, for instance), as long as a
+  // pairing code has been set up between them (see SettingsView).
+  const runCloudSyncCycle = async (myDeviceId: string, myDeviceName: string) => {
+    const syncId = await getCloudSyncId();
+    if (!syncId) return;
+
+    await pushCloudNotes(syncId, myDeviceId, myDeviceName, tabsRef.current);
+    const peers = await fetchCloudPeers(syncId, myDeviceId);
+    if (peers.length === 0) return;
+
+    let book = loadBookkeeping();
+    let currentTabs = tabsRef.current;
+    let anyChange = false;
+
+    for (const peer of peers) {
+      const result = mergeFromPeer(
+        currentTabs,
+        peer.notes as TabData[],
+        peer.deviceId,
+        peer.deviceName,
+        myDeviceId,
+        book
+      );
+      currentTabs = result.tabs;
+      book = result.bookkeeping;
+      if (result.changed) anyChange = true;
+    }
+
+    saveBookkeeping(book);
+    if (anyChange) setTabs(currentTabs);
+  };
+
   useEffect(() => {
     getDeviceIdentity().then(async (identity) => {
       setDeviceId(identity.deviceId);
+      setDeviceName(identity.deviceName);
       const saved = await loadNotes(identity.deviceId);
       const initial = saved && saved.length > 0 ? saved : [makeBlankTab(identity.deviceId)];
       // Whatever was loaded from notes.json is durably on disk already -
@@ -214,8 +252,12 @@ function App() {
 
   useEffect(() => {
     if (!loaded || !deviceId) return;
-    runSyncCycle(deviceId);
-    const interval = setInterval(() => runSyncCycle(deviceId), SYNC_INTERVAL_MS);
+    const runBoth = () => {
+      runSyncCycle(deviceId);
+      runCloudSyncCycle(deviceId, deviceName);
+    };
+    runBoth();
+    const interval = setInterval(runBoth, SYNC_INTERVAL_MS);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded, deviceId]);
@@ -246,7 +288,10 @@ function App() {
     setSyncStatus("syncing");
     saveNotes(tabsRef.current).then(async () => {
       setSyncStatus("synced");
-      if (deviceId) runSyncCycle(deviceId);
+      if (deviceId) {
+        runSyncCycle(deviceId);
+        runCloudSyncCycle(deviceId, deviceName);
+      }
 
       const i = activeTabRef.current;
       const tab = tabsRef.current[i];
@@ -266,7 +311,10 @@ function App() {
     saveTimerRef.current = setTimeout(() => {
       saveNotes(tabs).then(() => {
         setSyncStatus("synced");
-        if (deviceId) runSyncCycle(deviceId);
+        if (deviceId) {
+        runSyncCycle(deviceId);
+        runCloudSyncCycle(deviceId, deviceName);
+      }
       });
     }, AUTOSAVE_DELAY_MS);
     return () => {
@@ -512,7 +560,10 @@ function App() {
       setSyncStatus("syncing");
       saveNotes(tabsRef.current).then(() => {
         setSyncStatus("synced");
-        if (deviceId) runSyncCycle(deviceId);
+        if (deviceId) {
+        runSyncCycle(deviceId);
+        runCloudSyncCycle(deviceId, deviceName);
+      }
         removeTab();
       });
     } else {

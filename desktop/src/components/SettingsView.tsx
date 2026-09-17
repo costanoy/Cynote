@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { BackChevronIcon } from "../icons";
 import type { PeerInfo } from "../types";
 import { listDiscoveredDevices, listTrustedDevices, requestPairing } from "../sync";
+import { getCloudSyncId, generateCloudSyncId, setCloudSyncId, clearCloudSyncId } from "../cloudSync";
 
 type Props = {
   darkMode: boolean;
@@ -26,6 +27,12 @@ export function SettingsView({
   const [trusted, setTrusted] = useState<PeerInfo[]>([]);
   const [connectingId, setConnectingId] = useState<string | null>(null);
 
+  const [cloudSyncId, setCloudSyncIdState] = useState<string | null>(null);
+  const [cloudCodeInput, setCloudCodeInput] = useState("");
+  const [cloudCopied, setCloudCopied] = useState(false);
+  const [cloudJoining, setCloudJoining] = useState(false);
+  const [cloudGenerating, setCloudGenerating] = useState(false);
+
   useEffect(() => {
     let cancelled = false;
     const refresh = () => {
@@ -40,10 +47,49 @@ export function SettingsView({
     };
   }, []);
 
+  useEffect(() => {
+    getCloudSyncId().then(setCloudSyncIdState);
+  }, []);
+
   const connect = async (peer: PeerInfo) => {
     setConnectingId(peer.deviceId);
     await requestPairing(peer.deviceId);
     setConnectingId(null);
+  };
+
+  const generateCode = async () => {
+    setCloudGenerating(true);
+    const id = await generateCloudSyncId();
+    setCloudSyncIdState(id);
+    setCloudGenerating(false);
+  };
+
+  const copyCode = async () => {
+    if (!cloudSyncId) return;
+    try {
+      await navigator.clipboard.writeText(cloudSyncId);
+      setCloudCopied(true);
+      setTimeout(() => setCloudCopied(false), 1500);
+    } catch {
+      // clipboard unavailable - ignore
+    }
+  };
+
+  const joinCode = async () => {
+    const code = cloudCodeInput.trim();
+    if (!code) return;
+    setCloudJoining(true);
+    const ok = await setCloudSyncId(code);
+    if (ok) {
+      setCloudSyncIdState(code);
+      setCloudCodeInput("");
+    }
+    setCloudJoining(false);
+  };
+
+  const disableCloudSync = async () => {
+    await clearCloudSyncId();
+    setCloudSyncIdState(null);
   };
 
   return (
@@ -120,6 +166,55 @@ export function SettingsView({
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      <div className="settings-row" style={{ flexDirection: "column", alignItems: "stretch", gap: "10px" }}>
+        <div>
+          <div className="settings-row-label">Sincronização pela internet</div>
+          <div className="settings-row-hint">
+            Sincronize com outro dispositivo em qualquer rede, usando um código de pareamento
+          </div>
+        </div>
+
+        {cloudSyncId ? (
+          <>
+            <div className="sync-code-box">
+              <span className="sync-code-text">{cloudSyncId}</span>
+              <button className="sync-code-copy-btn" onClick={copyCode}>
+                {cloudCopied ? "Copiado!" : "Copiar"}
+              </button>
+            </div>
+            <div className="settings-row-hint">
+              Digite esse código no outro dispositivo para conectá-lo
+            </div>
+            <span className="sync-clear-link" onClick={disableCloudSync}>
+              Desativar sincronização pela internet
+            </span>
+          </>
+        ) : (
+          <>
+            <button
+              className="device-connect-btn"
+              style={{ alignSelf: "flex-start" }}
+              onClick={generateCode}
+              disabled={cloudGenerating}
+            >
+              {cloudGenerating ? "Gerando…" : "Gerar código"}
+            </button>
+            <div className="settings-row-hint">Ou cole um código gerado em outro dispositivo:</div>
+            <div className="sync-code-input-row">
+              <input
+                className="sync-code-input"
+                placeholder="Código de pareamento"
+                value={cloudCodeInput}
+                onChange={(e) => setCloudCodeInput(e.target.value)}
+              />
+              <button className="sync-code-join-btn" onClick={joinCode} disabled={cloudJoining || !cloudCodeInput.trim()}>
+                {cloudJoining ? "Conectando…" : "Conectar"}
+              </button>
+            </div>
+          </>
         )}
       </div>
     </div>
