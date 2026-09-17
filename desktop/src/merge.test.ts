@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { mergeFromPeer, type Bookkeeping } from "./merge";
+import { tabHasContent } from "./dirtyTracking";
 import type { TabData } from "./types";
 
 const DEVICE_A = "device-a";
@@ -70,6 +71,30 @@ describe("mergeFromPeer", () => {
     const second = mergeFromPeer(mineEditedAgain, peer, DEVICE_B, "Notebook", DEVICE_A, first.bookkeeping);
     expect(second.changed).toBe(true);
     expect(second.tabs).toHaveLength(2);
+  });
+
+  it("backfills favorite/sketches when importing a note shaped like the mobile app's (which has neither field)", () => {
+    // The mobile Note model has no concept of favorite/sketches, so its JSON
+    // simply omits them - this is what a real peer payload from a phone looks
+    // like, not something a desktop peer would ever send.
+    const mobileShapedNote = {
+      id: "n1",
+      title: "From phone",
+      body: "body",
+      updatedAt: 0,
+      originDeviceId: DEVICE_B,
+    } as unknown as TabData;
+
+    const result = mergeFromPeer([], [mobileShapedNote], DEVICE_B, "Celular", DEVICE_A, {});
+    const imported = result.tabs.find((t) => t.id === "n1")!;
+
+    expect(imported.sketches).toEqual([]);
+    expect(imported.favorite).toBe(false);
+    // This used to throw (Cannot read properties of undefined, reading 'length')
+    // the moment any render touched every tab's tabHasContent - which, since the
+    // window is transparent, made the whole app appear to vanish instead of
+    // showing an error.
+    expect(() => tabHasContent(imported)).not.toThrow();
   });
 
   it("carries bookkeeping forward per-peer without clobbering other peers", () => {

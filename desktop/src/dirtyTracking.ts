@@ -20,7 +20,7 @@ export interface SavedSnapshot {
 export const EMPTY_SNAPSHOT: SavedSnapshot = { title: "Nova nota", body: "", sketchesKey: "[]" };
 
 export function snapshotOf(tab: TabData): SavedSnapshot {
-  return { title: tab.title, body: tab.body, sketchesKey: JSON.stringify(tab.sketches) };
+  return { title: tab.title, body: tab.body, sketchesKey: JSON.stringify(tab.sketches ?? []) };
 }
 
 export function isDirty(tab: TabData, snapshot: SavedSnapshot | undefined): boolean {
@@ -29,7 +29,12 @@ export function isDirty(tab: TabData, snapshot: SavedSnapshot | undefined): bool
   return current.title !== snap.title || current.body !== snap.body || current.sketchesKey !== snap.sketchesKey;
 }
 
-/** Whether the tab has anything worth protecting - an empty untitled note isn't. */
+/** Whether the tab has anything worth protecting - an empty untitled note isn't.
+ * Guards against a missing `sketches` array (e.g. a note synced in from the
+ * mobile app, which has no concept of sketches and omits the field entirely)
+ * instead of throwing - this used to crash every render once such a note
+ * existed anywhere in `tabs`, and since the window is transparent, that
+ * crash made the whole app appear to vanish rather than show an error. */
 export function tabHasContent(tab: TabData): boolean {
-  return tab.body.trim() !== "" || tab.sketches.length > 0;
+  return tab.body.trim() !== "" || (tab.sketches?.length ?? 0) > 0;
 }
