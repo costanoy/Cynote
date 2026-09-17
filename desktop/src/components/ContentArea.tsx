@@ -403,6 +403,16 @@ export function ContentArea({
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    // Plain Tab's browser default in a contentEditable is to move focus to
+    // the next focusable element on the page (the Note Styling button sits
+    // right there) instead of typing anything - so without this, pressing
+    // Tab while writing hopped focus out of the note and into that button.
+    // A single space keeps typing feeling normal without indenting.
+    if (e.key === "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      e.preventDefault();
+      document.execCommand("insertText", false, " ");
+      return;
+    }
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
       e.preventDefault();
       onCtrlD();
