@@ -8,6 +8,8 @@ import 'device_identity.dart';
 import 'mobile_updater.dart';
 import 'sync/sync_service.dart';
 import 'sync/cloud_sync_service.dart';
+import 'sync/bookkeeping_store.dart';
+import 'sync/merge.dart' show dropDuplicateCopies;
 import 'sync/peer_info.dart';
 import 'theme.dart';
 import 'screens/sync_screen.dart';
@@ -80,28 +82,37 @@ class _CynoteRootState extends State<CynoteRoot> {
       setState(() => _availableUpdate = update);
       _showUpdateDialog();
     });
-    getDeviceIdentity().then((identity) {
+    final notesLoaded = notes_store.loadNotes().then((saved) {
+      if (!mounted) return;
+      if (saved != null && saved.isNotEmpty) {
+        final deduped = dropDuplicateCopies(saved);
+        setState(() => _notes = deduped);
+        if (deduped.length != saved.length) _scheduleSave();
+      }
+    });
+    getDeviceIdentity().then((identity) async {
       if (!mounted) return;
       setState(() => _identity = identity);
-      final service = SyncService(identity);
+      final bookkeeping = BookkeepingStore();
+      final service = SyncService(identity, bookkeeping);
       service.notesProvider = () => _notes;
       service.onNotesMerged = _onNotesMerged;
       service.addListener(_onSyncChanged);
       _syncService = service;
-      service.start();
 
-      final cloudService = CloudSyncService(identity);
+      final cloudService = CloudSyncService(identity, bookkeeping);
       cloudService.notesProvider = () => _notes;
       cloudService.onNotesMerged = _onNotesMerged;
       cloudService.addListener(_onCloudSyncChanged);
       _cloudSyncService = cloudService;
-      cloudService.start();
-    });
-    notes_store.loadNotes().then((saved) {
+
+      // Merging before the saved notes are in would treat every note as
+      // missing here, and the load landing afterwards would then overwrite
+      // whatever the merge brought in.
+      await notesLoaded;
       if (!mounted) return;
-      if (saved != null && saved.isNotEmpty) {
-        setState(() => _notes = saved);
-      }
+      service.start();
+      cloudService.start();
     });
   }
 

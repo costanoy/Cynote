@@ -8,6 +8,7 @@ import 'package:uuid/uuid.dart';
 
 import '../device_identity.dart';
 import '../models/note.dart';
+import 'bookkeeping_store.dart';
 import 'merge.dart';
 
 /// Realtime Database REST endpoint. Not itself a secret - what actually
@@ -22,11 +23,12 @@ const _cloudSyncInterval = Duration(seconds: 25);
 /// reaches the peer at all.
 class CloudSyncService extends ChangeNotifier {
   final DeviceIdentity own;
-  CloudSyncService(this.own);
+  final BookkeepingStore bookkeeping;
+  CloudSyncService(this.own, this.bookkeeping);
 
   String? syncId;
   Timer? _timer;
-  Bookkeeping _bookkeeping = {};
+  bool _cycleRunning = false;
 
   /// Supplies this device's current notes for pushing and for merging.
   List<Note> Function() notesProvider = () => [];
@@ -37,7 +39,7 @@ class CloudSyncService extends ChangeNotifier {
   Future<void> start() async {
     try {
       await _loadSyncId();
-      await _loadBookkeeping();
+      await bookkeeping.load();
       if (syncId != null) {
         _restartTimer();
         runSyncCycle();
@@ -128,41 +130,46 @@ class CloudSyncService extends ChangeNotifier {
   }
 
   Future<void> runSyncCycle() async {
-    if (syncId == null) return;
+    if (syncId == null || _cycleRunning) return;
+    _cycleRunning = true;
+    try {
+      await _pushNotes();
+      final peersRaw = await _fetchPeersRaw();
 
-    await _pushNotes();
-    final peersRaw = await _fetchPeersRaw();
+      final fetched = <String, List<Note>>{};
+      for (final entry in peersRaw.entries) {
+        if (entry.key == own.deviceId) continue;
+        final data = entry.value;
+        if (data is! Map<String, dynamic>) continue;
+        final notesJson = data['notes'];
+        if (notesJson is! List) continue;
+        fetched[entry.key] = notesJson.map((n) => Note.fromJson(n as Map<String, dynamic>)).toList();
+      }
+      if (fetched.isEmpty) return;
 
-    var currentNotes = notesProvider();
-    var book = _bookkeeping;
-    var anyChange = false;
-
-    for (final entry in peersRaw.entries) {
-      final peerId = entry.key;
-      if (peerId == own.deviceId) continue;
-      final data = entry.value;
-      if (data is! Map<String, dynamic>) continue;
-      final peerName = data['deviceName'] as String? ?? 'Dispositivo';
-      final notesJson = data['notes'];
-      if (notesJson is! List) continue;
-      final peerNotes = notesJson.map((n) => Note.fromJson(n as Map<String, dynamic>)).toList();
-
-      final result = mergeFromPeer(
-        myNotes: currentNotes,
-        peerNotes: peerNotes,
-        peerId: peerId,
-        peerName: peerName,
-        myDeviceId: own.deviceId,
-        bookkeeping: book,
-      );
-      currentNotes = result.notes;
-      book = result.bookkeeping;
-      if (result.changed) anyChange = true;
+      // No awaits from here until the result is handed back, so the merge
+      // can't interleave with an edit or with the LAN sync's own merge.
+      var currentNotes = notesProvider();
+      var book = bookkeeping.value;
+      var anyChange = false;
+      fetched.forEach((peerId, peerNotes) {
+        final result = mergeFromPeer(
+          myNotes: currentNotes,
+          peerNotes: peerNotes,
+          peerId: peerId,
+          myDeviceId: own.deviceId,
+          bookkeeping: book,
+        );
+        currentNotes = result.notes;
+        book = result.bookkeeping;
+        if (result.changed) anyChange = true;
+      });
+      bookkeeping.value = book;
+      if (anyChange) onNotesMerged?.call(currentNotes);
+      await bookkeeping.save();
+    } finally {
+      _cycleRunning = false;
     }
-
-    _bookkeeping = book;
-    await _saveBookkeeping();
-    if (anyChange) onNotesMerged?.call(currentNotes);
   }
 
   Future<File> _configFile() async {
@@ -186,32 +193,6 @@ class CloudSyncService extends ChangeNotifier {
     try {
       final file = await _configFile();
       await file.writeAsString(jsonEncode({'syncId': syncId}));
-    } catch (_) {
-      // best-effort
-    }
-  }
-
-  Future<File> _bookkeepingFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/cloud_sync_bookkeeping.json');
-  }
-
-  Future<void> _loadBookkeeping() async {
-    try {
-      final file = await _bookkeepingFile();
-      if (await file.exists()) {
-        final decoded = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-        _bookkeeping = bookkeepingFromJson(decoded);
-      }
-    } catch (_) {
-      // fresh install, no bookkeeping yet
-    }
-  }
-
-  Future<void> _saveBookkeeping() async {
-    try {
-      final file = await _bookkeepingFile();
-      await file.writeAsString(jsonEncode(bookkeepingToJson(_bookkeeping)));
     } catch (_) {
       // best-effort
     }

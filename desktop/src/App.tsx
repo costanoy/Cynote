@@ -23,8 +23,9 @@ import { parseNoteFile } from "./cynoteFormat";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
 import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
-import { mergeFromPeer } from "./merge";
+import { mergeFromPeer, dropDuplicateCopies } from "./merge";
 import { loadBookkeeping, saveBookkeeping } from "./bookkeeping";
+import { loadDeletedNoteIds, markNotesDeleted, forgetDeletedNote } from "./deletedNotes";
 import { getCloudSyncId, pushCloudNotes, fetchCloudPeers } from "./cloudSync";
 import { isDirty as isTabDirtyAgainst, snapshotOf, tabHasContent, type SavedSnapshot } from "./dirtyTracking";
 import { checkForUpdate, installUpdate, type Update } from "./updater";
@@ -143,10 +144,11 @@ function App() {
     setPairingRequests((prev) => prev.filter((p) => p.deviceId !== deviceId));
   };
 
+  // Assigned during render (not in an effect) so it's never a step behind the
+  // committed state - sync compares against it to detect edits made while a
+  // cycle was in flight.
   const tabsRef = useRef<TabData[]>(tabs);
-  useEffect(() => {
-    tabsRef.current = tabs;
-  }, [tabs]);
+  tabsRef.current = tabs;
 
   // Tracks, per tab, the title/body/sketches as they were the last time this
   // device actually wrote them to a real file (or as loaded at launch, which
@@ -173,67 +175,75 @@ function App() {
     activeTabRef.current = activeTab;
   }, [activeTab]);
 
-  const runSyncCycle = async (myDeviceId: string) => {
-    const peers = await listReachableTrustedDevices();
-    if (peers.length === 0) return;
-
+  // Everything network-bound happens before this: the merge itself runs in one
+  // synchronous step against the latest tabs, and is only applied if nothing
+  // changed them in the meantime (an edit, or another sync cycle) - otherwise
+  // it's simply redone next cycle, instead of overwriting newer state with a
+  // result computed from stale state.
+  const mergeAndApply = (peers: { deviceId: string; notes: TabData[] }[], myDeviceId: string) => {
+    const base = tabsRef.current;
+    const deleted = loadDeletedNoteIds();
     let book = loadBookkeeping();
-    let currentTabs = tabsRef.current;
+    let merged = base;
     let anyChange = false;
-
     for (const peer of peers) {
-      const resp = await fetchPeerNotes(peer);
-      if (!resp) continue;
-      const result = mergeFromPeer(
-        currentTabs,
-        resp.notes as TabData[],
-        peer.deviceId,
-        peer.deviceName,
-        myDeviceId,
-        book
-      );
-      currentTabs = result.tabs;
+      const result = mergeFromPeer(merged, peer.notes, peer.deviceId, myDeviceId, book, deleted);
+      merged = result.tabs;
       book = result.bookkeeping;
       if (result.changed) anyChange = true;
     }
-
-    saveBookkeeping(book);
-    if (anyChange) setTabs(currentTabs);
+    if (!anyChange) {
+      saveBookkeeping(book);
+      return;
+    }
+    setTabs((prev) => {
+      if (prev !== base) return prev;
+      saveBookkeeping(book);
+      tabsRef.current = merged;
+      return merged;
+    });
   };
 
-  // Same merge logic as the LAN cycle above, just fetched over the internet
-  // instead of the local network - this is what still works when both
-  // devices are on a network that blocks device-to-device discovery (a
-  // work/guest Wi-Fi with client isolation, for instance), as long as a
-  // pairing code has been set up between them (see SettingsView).
-  const runCloudSyncCycle = async (myDeviceId: string, myDeviceName: string) => {
-    const syncId = await getCloudSyncId();
-    if (!syncId) return;
-
-    await pushCloudNotes(syncId, myDeviceId, myDeviceName, tabsRef.current);
-    const peers = await fetchCloudPeers(syncId, myDeviceId);
-    if (peers.length === 0) return;
-
-    let book = loadBookkeeping();
-    let currentTabs = tabsRef.current;
-    let anyChange = false;
-
-    for (const peer of peers) {
-      const result = mergeFromPeer(
-        currentTabs,
-        peer.notes as TabData[],
-        peer.deviceId,
-        peer.deviceName,
-        myDeviceId,
-        book
-      );
-      currentTabs = result.tabs;
-      book = result.bookkeeping;
-      if (result.changed) anyChange = true;
+  const lanSyncBusy = useRef(false);
+  const runSyncCycle = async (myDeviceId: string) => {
+    if (lanSyncBusy.current) return;
+    lanSyncBusy.current = true;
+    try {
+      const peers = await listReachableTrustedDevices();
+      const fetched: { deviceId: string; notes: TabData[] }[] = [];
+      for (const peer of peers) {
+        const resp = await fetchPeerNotes(peer);
+        if (resp) fetched.push({ deviceId: peer.deviceId, notes: resp.notes as TabData[] });
+      }
+      if (fetched.length > 0) mergeAndApply(fetched, myDeviceId);
+    } finally {
+      lanSyncBusy.current = false;
     }
+  };
 
-    saveBookkeeping(book);
-    if (anyChange) setTabs(currentTabs);
+  // Same merge as the LAN cycle above, just fetched over the internet instead
+  // of the local network - this is what still works when both devices are on
+  // a network that blocks device-to-device discovery (a work/guest Wi-Fi with
+  // client isolation, for instance), once a pairing code is set up between
+  // them (see SettingsView).
+  const cloudSyncBusy = useRef(false);
+  const runCloudSyncCycle = async (myDeviceId: string, myDeviceName: string) => {
+    if (cloudSyncBusy.current) return;
+    cloudSyncBusy.current = true;
+    try {
+      const syncId = await getCloudSyncId();
+      if (!syncId) return;
+      await pushCloudNotes(syncId, myDeviceId, myDeviceName, tabsRef.current);
+      const peers = await fetchCloudPeers(syncId, myDeviceId);
+      if (peers.length > 0) {
+        mergeAndApply(
+          peers.map((p) => ({ deviceId: p.deviceId, notes: p.notes as TabData[] })),
+          myDeviceId
+        );
+      }
+    } finally {
+      cloudSyncBusy.current = false;
+    }
   };
 
   useEffect(() => {
@@ -241,7 +251,9 @@ function App() {
       setDeviceId(identity.deviceId);
       setDeviceName(identity.deviceName);
       const saved = await loadNotes(identity.deviceId);
-      const initial = saved && saved.length > 0 ? saved : [makeBlankTab(identity.deviceId)];
+      const deduped = saved ? dropDuplicateCopies(saved) : null;
+      if (deduped) markNotesDeleted(deduped.removedIds);
+      const initial = deduped && deduped.tabs.length > 0 ? deduped.tabs : [makeBlankTab(identity.deviceId)];
       // Whatever was loaded from notes.json is durably on disk already -
       // start every tab clean, not flagged as having unsaved changes.
       initial.forEach((t) => savedSnapshots.current.set(t.id, snapshotOf(t)));
@@ -405,9 +417,32 @@ function App() {
     if (meta) {
       const byId = tabsRef.current.findIndex((t) => t.id === meta.id);
       if (byId !== -1) {
+        const existing = tabsRef.current[byId];
+        if (!existing.filePath) {
+          // A copy of this note that arrived through sync, which never carries
+          // the file link - just focusing it would show whatever that copy
+          // holds (possibly far older than the file) as if it were the file.
+          // Link it, and keep whichever version was edited last; the dirty
+          // marker then shows whether the tab differs from the file on disk.
+          const fromFile: TabData = {
+            ...existing,
+            title,
+            body,
+            favorite: meta.favorite ?? existing.favorite,
+            sketches: meta.sketches ?? existing.sketches,
+            updatedAt: meta.updatedAt ?? existing.updatedAt,
+            filePath: path,
+            titleIsCustom: meta.titleIsCustom ?? true,
+          };
+          const fileIsNewer = (meta.updatedAt ?? 0) >= existing.updatedAt;
+          const linked = fileIsNewer ? fromFile : { ...existing, filePath: path, titleIsCustom: true };
+          savedSnapshots.current.set(linked.id, snapshotOf(fromFile));
+          setTabs((prev) => prev.map((t) => (t.id === linked.id ? linked : t)));
+        }
         setActiveTab(byId);
         return;
       }
+      forgetDeletedNote(meta.id);
     }
     const note: TabData = {
       id: meta?.id ?? "n" + Date.now(),
@@ -540,6 +575,8 @@ function App() {
     if (tabsRef.current.length <= 1) return;
 
     const removeTab = () => {
+      const closing = tabsRef.current[i];
+      if (closing) markNotesDeleted([closing.id]);
       setTabs((prev) => {
         const next = prev.slice();
         next.splice(i, 1);

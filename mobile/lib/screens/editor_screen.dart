@@ -45,6 +45,22 @@ class _EditorScreenState extends State<EditorScreen> {
     super.dispose();
   }
 
+  // Typing keeps the note and the fields equal, so a mismatch means sync
+  // replaced this note with a newer version - show it, instead of letting the
+  // next keystroke write the old text straight back over it.
+  @override
+  void didUpdateWidget(covariant EditorScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    _showExternalChange(_titleController, widget.note.title);
+    _showExternalChange(_bodyController, widget.note.body);
+  }
+
+  void _showExternalChange(TextEditingController controller, String value) {
+    if (controller.text == value) return;
+    final caret = controller.selection.baseOffset.clamp(0, value.length);
+    controller.value = TextEditingValue(text: value, selection: TextSelection.collapsed(offset: caret));
+  }
+
   static const Map<SyncState, Color> _colors = {
     SyncState.synced: Color(0xFF2FAE5A),
     SyncState.syncing: Color(0xFFFF8C3A),

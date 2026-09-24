@@ -364,6 +364,30 @@ export function ContentArea({
     }
   };
 
+  // Typing keeps `body` equal to the DOM text, so a mismatch here means the
+  // note was changed from outside the editor (sync pulled in a newer version).
+  // The div is otherwise uncontrolled, so without this it would keep showing
+  // the old text - and write it straight back over the update on the next
+  // keystroke.
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || getBodyText(el) === body) return;
+    let caret: number | null = null;
+    const sel = window.getSelection();
+    if (document.activeElement === el && sel && sel.rangeCount > 0) {
+      const r = sel.getRangeAt(0);
+      caret = flatOffsetFromPoint(el, r.startContainer, r.startOffset);
+    }
+    setOccurrences([]);
+    setMultiQuery(null);
+    rebuildDom(el, body);
+    if (caret !== null) {
+      const clamped = Math.min(caret, body.length);
+      setSelectionRange(el, clamped, clamped);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [body]);
+
   // Ctrl+D: first press selects the current selection (or the word under the
   // caret, if nothing's selected) and jumps to the next matching occurrence;
   // each press after that adds one more. Typing while several are selected

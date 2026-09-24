@@ -8,6 +8,7 @@ import 'package:path_provider/path_provider.dart';
 
 import '../device_identity.dart';
 import '../models/note.dart';
+import 'bookkeeping_store.dart';
 import 'merge.dart';
 import 'peer_info.dart';
 
@@ -16,13 +17,14 @@ const _syncInterval = Duration(seconds: 25);
 
 class SyncService extends ChangeNotifier {
   final DeviceIdentity own;
-  SyncService(this.own);
+  final BookkeepingStore bookkeeping;
+  SyncService(this.own, this.bookkeeping);
 
   HttpServer? _server;
   BonsoirBroadcast? _broadcast;
   BonsoirDiscovery? _discovery;
   Timer? _syncTimer;
-  Bookkeeping _bookkeeping = {};
+  bool _cycleRunning = false;
 
   final Map<String, PeerInfo> discovered = {};
   final Map<String, String> trusted = {};
@@ -50,7 +52,7 @@ class SyncService extends ChangeNotifier {
   Future<void> start() async {
     try {
       await _loadTrusted();
-      await _loadBookkeeping();
+      await bookkeeping.load();
 
       _server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
       _server!.listen(_handleRequest);
@@ -231,35 +233,42 @@ class SyncService extends ChangeNotifier {
   }
 
   Future<void> runSyncCycle() async {
-    final peers = reachableTrustedPeers.values.toList();
-    if (peers.isEmpty) return;
+    if (_cycleRunning) return;
+    _cycleRunning = true;
+    try {
+      final peers = reachableTrustedPeers.values.toList();
+      final fetched = <String, List<Note>>{};
+      for (final peer in peers) {
+        final resp = await _fetchPeerNotes(peer);
+        if (resp == null) continue;
+        final peerNotesJson = resp['notes'] as List<dynamic>? ?? [];
+        fetched[peer.deviceId] = peerNotesJson.map((n) => Note.fromJson(n as Map<String, dynamic>)).toList();
+      }
+      if (fetched.isEmpty) return;
 
-    var currentNotes = notesProvider();
-    var book = _bookkeeping;
-    var anyChange = false;
-
-    for (final peer in peers) {
-      final resp = await _fetchPeerNotes(peer);
-      if (resp == null) continue;
-      final peerNotesJson = resp['notes'] as List<dynamic>? ?? [];
-      final peerNotes = peerNotesJson.map((n) => Note.fromJson(n as Map<String, dynamic>)).toList();
-
-      final result = mergeFromPeer(
-        myNotes: currentNotes,
-        peerNotes: peerNotes,
-        peerId: peer.deviceId,
-        peerName: peer.deviceName,
-        myDeviceId: own.deviceId,
-        bookkeeping: book,
-      );
-      currentNotes = result.notes;
-      book = result.bookkeeping;
-      if (result.changed) anyChange = true;
+      // No awaits from here until the result is handed back, so the merge
+      // can't interleave with an edit or with the internet sync's own merge.
+      var currentNotes = notesProvider();
+      var book = bookkeeping.value;
+      var anyChange = false;
+      fetched.forEach((peerId, peerNotes) {
+        final result = mergeFromPeer(
+          myNotes: currentNotes,
+          peerNotes: peerNotes,
+          peerId: peerId,
+          myDeviceId: own.deviceId,
+          bookkeeping: book,
+        );
+        currentNotes = result.notes;
+        book = result.bookkeeping;
+        if (result.changed) anyChange = true;
+      });
+      bookkeeping.value = book;
+      if (anyChange) onNotesMerged?.call(currentNotes);
+      await bookkeeping.save();
+    } finally {
+      _cycleRunning = false;
     }
-
-    _bookkeeping = book;
-    await _saveBookkeeping();
-    if (anyChange) onNotesMerged?.call(currentNotes);
   }
 
   Future<File> _trustedFile() async {
@@ -283,32 +292,6 @@ class SyncService extends ChangeNotifier {
     try {
       final file = await _trustedFile();
       await file.writeAsString(jsonEncode(trusted));
-    } catch (_) {
-      // best-effort
-    }
-  }
-
-  Future<File> _bookkeepingFile() async {
-    final dir = await getApplicationDocumentsDirectory();
-    return File('${dir.path}/sync_bookkeeping.json');
-  }
-
-  Future<void> _loadBookkeeping() async {
-    try {
-      final file = await _bookkeepingFile();
-      if (await file.exists()) {
-        final decoded = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-        _bookkeeping = bookkeepingFromJson(decoded);
-      }
-    } catch (_) {
-      // fresh install, no bookkeeping yet
-    }
-  }
-
-  Future<void> _saveBookkeeping() async {
-    try {
-      final file = await _bookkeepingFile();
-      await file.writeAsString(jsonEncode(bookkeepingToJson(_bookkeeping)));
     } catch (_) {
       // best-effort
     }
