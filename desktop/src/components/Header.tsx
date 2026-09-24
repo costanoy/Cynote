@@ -16,6 +16,7 @@ type Props = {
   onCloseFormatMenu: () => void;
   drawingOpen: boolean;
   onToggleDrawing: () => void;
+  settingsOpen: boolean;
   onToggleSettings: () => void;
   onExportTxt: () => void;
   pinned: boolean;
@@ -31,6 +32,7 @@ export function Header({
   onCloseFormatMenu,
   drawingOpen,
   onToggleDrawing,
+  settingsOpen,
   onToggleSettings,
   onExportTxt,
   pinned,
@@ -84,12 +86,16 @@ export function Header({
         <DrawIcon />
       </button>
       <div style={{ flex: 1 }} />
-      <button className="icon-btn" onClick={onToggleSettings} title="Configurações">
+      <button
+        className={"icon-btn" + (settingsOpen ? " active" : "")}
+        onClick={onToggleSettings}
+        title={settingsOpen ? "Fechar configurações" : "Configurações"}
+        aria-pressed={settingsOpen}
+      >
         <SettingsIcon />
       </button>
       <button
         className={"icon-btn" + (pinned ? " active" : "")}
-        style={pinned ? { color: "var(--accent-dark)" } : undefined}
         onClick={onTogglePin}
         title="Fixar janela"
       >

@@ -804,6 +804,7 @@ function App() {
         onCloseFormatMenu={() => setFormatMenuOpen(false)}
         drawingOpen={drawingOpen}
         onToggleDrawing={toggleDrawing}
+        settingsOpen={showSettings}
         onToggleSettings={() => setShowSettings((v) => !v)}
         onExportTxt={exportActiveNoteTxt}
         pinned={pinned}

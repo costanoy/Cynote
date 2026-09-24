@@ -56,6 +56,14 @@ button:focus-visible,
 .icon-btn:hover {
   background: var(--hover-bg);
 }
+.icon-btn.active {
+  color: var(--accent-dark);
+  background: var(--accent-tint);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.icon-btn.active:hover {
+  background: var(--accent-border);
+}
 
 .draw-btn {
   all: unset;
