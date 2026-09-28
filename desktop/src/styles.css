@@ -585,6 +585,7 @@ button:focus-visible,
   flex: 1;
   min-width: 0;
   outline: none;
+  tab-size: 4;
   white-space: pre-wrap;
   word-break: break-word;
   color: var(--content-text-body);

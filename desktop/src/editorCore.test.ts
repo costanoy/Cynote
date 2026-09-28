@@ -141,6 +141,22 @@ describe("line operations", () => {
     expect(show(ed.insertLine(st("ab\ncd", c(4)), "above"))).toBe("ab\n|*\ncd");
   });
 
+  it("Tab types a tab character at every cursor", () => {
+    expect(show(ed.tab(st("ab cd", c(1), c(4))))).toBe("a\t|b c\t|*d");
+    expect(show(ed.tab(st("abcd", sel(1, 3))))).toBe("a\t|*d");
+  });
+
+  it("Tab with a multi-line selection indents those lines, keeping them selected", () => {
+    expect(show(ed.tab(st("ab\ncd\nef", sel(0, 5))))).toBe("[\tab\n\tcd]*\nef");
+  });
+
+  it("Shift+Tab removes one level of indentation", () => {
+    expect(show(ed.outdent(st("\tab\n    cd\nef", sel(0, 10))))).toBe("[ab\ncd]*\nef");
+    expect(show(ed.outdent(st("\t\tab", c(3))))).toBe("\ta|*b");
+    const plain = st("ab", c(1));
+    expect(ed.outdent(plain)).toBe(plain);
+  });
+
   it("Ctrl+L selects the line, and extends on repeat", () => {
     let s = st("ab\ncd\nef", c(4));
     s = ed.selectLine(s);

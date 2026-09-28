@@ -638,14 +638,18 @@ export function ContentArea({
       else redo();
       return;
     }
-    // Tab types a single space instead of hopping focus out of the note.
+    // Tab inserts a real tab (the browser's default would move focus out of
+    // the note, onto the next button); across several lines it indents them.
     if (key === "Tab" && !ctrl && !e.altKey) {
       e.preventDefault();
-      if (multi) applyState(core.insertText(currentState(), " "), { record: "space" });
-      else {
+      const st = currentState();
+      if (e.shiftKey) applyState(core.outdent(st));
+      else if (multi || st.sels.some((s) => core.lineStart(st.body, core.lo(s)) !== core.lineStart(st.body, core.hi(s)))) {
+        applyState(core.tab(st));
+      } else {
         // execCommand doesn't fire beforeinput, so snapshot for undo here.
-        mem.history.record(currentState(), "space");
-        document.execCommand("insertText", false, " ");
+        mem.history.record(st, "space");
+        document.execCommand("insertText", false, "\t");
       }
       return;
     }

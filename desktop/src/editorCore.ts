@@ -440,6 +440,47 @@ export function insertLine(st: EditorState, where: "below" | "above"): EditorSta
   });
 }
 
+const spansLines = (body: string, s: Sel) => lineStart(body, lo(s)) !== lineStart(body, hi(s));
+
+/** Tab: a tab character at each cursor - or, when a selection covers more
+ * than one line, indents every line it touches (VS Code / Notepad++). */
+export function tab(st: EditorState): EditorState {
+  if (!st.sels.some((s) => spansLines(st.body, s))) return insertText(st, "\t");
+  return withLines(st, (lines, cursors, blocks) => {
+    for (const b of blocks) for (let l = b.start; l <= b.end; l++) lines[l] = "\t" + lines[l];
+    const inBlock = (line: number) => blocks.some((b) => line >= b.start && line <= b.end);
+    cursors.forEach((c) => {
+      const selecting = c.a.line !== c.h.line || c.a.col !== c.h.col;
+      for (const p of [c.a, c.h]) {
+        // A selection starting at column 0 keeps starting there, so whole
+        // lines stay fully selected after indenting.
+        if (inBlock(p.line) && !(selecting && p.col === 0)) p.col += 1;
+      }
+    });
+  });
+}
+
+/** Shift+Tab: removes one level of indentation (a tab, or up to 4 spaces)
+ * from every line the selections touch. */
+export function outdent(st: EditorState): EditorState {
+  return withLines(st, (lines, cursors, blocks) => {
+    const removed = new Map<number, number>();
+    for (const b of blocks) {
+      for (let l = b.start; l <= b.end; l++) {
+        const n = lines[l].startsWith("\t") ? 1 : (lines[l].match(/^ {1,4}/)?.[0].length ?? 0);
+        if (n > 0) {
+          lines[l] = lines[l].slice(n);
+          removed.set(l, n);
+        }
+      }
+    }
+    if (removed.size === 0) return false;
+    eachPos(cursors, (p) => {
+      p.col = Math.max(0, p.col - (removed.get(p.line) ?? 0));
+    });
+  });
+}
+
 /** Ctrl+L: select whole lines; pressing again extends by one more line. */
 export function selectLine(st: EditorState): EditorState {
   const { body } = st;
