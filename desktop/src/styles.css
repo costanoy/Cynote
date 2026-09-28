@@ -560,6 +560,7 @@ button:focus-visible,
   background: var(--reading-bg);
 }
 .note-body-row {
+  position: relative;
   display: flex;
   align-items: stretch;
   min-height: 100%;
@@ -588,12 +589,140 @@ button:focus-visible,
   word-break: break-word;
   color: var(--content-text-body);
 }
-/* Ctrl+D multi-select: every matched occurrence except the last (which carries
-   the real caret/selection) is faked with this background, since Chromium only
-   supports one real Selection range at a time. */
-.occurrence-highlight {
+/* Multiple cursors: Chromium has a single real selection/caret, so every
+   cursor but the primary is painted - selections through the CSS Custom
+   Highlight API (no DOM changes), carets as overlay bars. */
+::highlight(cy-multi) {
+  background-color: #ff8c3a33;
+}
+.fake-caret {
+  position: absolute;
+  width: 1.5px;
+  margin-left: -0.75px;
+  background: var(--content-text-body);
+  pointer-events: none;
+  animation: cy-caret-blink 1.06s steps(1) infinite;
+}
+.note-body:not(:focus) ~ .fake-caret {
+  display: none;
+}
+@keyframes cy-caret-blink {
+  50% {
+    opacity: 0;
+  }
+}
+::highlight(cy-find) {
+  background-color: rgba(255, 196, 0, 0.25);
+}
+::highlight(cy-find-current) {
+  background-color: rgba(255, 140, 58, 0.6);
+  color: #fff;
+}
+
+/* Find / replace / go-to-line bar, pinned to the top-right of the note. */
+.find-anchor {
+  position: sticky;
+  top: 8px;
+  height: 0;
+  z-index: 6;
+}
+.find-bar {
+  position: absolute;
+  right: 0;
+  top: -8px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px;
+  border-radius: 10px;
+  background: var(--menu-bg);
+  border: 1px solid var(--panel-border);
+  box-shadow: var(--shadow);
+  font-size: 12px;
+  line-height: 1.2;
+  letter-spacing: normal;
+  max-width: calc(100% - 8px);
+}
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.find-input {
+  width: 190px;
+  min-width: 60px;
+  flex: 1 1 auto;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px 8px;
+  border-radius: 6px;
+  border: 1px solid var(--panel-border);
+  background: var(--panel-bg);
+  color: var(--text);
+}
+.find-input:focus {
+  outline: none;
+  border-color: var(--accent-border);
+}
+.find-btn {
+  all: unset;
+  cursor: pointer;
+  flex: none;
+  min-width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--muted-text);
+  font-size: 11px;
+  font-weight: 700;
+}
+.find-btn:hover:not(:disabled) {
+  background: var(--hover-bg);
+  color: var(--text);
+}
+.find-btn:disabled {
+  cursor: default;
+  opacity: 0.35;
+}
+.find-btn.active {
+  color: var(--accent-dark);
   background: var(--accent-tint);
-  border-radius: 2px;
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.find-indent {
+  flex: none;
+  width: 22px;
+}
+.find-status {
+  flex: none;
+  min-width: 64px;
+  text-align: center;
+  color: var(--muted-text);
+  font-size: 11px;
+  white-space: nowrap;
+}
+.find-status.none {
+  color: #e0432c;
+}
+.find-text-btn {
+  all: unset;
+  cursor: pointer;
+  flex: none;
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--accent-dark);
+  background: var(--accent-tint);
+}
+.find-text-btn:hover:not(:disabled) {
+  background: var(--accent-border);
+}
+.find-text-btn:disabled {
+  cursor: default;
+  opacity: 0.4;
 }
 /* The `!important` guards against Chromium inserting a fresh <div> with its
    own inline font styling when you press Enter in a contentEditable - without

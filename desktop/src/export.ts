@@ -24,6 +24,18 @@ export async function saveNoteAsCynote(tab: TabData): Promise<string | null> {
   return path;
 }
 
+/** Plain-text copy of the note (no Cynote metadata), for opening anywhere else. */
+export async function exportNoteAsTxt(tab: TabData): Promise<void> {
+  if (!isTauri()) return;
+  const path = await save({
+    defaultPath: `${safeFileName(tab.title)}.txt`,
+    filters: [{ name: "Texto", extensions: ["txt"] }],
+  });
+  if (!path) return;
+  // Windows line endings, so the file reads right in any Windows editor.
+  await invoke("export_note_txt", { path, contents: tab.body.replace(/\n/g, "\r\n") });
+}
+
 /** Notepad-style "Save": silently overwrites a path a previous Save/Save As already established. */
 export async function writeCynoteFile(path: string, tab: TabData): Promise<void> {
   if (!isTauri()) return;

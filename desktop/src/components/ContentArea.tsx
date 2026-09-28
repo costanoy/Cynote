@@ -1,116 +1,22 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { NoteSketch } from "../types";
 import { DrawIcon, TrashIcon } from "../icons";
+import * as core from "../editorCore";
+import type { EditorState, Sel } from "../editorCore";
+import { FindBar, type FindMode } from "./FindBar";
 
 const MIN_SKETCH_SIZE = 40;
 const MAX_SKETCH_SIZE = 480;
 
-/** A flat [start, end) character range into the note's body string. */
-type Occurrence = { start: number; end: number };
+type EditKind = Parameters<core.History["record"]>[1];
 
-function isWordChar(c: string): boolean {
-  return /[\p{L}\p{N}_]/u.test(c);
-}
+// ------------------------------------------------ DOM <-> text offsets
+//
+// The editable div always holds one top-level <div> per line (see rebuildDom),
+// so a flat character offset into the note's text maps onto (line div, offset
+// within it) and back.
 
-/** Expands a collapsed caret position out to the word surrounding it, matching what Ctrl+D
- * selects first in VS Code/Sublime when nothing is already selected. */
-function wordRangeAt(text: string, pos: number): Occurrence | null {
-  let start = pos;
-  let end = pos;
-  while (start > 0 && isWordChar(text[start - 1])) start--;
-  while (end < text.length && isWordChar(text[end])) end++;
-  return start < end ? { start, end } : null;
-}
-
-/** Next match of `query` after `from`, wrapping around the document, skipping anything
- * already in `exclude` (so repeated Ctrl+D presses keep advancing instead of re-picking). */
-function findNextOccurrence(body: string, query: string, from: number, exclude: Occurrence[]): Occurrence | null {
-  if (!query) return null;
-  const excluded = new Set(exclude.map((o) => o.start));
-  const search = (start: number, end: number): Occurrence | null => {
-    let idx = body.indexOf(query, start);
-    while (idx !== -1 && idx < end) {
-      if (!excluded.has(idx)) return { start: idx, end: idx + query.length };
-      idx = body.indexOf(query, idx + 1);
-    }
-    return null;
-  };
-  return search(from, body.length) ?? search(0, from);
-}
-
-/** Smallest single edit that turns `oldStr` into `newStr` - valid as long as only one
- * contiguous region actually changed, which holds for a single keystroke or paste. */
-function diffEdit(oldStr: string, newStr: string): { start: number; oldEnd: number; newText: string } | null {
-  if (oldStr === newStr) return null;
-  let prefix = 0;
-  const maxPrefix = Math.min(oldStr.length, newStr.length);
-  while (prefix < maxPrefix && oldStr[prefix] === newStr[prefix]) prefix++;
-  let oldEnd = oldStr.length;
-  let newEnd = newStr.length;
-  while (oldEnd > prefix && newEnd > prefix && oldStr[oldEnd - 1] === newStr[newEnd - 1]) {
-    oldEnd--;
-    newEnd--;
-  }
-  return { start: prefix, oldEnd, newText: newStr.slice(prefix, newEnd) };
-}
-
-/** Replays the edit the browser just made at one occurrence onto every other tracked
- * occurrence, working right-to-left so earlier offsets stay valid while splicing. This is
- * what makes typing while multiple matches are selected edit all of them at once. */
-function applyMultiEdit(
-  oldBody: string,
-  newBody: string,
-  occs: Occurrence[]
-): { patchedBody: string; newOccurrences: Occurrence[]; primaryIndex: number } | null {
-  const diff = diffEdit(oldBody, newBody);
-  if (!diff) return null;
-  const primaryIndex = occs.findIndex((o) => diff.start >= o.start && diff.oldEnd <= o.end);
-  if (primaryIndex === -1) return null;
-
-  const edited = occs[primaryIndex];
-  const relStart = diff.start - edited.start;
-  const relEnd = diff.oldEnd - edited.start;
-  const oldLen = edited.end - edited.start;
-  const newLen = oldLen - (relEnd - relStart) + diff.newText.length;
-  const delta = newLen - oldLen;
-
-  // Every occurrence's position in newBody's coordinate space - newBody
-  // already reflects the primary edit, so anything after it has already
-  // shifted by delta there.
-  const mapped = occs.map((o, i) => ({
-    i,
-    start: i === primaryIndex ? edited.start : o.start > edited.start ? o.start + delta : o.start,
-  }));
-
-  // Splice the same edit into every OTHER occurrence, right-to-left so each
-  // splice target is still valid for the ones still waiting their turn.
-  let patched = newBody;
-  for (const { start } of [...mapped].filter((m) => m.i !== primaryIndex).sort((a, b) => b.start - a.start)) {
-    patched = patched.slice(0, start + relStart) + diff.newText + patched.slice(start + relEnd);
-  }
-
-  // Final positions: every occurrence has the same length before and after
-  // (they're all copies of the same matched text), so the k-th occurrence
-  // left to right simply shifts by k * delta from the ones already spliced
-  // in ahead of it - unlike the splicing above, this can't be done
-  // right-to-left, since each occurrence's own final position depends on
-  // every occurrence to ITS left, not the one after it.
-  const finalStart = new Map<number, number>();
-  [...mapped]
-    .sort((a, b) => a.start - b.start)
-    .forEach(({ i, start }, k) => finalStart.set(i, start + k * delta));
-
-  const newOccurrences = occs.map((_, i) => {
-    const start = finalStart.get(i)!;
-    return { start, end: start + newLen };
-  });
-
-  return { patchedBody: patched, newOccurrences, primaryIndex };
-}
-
-/** Finds the text node + offset `localOffset` characters into `container`, walking through
- * any nested highlight <span>s - needed since a line's content isn't always one plain text
- * node once occurrence highlights are in play. */
+/** Finds the text node + offset `localOffset` characters into `container`. */
 function pointAtLocalOffset(container: Node, localOffset: number): { node: Node; offset: number } {
   let remaining = localOffset;
   const walker = document.createTreeWalker(container, NodeFilter.SHOW_TEXT);
@@ -142,10 +48,18 @@ function domPointFromFlatOffset(el: HTMLElement, pos: number): { node: Node; off
   return last.nodeType === Node.TEXT_NODE ? { node: last, offset: lastLen } : pointAtLocalOffset(last, lastLen);
 }
 
-/** Inverse of domPointFromFlatOffset: how far (node, offset) is into the document's flat text. */
+/** Inverse of domPointFromFlatOffset. */
 function flatOffsetFromPoint(el: HTMLElement, node: Node, offset: number): number {
+  const children = Array.from(el.childNodes);
+  if (node === el) {
+    // Caret between line divs (the browser does this for empty documents
+    // and after some edits): offset counts whole lines.
+    let total = 0;
+    for (let i = 0; i < offset && i < children.length; i++) total += (children[i].textContent ?? "").length + 1;
+    return total;
+  }
   let total = 0;
-  for (const child of Array.from(el.childNodes)) {
+  for (const child of children) {
     if (child === node && node.nodeType === Node.TEXT_NODE) return total + offset;
     if (child.nodeType === Node.ELEMENT_NODE && child.contains(node)) {
       const range = document.createRange();
@@ -158,8 +72,7 @@ function flatOffsetFromPoint(el: HTMLElement, node: Node, offset: number): numbe
   return total;
 }
 
-/** Which line (1-based) and column (1-based) the caret currently sits on, read straight
- * from the DOM so it stays right even when React's `body` prop is a keystroke behind. */
+/** Which line (1-based) and column (1-based) the caret currently sits on. */
 function caretLineCol(el: HTMLElement): { line: number; col: number } | null {
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0) return null;
@@ -176,60 +89,127 @@ function caretLineCol(el: HTMLElement): { line: number; col: number } | null {
     range.setEnd(focusNode, focusOffset);
     return { line: i + 1, col: range.toString().length + 1 };
   }
-
-  // Caret sitting directly on the editor itself (empty note, or between lines).
   if (focusNode === el) return { line: Math.min(focusOffset + 1, Math.max(children.length, 1)), col: 1 };
   return null;
 }
 
-function setSelectionRange(el: HTMLElement, start: number, end: number) {
-  const sel = window.getSelection();
-  if (!sel) return;
-  const a = domPointFromFlatOffset(el, start);
-  const b = domPointFromFlatOffset(el, end);
+// el.innerText miscounts blank lines in this browser: an empty <div><br></div>
+// sometimes adds an extra "\n" beyond its block boundary, sometimes drops its
+// line entirely - each reopen-and-edit cycle could compound the drift into a
+// growing gap of "phantom" blank lines. Serialize from the DOM structure
+// itself instead (one line per top-level child), which has no such ambiguity.
+function readBody(el: HTMLElement): string {
+  const lines: string[] = [];
+  let current = "";
+  let hasCurrent = false;
+  for (const child of Array.from(el.childNodes)) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      current += child.textContent ?? "";
+      hasCurrent = true;
+    } else {
+      if (hasCurrent) {
+        lines.push(current);
+        current = "";
+        hasCurrent = false;
+      }
+      lines.push(child.textContent ?? "");
+    }
+  }
+  if (hasCurrent || lines.length === 0) lines.push(current);
+  return lines.join("\n");
+}
+
+function rebuildDom(el: HTMLElement, text: string) {
+  el.innerHTML = "";
+  for (const line of text.split("\n")) {
+    const div = document.createElement("div");
+    div.appendChild(line ? document.createTextNode(line) : document.createElement("br"));
+    el.appendChild(div);
+  }
+}
+
+function domRange(el: HTMLElement, from: number, to: number): Range {
+  const a = domPointFromFlatOffset(el, from);
+  const b = domPointFromFlatOffset(el, to);
   const range = document.createRange();
   range.setStart(a.node, a.offset);
   range.setEnd(b.node, b.offset);
-  sel.removeAllRanges();
-  sel.addRange(range);
+  return range;
 }
 
-/** Builds one line <div>'s children, wrapping any `highlights` that fall inside it in a
- * <span> so multiple occurrences can be shown selected at once - Chromium's Selection API
- * only supports one real range, so the extras are faked with background-colored spans. */
-function buildLineChildren(lineText: string, lineStart: number, highlights: Occurrence[]): Node[] {
-  if (!lineText) return [document.createElement("br")];
-  const local = highlights
-    .map((r) => ({ start: Math.max(0, r.start - lineStart), end: Math.min(lineText.length, r.end - lineStart) }))
-    .filter((r) => r.start < r.end)
-    .sort((a, b) => a.start - b.start);
-
-  const nodes: Node[] = [];
-  let pos = 0;
-  for (const r of local) {
-    if (r.start > pos) nodes.push(document.createTextNode(lineText.slice(pos, r.start)));
-    const span = document.createElement("span");
-    span.className = "occurrence-highlight";
-    span.textContent = lineText.slice(r.start, r.end);
-    nodes.push(span);
-    pos = r.end;
-  }
-  if (pos < lineText.length) nodes.push(document.createTextNode(lineText.slice(pos)));
-  return nodes;
+function setDomSelection(el: HTMLElement, s: Sel) {
+  const sel = window.getSelection();
+  if (!sel) return;
+  const a = domPointFromFlatOffset(el, s.anchor);
+  const h = domPointFromFlatOffset(el, s.head);
+  sel.setBaseAndExtent(a.node, a.offset, h.node, h.offset);
 }
 
-function rebuildDom(el: HTMLElement, text: string, highlights: Occurrence[] = []) {
-  el.innerHTML = "";
-  let offset = 0;
-  for (const line of text.split("\n")) {
-    const div = document.createElement("div");
-    for (const node of buildLineChildren(line, offset, highlights)) div.appendChild(node);
-    el.appendChild(div);
-    offset += line.length + 1;
+/** Screen box of a caret at `pos` - an empty line has no text to measure, so
+ * fall back to the line's own box. */
+function caretRect(el: HTMLElement, pos: number): DOMRect {
+  const p = domPointFromFlatOffset(el, pos);
+  const range = document.createRange();
+  range.setStart(p.node, p.offset);
+  range.collapse(true);
+  const rects = range.getClientRects();
+  if (rects.length > 0) return rects[rects.length - 1];
+  const lineEl = p.node.nodeType === Node.ELEMENT_NODE ? (p.node as Element) : p.node.parentElement;
+  return (lineEl ?? el).getBoundingClientRect();
+}
+
+/** Paints extra selections / search matches through the CSS Custom Highlight
+ * API, which styles text ranges without touching the DOM - so the note's text
+ * structure (and with it typing and spellcheck) is never disturbed by it. */
+function setHighlight(name: string, ranges: Range[]) {
+  if (typeof CSS === "undefined" || !("highlights" in CSS)) return;
+  if (ranges.length === 0) CSS.highlights.delete(name);
+  else CSS.highlights.set(name, new Highlight(...ranges));
+}
+
+// -------------------------------------------------- per-note memory
+//
+// Switching tabs remounts the editor; undo history, cursors and scroll
+// position live here so they survive that, the way they do per file in
+// Notepad and VS Code.
+
+interface NoteMemory {
+  history: core.History;
+  sels: Sel[] | null;
+  scrollTop: number | null;
+}
+const noteMemory = new Map<string, NoteMemory>();
+function memoryFor(id: string): NoteMemory {
+  let m = noteMemory.get(id);
+  if (!m) {
+    m = { history: new core.History(), sels: null, scrollTop: null };
+    noteMemory.set(id, m);
   }
+  return m;
+}
+
+type Motion = core.Motion;
+const MOTIONS: Record<string, (ctrl: boolean) => Motion> = {
+  ArrowLeft: (ctrl) => (ctrl ? "wordLeft" : "left"),
+  ArrowRight: (ctrl) => (ctrl ? "wordRight" : "right"),
+  ArrowUp: () => "up",
+  ArrowDown: () => "down",
+  Home: (ctrl) => (ctrl ? "docStart" : "home"),
+  End: (ctrl) => (ctrl ? "docEnd" : "end"),
+};
+const NAV_KEYS = new Set([...Object.keys(MOTIONS), "PageUp", "PageDown"]);
+
+interface FindState {
+  mode: FindMode;
+  query: string;
+  replacement: string;
+  caseSensitive: boolean;
+  index: number;
+  focusToken: number;
 }
 
 type Props = {
+  noteId: string;
   body: string;
   sketches: NoteSketch[];
   spellCheck: boolean;
@@ -242,6 +222,7 @@ type Props = {
 };
 
 export function ContentArea({
+  noteId,
   body,
   sketches,
   spellCheck,
@@ -253,217 +234,494 @@ export function ContentArea({
   onDeleteSketch,
 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
-  // Ctrl+D multi-select: every occurrence currently "selected" (VS Code/Sublime
-  // style). The last one always carries the real native Selection - the rest are
-  // faked with .occurrence-highlight spans (see buildLineChildren above), since
-  // Chromium doesn't support more than one real selection range.
-  const [occurrences, setOccurrences] = useState<Occurrence[]>([]);
-  const [multiQuery, setMultiQuery] = useState<string | null>(null);
+  const rowRef = useRef<HTMLDivElement>(null);
+  const mem = memoryFor(noteId);
+  // The text the editor currently shows - kept equal to the DOM, and ahead of
+  // the `body` prop by up to one render.
+  const bodyRef = useRef(body);
+  // Every selection while several cursors are active (primary last), or []
+  // when there's just the browser's own single selection.
+  const multiRef = useRef<Sel[]>([]);
+  const [multiSels, setMultiSels] = useState<Sel[]>([]);
+  const [caretBoxes, setCaretBoxes] = useState<{ left: number; top: number; height: number }[]>([]);
+  const composingFrom = useRef<EditorState | null>(null);
+  const [find, setFind] = useState<FindState | null>(null);
+  const findOrigin = useRef(0);
 
-  // Set the initial text once on mount only. The div is intentionally left
-  // uncontrolled after that — React must never touch its text content again,
-  // or the caret resets to the start on every keystroke (looks like typing
-  // "backwards" and stuck on the first line).
-  //
-  // Each line gets its own top-level <div> (matching what Chromium itself
-  // creates when the user presses Enter) instead of relying on the innerText
-  // setter's own line-break handling, which can produce a different, less
-  // predictable structure. The line-gutter's click handler depends on this
-  // one-line-per-top-level-child shape to know which line was clicked.
-  useEffect(() => {
+  const scroller = () => (ref.current?.closest(".content-wrap") as HTMLElement | null) ?? null;
+
+  const readSels = (): Sel[] => {
+    if (multiRef.current.length > 1) return multiRef.current;
+    const el = ref.current;
+    const sel = window.getSelection();
+    const len = bodyRef.current.length;
+    const clamp = (n: number) => Math.max(0, Math.min(len, n));
+    if (el && sel && sel.rangeCount > 0 && sel.anchorNode && sel.focusNode && el.contains(sel.anchorNode) && el.contains(sel.focusNode)) {
+      return [
+        {
+          anchor: clamp(flatOffsetFromPoint(el, sel.anchorNode, sel.anchorOffset)),
+          head: clamp(flatOffsetFromPoint(el, sel.focusNode, sel.focusOffset)),
+        },
+      ];
+    }
+    const saved = mem.sels?.[mem.sels.length - 1];
+    return [saved ? { anchor: clamp(saved.anchor), head: clamp(saved.head) } : core.caret(len)];
+  };
+
+  const currentState = (): EditorState => ({ body: bodyRef.current, sels: readSels() });
+
+  const setMulti = (sels: Sel[]) => {
+    multiRef.current = sels;
+    setMultiSels(sels);
+  };
+
+  const scrollToPos = (pos: number) => {
+    const el = ref.current;
+    const sc = scroller();
+    if (!el || !sc) return;
+    const r = caretRect(el, pos);
+    const box = sc.getBoundingClientRect();
+    const margin = Math.min(48, box.height / 4);
+    if (r.top < box.top + margin) sc.scrollTop -= box.top + margin - r.top;
+    else if (r.bottom > box.bottom - margin) sc.scrollTop += r.bottom - (box.bottom - margin);
+  };
+
+  const showSels = (sels: Sel[], opts: { scroll?: boolean; focus?: boolean } = {}) => {
+    const el = ref.current;
+    if (!el || sels.length === 0) return;
+    setMulti(sels.length > 1 ? sels : []);
+    if (opts.focus !== false && document.activeElement !== el) el.focus({ preventScroll: true });
+    setDomSelection(el, sels[sels.length - 1]);
+    mem.sels = sels;
+    if (opts.scroll !== false) scrollToPos(sels[sels.length - 1].head);
+  };
+
+  /** The single way every non-native edit reaches the screen: text, cursors, undo and the app. */
+  const applyState = (
+    next: EditorState,
+    opts: { record?: EditKind | false; scroll?: boolean; focus?: boolean } = {}
+  ) => {
     const el = ref.current;
     if (!el) return;
-    rebuildDom(el, body);
-    el.focus();
-    // Land the caret at the end of any existing text rather than the start,
-    // so switching tabs (or opening a fresh blank one) is ready to type into.
-    const selection = window.getSelection();
-    if (selection) {
-      const range = document.createRange();
-      range.selectNodeContents(el);
-      range.collapse(false);
-      selection.removeAllRanges();
-      selection.addRange(range);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const before = currentState();
+    const changed = next.body !== before.body;
+    if (changed && opts.record !== false) mem.history.record(before, opts.record ?? "edit");
+    if (readBody(el) !== next.body) rebuildDom(el, next.body);
+    bodyRef.current = next.body;
+    showSels(next.sels, opts);
+    if (changed) onBodyInput(next.body);
+  };
 
-  // selectionchange is the only event that catches every way the caret moves -
-  // typing, arrow keys, clicking, selecting - so the Ln/Col readout tracks all
-  // of them from one place.
-  useEffect(() => {
-    const report = () => {
-      const el = ref.current;
-      if (!el) return;
-      const pos = caretLineCol(el);
-      if (pos) onCaretChange(pos.line, pos.col);
+  const undo = () => {
+    const prev = mem.history.undo(currentState());
+    if (prev) applyState(core.clampState(prev), { record: false });
+  };
+  const redo = () => {
+    const next = mem.history.redo(currentState());
+    if (next) applyState(core.clampState(next), { record: false });
+  };
+
+  const paintExtras = () => {
+    const el = ref.current;
+    const row = rowRef.current;
+    if (!el || !row) return;
+    const focused = document.activeElement === el;
+    const all = multiRef.current.length > 1 ? multiRef.current : mem.sels ?? [];
+    const extras = multiRef.current.length > 1 ? multiRef.current.slice(0, -1) : [];
+    // The browser stops drawing the real selection once focus leaves the
+    // editor (e.g. into the find box) - keep every selection visible then.
+    const painted = focused ? extras : all;
+    const len = bodyRef.current.length;
+    setHighlight(
+      "cy-multi",
+      painted
+        .filter((s) => !core.isEmpty(s) && core.hi(s) <= len)
+        .map((s) => domRange(el, core.lo(s), core.hi(s)))
+    );
+    const rowBox = row.getBoundingClientRect();
+    setCaretBoxes(
+      extras.map((s) => {
+        const r = caretRect(el, s.head);
+        return { left: r.left - rowBox.left, top: r.top - rowBox.top, height: r.height };
+      })
+    );
+  };
+
+  useLayoutEffect(paintExtras, [multiSels, body]);
+
+  // Mount: fill the editor once, then restore where this note was left.
+  useLayoutEffect(() => {
+    const el = ref.current!;
+    rebuildDom(el, body);
+    bodyRef.current = body;
+    const sc = scroller();
+    const restored = mem.sels ? core.clampState({ body, sels: mem.sels }).sels : [core.caret(body.length)];
+    showSels(restored, { scroll: false });
+    if (sc) sc.scrollTop = mem.scrollTop ?? 0;
+
+    const onScroll = () => {
+      if (sc) mem.scrollTop = sc.scrollTop;
     };
-    report();
-    document.addEventListener("selectionchange", report);
-    return () => document.removeEventListener("selectionchange", report);
+    sc?.addEventListener("scroll", onScroll);
+    const resize = new ResizeObserver(() => paintExtras());
+    resize.observe(el);
+    return () => {
+      if (sc) mem.scrollTop = sc.scrollTop;
+      sc?.removeEventListener("scroll", onScroll);
+      resize.disconnect();
+      ["cy-multi", "cy-find", "cy-find-current"].forEach((n) => setHighlight(n, []));
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Strip whatever formatting the source had (fonts, colors, bold, links...)
-  // so pasted text always matches the note's own style, instead of dragging
-  // in a webpage's or Word doc's original look.
-  const onPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const text = e.clipboardData.getData("text/plain");
-    document.execCommand("insertText", false, text);
-  };
-
-  // el.innerText miscounts blank lines in this browser: an empty
-  // <div><br></div> sometimes adds an extra "\n" beyond its block boundary,
-  // sometimes drops its line entirely, and it's worse with consecutive blank
-  // lines - each reopen-and-edit cycle could compound the drift into a
-  // growing gap of "phantom" blank lines nobody typed. Serialize from the
-  // DOM structure itself instead (one line per top-level child, matching
-  // what the mount effect above builds and what Enter/paste produce), which
-  // has no such ambiguity.
-  const getBodyText = (el: HTMLElement): string => {
-    const lines: string[] = [];
-    let current = "";
-    let hasCurrent = false;
-    for (const child of Array.from(el.childNodes)) {
-      if (child.nodeType === Node.TEXT_NODE) {
-        current += child.textContent ?? "";
-        hasCurrent = true;
-      } else {
-        if (hasCurrent) {
-          lines.push(current);
-          current = "";
-          hasCurrent = false;
-        }
-        lines.push(child.textContent ?? "");
-      }
-    }
-    if (hasCurrent || lines.length === 0) lines.push(current);
-    return lines.join("\n");
-  };
-
-  // Drops the fake multi-select highlights and, unless the caller already knows
-  // where the caret should land (e.g. a click that's about to place it itself),
-  // keeps it wherever it already was.
-  const clearMultiSelect = () => {
-    if (occurrences.length === 0) return;
-    const el = ref.current;
-    let caret: number | null = null;
-    if (el) {
-      const sel = window.getSelection();
-      if (sel && sel.rangeCount > 0) {
-        const r = sel.getRangeAt(0);
-        caret = flatOffsetFromPoint(el, r.startContainer, r.startOffset);
-      }
-    }
-    setOccurrences([]);
-    setMultiQuery(null);
-    if (el) {
-      rebuildDom(el, body);
-      if (caret !== null) setSelectionRange(el, caret, caret);
-    }
-  };
-
-  // Typing keeps `body` equal to the DOM text, so a mismatch here means the
-  // note was changed from outside the editor (sync pulled in a newer version).
-  // The div is otherwise uncontrolled, so without this it would keep showing
-  // the old text - and write it straight back over the update on the next
-  // keystroke.
+  // Typing keeps `body` equal to the editor's text, so a mismatch means the
+  // note changed from outside (sync pulled in a newer version). Show it - the
+  // div is otherwise uncontrolled and would keep the old text, then write it
+  // straight back over the update on the next keystroke - and keep it undoable.
   useEffect(() => {
     const el = ref.current;
-    if (!el || getBodyText(el) === body) return;
-    let caret: number | null = null;
-    const sel = window.getSelection();
-    if (document.activeElement === el && sel && sel.rangeCount > 0) {
-      const r = sel.getRangeAt(0);
-      caret = flatOffsetFromPoint(el, r.startContainer, r.startOffset);
+    if (!el || body === bodyRef.current) return;
+    if (readBody(el) === body) {
+      bodyRef.current = body;
+      return;
     }
-    setOccurrences([]);
-    setMultiQuery(null);
+    const before = currentState();
+    mem.history.record(before, "external");
+    const hadFocus = document.activeElement === el;
     rebuildDom(el, body);
-    if (caret !== null) {
-      const clamped = Math.min(caret, body.length);
-      setSelectionRange(el, clamped, clamped);
+    bodyRef.current = body;
+    const kept = core.clampState({ body, sels: [before.sels[before.sels.length - 1]] }).sels;
+    if (hadFocus) showSels(kept, { scroll: false });
+    else {
+      setMulti([]);
+      mem.sels = kept;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [body]);
 
-  // Ctrl+D: first press selects the current selection (or the word under the
-  // caret, if nothing's selected) and jumps to the next matching occurrence;
-  // each press after that adds one more. Typing while several are selected
-  // (see onInput below) edits all of them at once.
-  const onCtrlD = () => {
+  // selectionchange catches every way the caret moves - typing, arrows,
+  // clicks - so the Ln/Col readout and the remembered cursor track it here.
+  useEffect(() => {
+    const onSelectionChange = () => {
+      const el = ref.current;
+      if (!el) return;
+      const pos = caretLineCol(el);
+      if (pos) onCaretChange(pos.line, pos.col);
+      const s = window.getSelection();
+      if (multiRef.current.length <= 1 && s?.anchorNode && el.contains(s.anchorNode)) mem.sels = readSels();
+    };
+    onSelectionChange();
+    document.addEventListener("selectionchange", onSelectionChange);
+    return () => document.removeEventListener("selectionchange", onSelectionChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ----------------------------------------------------------- find
+
+  const matches = useMemo(
+    () => (find && find.mode !== "goto" ? core.findAll(body, find.query, find.caseSensitive) : []),
+    [body, find?.query, find?.caseSensitive, find?.mode]
+  );
+  const currentMatch = find && matches.length > 0 ? Math.min(find.index, matches.length - 1) : -1;
+
+  const firstMatchFrom = (text: string, query: string, caseSensitive: boolean, from: number) => {
+    const found = core.findAll(text, query, caseSensitive).findIndex((m) => m.anchor >= from);
+    return found === -1 ? 0 : found;
+  };
+
+  useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const sel = window.getSelection();
-    if (!sel || sel.rangeCount === 0) return;
-    const range = sel.getRangeAt(0);
-    const a = flatOffsetFromPoint(el, range.startContainer, range.startOffset);
-    const b = flatOffsetFromPoint(el, range.endContainer, range.endOffset);
-    const selStart = Math.min(a, b);
-    const selEnd = Math.max(a, b);
-
-    if (occurrences.length === 0) {
-      const base = selStart !== selEnd ? { start: selStart, end: selEnd } : wordRangeAt(body, selStart);
-      if (!base) return;
-      const query = body.slice(base.start, base.end);
-      if (!query) return;
-      const next = findNextOccurrence(body, query, base.end, [base]);
-      const all = next ? [base, next] : [base];
-      setMultiQuery(query);
-      setOccurrences(all);
-      rebuildDom(el, body, all.slice(0, -1));
-      const focus = all[all.length - 1];
-      setSelectionRange(el, focus.start, focus.end);
-    } else if (multiQuery) {
-      const last = occurrences[occurrences.length - 1];
-      const next = findNextOccurrence(body, multiQuery, last.end, occurrences);
-      if (!next) return;
-      const all = [...occurrences, next];
-      setOccurrences(all);
-      rebuildDom(el, body, all.slice(0, -1));
-      setSelectionRange(el, next.start, next.end);
+    if (currentMatch === -1) {
+      setHighlight("cy-find", []);
+      setHighlight("cy-find-current", []);
+      return;
     }
+    setHighlight(
+      "cy-find",
+      matches.filter((_, i) => i !== currentMatch).map((m) => domRange(el, m.anchor, m.head))
+    );
+    const cur = matches[currentMatch];
+    setHighlight("cy-find-current", [domRange(el, cur.anchor, cur.head)]);
+    scrollToPos(cur.anchor);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [matches, currentMatch]);
+
+  const openFind = (mode: FindMode) => {
+    const st = currentState();
+    const p = core.primary(st);
+    const selected = core.isEmpty(p) ? "" : st.body.slice(core.lo(p), core.hi(p));
+    findOrigin.current = core.lo(p);
+    setFind((prev) => {
+      const base = prev ?? { mode, query: "", replacement: "", caseSensitive: false, index: 0, focusToken: 0 };
+      const query = mode !== "goto" && selected && !selected.includes("\n") ? selected : base.query;
+      return {
+        ...base,
+        mode,
+        query,
+        index: firstMatchFrom(st.body, query, base.caseSensitive, findOrigin.current),
+        focusToken: base.focusToken + 1,
+      };
+    });
+  };
+
+  const closeFind = () => {
+    const cur = currentMatch !== -1 ? matches[currentMatch] : null;
+    setFind(null);
+    if (cur) showSels([cur], { scroll: false });
+    else ref.current?.focus({ preventScroll: true });
+  };
+
+  const stepMatch = (delta: number) => {
+    if (matches.length === 0) return;
+    setFind((f) => (f ? { ...f, index: (currentMatch + delta + matches.length) % matches.length } : f));
+  };
+
+  const replaceOne = () => {
+    if (!find || currentMatch === -1) return;
+    const m = matches[currentMatch];
+    const next = core.replaceRanges(currentState(), [m], find.replacement);
+    applyState(next, { focus: false, scroll: false });
+    const resumeAt = m.anchor + find.replacement.length;
+    setFind((f) => (f ? { ...f, index: firstMatchFrom(next.body, f.query, f.caseSensitive, resumeAt) } : f));
+  };
+
+  const replaceAll = () => {
+    if (!find || matches.length === 0) return;
+    applyState(core.replaceRanges(currentState(), matches, find.replacement), { focus: false, scroll: false });
+  };
+
+  const goToLine = (line: number) => {
+    setFind(null);
+    showSels([core.caret(core.lineStartOffset(bodyRef.current, line - 1))]);
+  };
+
+  // ------------------------------------------------ native events
+
+  const handlers = useRef({
+    beforeInput: (_e: InputEvent) => {},
+    compositionStart: () => {},
+    compositionEnd: (_e: CompositionEvent) => {},
+    windowKeyDown: (_e: KeyboardEvent) => {},
+  });
+
+  handlers.current.beforeInput = (e: InputEvent) => {
+    const t = e.inputType;
+    if (t.startsWith("format")) {
+      // Notes are plain text - bold/italic from a shortcut or the context
+      // menu would only ever be a lie the next time the note loads.
+      e.preventDefault();
+      return;
+    }
+    if (t === "historyUndo" || t === "historyRedo") {
+      e.preventDefault();
+      if (t === "historyUndo") undo();
+      else redo();
+      return;
+    }
+    if (t === "insertCompositionText") return;
+
+    const text = e.data ?? e.dataTransfer?.getData("text/plain") ?? "";
+    const kind: EditKind =
+      t === "insertText"
+        ? text.length > 1
+          ? "edit"
+          : /\s/.test(text)
+            ? "space"
+            : "type"
+        : t === "deleteContentBackward" || t === "deleteContentForward" || t.startsWith("deleteWord")
+          ? "delete"
+          : "edit";
+
+    if (multiRef.current.length <= 1) {
+      // Single cursor: the browser does the edit itself; just snapshot for undo.
+      mem.history.record(currentState(), kind);
+      return;
+    }
+
+    e.preventDefault();
+    const st = currentState();
+    let next: EditorState | null = null;
+    if (t === "insertText" || t === "insertReplacementText") next = core.insertText(st, text);
+    else if (t === "insertParagraph" || t === "insertLineBreak") next = core.insertText(st, "\n");
+    else if (t === "deleteContentBackward") next = core.deleteBackward(st);
+    else if (t === "deleteWordBackward") next = core.deleteBackward(st, true);
+    else if (t === "deleteContentForward") next = core.deleteForward(st);
+    else if (t === "deleteWordForward") next = core.deleteForward(st, true);
+    if (next) applyState(next, { record: kind });
+  };
+
+  // Accents typed with dead keys (´ + e = é) arrive as a composition, which
+  // can't be cancelled like ordinary input - with several cursors, let it
+  // land at the primary and then redo it properly at every cursor.
+  handlers.current.compositionStart = () => {
+    if (multiRef.current.length > 1) composingFrom.current = currentState();
+    else mem.history.record(currentState(), "type");
+  };
+  handlers.current.compositionEnd = (e: CompositionEvent) => {
+    const from = composingFrom.current;
+    if (!from) return;
+    composingFrom.current = null;
+    mem.history.record(from, "type");
+    applyState(core.insertText(from, e.data), { record: false });
+  };
+
+  handlers.current.windowKeyDown = (e: KeyboardEvent) => {
+    if (e.defaultPrevented) return;
+    const ctrl = e.ctrlKey || e.metaKey;
+    const lower = e.key.toLowerCase();
+    if (ctrl && !e.altKey && !e.shiftKey && (lower === "f" || lower === "h" || lower === "g")) {
+      e.preventDefault();
+      if (lower === "h" && find?.mode === "replace") setFind((f) => (f ? { ...f, focusToken: f.focusToken + 1 } : f));
+      else openFind(lower === "f" ? "find" : lower === "h" ? "replace" : "goto");
+    } else if (e.key === "F3" && find && find.mode !== "goto") {
+      e.preventDefault();
+      stepMatch(e.shiftKey ? -1 : 1);
+    } else if (e.key === "Escape" && find && document.activeElement === ref.current) {
+      e.preventDefault();
+      closeFind();
+    }
+  };
+
+  useEffect(() => {
+    const el = ref.current!;
+    const onBeforeInput = (e: Event) => handlers.current.beforeInput(e as InputEvent);
+    const onCompositionStart = () => handlers.current.compositionStart();
+    const onCompositionEnd = (e: Event) => handlers.current.compositionEnd(e as CompositionEvent);
+    const onWindowKeyDown = (e: KeyboardEvent) => handlers.current.windowKeyDown(e);
+    el.addEventListener("beforeinput", onBeforeInput);
+    el.addEventListener("compositionstart", onCompositionStart);
+    el.addEventListener("compositionend", onCompositionEnd);
+    window.addEventListener("keydown", onWindowKeyDown);
+    return () => {
+      el.removeEventListener("beforeinput", onBeforeInput);
+      el.removeEventListener("compositionstart", onCompositionStart);
+      el.removeEventListener("compositionend", onCompositionEnd);
+      window.removeEventListener("keydown", onWindowKeyDown);
+    };
+  }, []);
+
+  // Strip whatever formatting the source had (fonts, colors, bold, links...)
+  // so pasted text always matches the note's own style. With several cursors
+  // and as many pasted lines, each cursor gets its own line (VS Code does this).
+  const onPaste = (e: React.ClipboardEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const text = e.clipboardData.getData("text/plain").replace(/\r\n?/g, "\n");
+    if (!text) return;
+    if (multiRef.current.length > 1) {
+      const lines = text.split("\n");
+      const st = currentState();
+      applyState(core.insertText(st, lines.length === st.sels.length ? lines : text), { record: "edit" });
+      return;
+    }
+    mem.history.record(currentState(), "edit");
+    document.execCommand("insertText", false, text);
   };
 
   const onKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    // Plain Tab's browser default in a contentEditable is to move focus to
-    // the next focusable element on the page (the Note Styling button sits
-    // right there) instead of typing anything - so without this, pressing
-    // Tab while writing hopped focus out of the note and into that button.
-    // A single space keeps typing feeling normal without indenting.
-    if (e.key === "Tab" && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    const ctrl = e.ctrlKey || e.metaKey;
+    const key = e.key;
+    const lower = key.toLowerCase();
+    const multi = multiRef.current.length > 1;
+    const run = (next: EditorState, record: EditKind | false = "edit") => {
       e.preventDefault();
-      document.execCommand("insertText", false, " ");
+      applyState(next, { record });
+    };
+
+    if (ctrl && !e.altKey && (lower === "b" || lower === "i" || lower === "u")) {
+      e.preventDefault();
       return;
     }
-    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "d") {
+    if (ctrl && !e.altKey && (lower === "z" || lower === "y")) {
       e.preventDefault();
-      onCtrlD();
+      if (lower === "z" && !e.shiftKey) undo();
+      else redo();
       return;
     }
-    if (occurrences.length === 0) return;
-    if (e.key === "Escape") {
+    // Tab types a single space instead of hopping focus out of the note.
+    if (key === "Tab" && !ctrl && !e.altKey) {
       e.preventDefault();
-      clearMultiSelect();
-    } else if (["ArrowLeft", "ArrowRight", "ArrowUp", "ArrowDown", "Home", "End"].includes(e.key)) {
-      clearMultiSelect();
+      if (multi) applyState(core.insertText(currentState(), " "), { record: "space" });
+      else {
+        // execCommand doesn't fire beforeinput, so snapshot for undo here.
+        mem.history.record(currentState(), "space");
+        document.execCommand("insertText", false, " ");
+      }
+      return;
     }
+    if (ctrl && !e.altKey && !e.shiftKey && lower === "d") return run(core.addNextOccurrence(currentState()), false);
+    if (ctrl && !e.altKey && e.shiftKey && lower === "l") return run(core.selectAllOccurrences(currentState()), false);
+    if (ctrl && !e.altKey && !e.shiftKey && lower === "l") return run(core.selectLine(currentState()), false);
+    if (ctrl && !e.altKey && e.shiftKey && lower === "k") return run(core.deleteLines(currentState()));
+    if (e.altKey && !ctrl && (key === "ArrowUp" || key === "ArrowDown")) {
+      const dir = key === "ArrowUp" ? "up" : "down";
+      return run(e.shiftKey ? core.duplicateLines(currentState(), dir) : core.moveLines(currentState(), dir));
+    }
+    if (ctrl && e.altKey && (key === "ArrowUp" || key === "ArrowDown")) {
+      return run(core.addCursorVertical(currentState(), key === "ArrowUp" ? "up" : "down"), false);
+    }
+    if (ctrl && !e.altKey && key === "Enter") return run(core.insertLine(currentState(), e.shiftKey ? "above" : "below"));
+    if (ctrl && !e.altKey && !e.shiftKey && (lower === "c" || lower === "x")) {
+      const st = currentState();
+      const nothingSelected = st.sels.every(core.isEmpty);
+      if (multi || nothingSelected) {
+        e.preventDefault();
+        navigator.clipboard?.writeText(core.copyText(st)).catch(() => {});
+        if (lower === "x") applyState(nothingSelected ? core.deleteLines(st) : core.deleteSelections(st));
+      }
+      return;
+    }
+
+    if (!multi) {
+      if (NAV_KEYS.has(key)) mem.history.breakGroup();
+      return;
+    }
+
+    if (key === "Escape") {
+      e.preventDefault();
+      showSels([core.primary(currentState())]);
+      return;
+    }
+    if (ctrl && lower === "a") {
+      setMulti([]); // let the browser select everything
+      return;
+    }
+    const motion = MOTIONS[key]?.(ctrl);
+    if (motion && !e.altKey) {
+      e.preventDefault();
+      mem.history.breakGroup();
+      applyState(core.move(currentState(), motion, e.shiftKey), { record: false });
+      return;
+    }
+    if (key === "PageUp" || key === "PageDown") setMulti([]);
   };
 
-  // Notepad-margin-click: pick whichever top-level line sits at the click's
-  // height, select it (so it's visibly highlighted, same as clicking there
-  // in Word) and copy it straight to the clipboard - a trailing newline is
-  // included unless it's the last line, so pasting elsewhere drops in a
-  // ready-made line rather than text that runs into whatever follows it.
+  const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    mem.history.breakGroup();
+    if (e.altKey && e.button === 0) {
+      // Alt+click adds a cursor, like VS Code.
+      e.preventDefault();
+      const el = ref.current!;
+      const hit = document.caretRangeFromPoint?.(e.clientX, e.clientY);
+      if (!hit || !el.contains(hit.startContainer)) return;
+      const pos = Math.min(flatOffsetFromPoint(el, hit.startContainer, hit.startOffset), bodyRef.current.length);
+      applyState(core.addCursor(currentState(), pos), { record: false, scroll: false });
+      return;
+    }
+    if (multiRef.current.length > 1) setMulti([]);
+  };
+
+  // Notepad-margin-click: select the whole line at the click's height
+  // (including its line break, so Delete removes the line) and copy it.
   const onGutterClick = (e: React.MouseEvent) => {
     const el = ref.current;
     if (!el || el.childNodes.length === 0) return;
+    mem.history.breakGroup();
     const y = e.clientY;
-
-    let target: ChildNode = el.firstChild!;
+    const children = Array.from(el.childNodes);
+    let index = 0;
     let bestDist = Infinity;
-    for (const child of Array.from(el.childNodes)) {
+    children.forEach((child, i) => {
       const rect =
         child.nodeType === Node.ELEMENT_NODE
           ? (child as HTMLElement).getBoundingClientRect()
@@ -472,54 +730,66 @@ export function ContentArea({
               r.selectNodeContents(child);
               return r.getBoundingClientRect();
             })();
-      if (y >= rect.top && y <= rect.bottom) {
-        target = child;
-        break;
-      }
-      const dist = y < rect.top ? rect.top - y : y - rect.bottom;
+      const dist = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
       if (dist < bestDist) {
         bestDist = dist;
-        target = child;
+        index = i;
       }
-    }
-
-    const children = Array.from(el.childNodes);
-    const index = children.indexOf(target);
-    const isLast = target === el.lastChild;
-
-    // Select the line break along with the text, not just the text, so
-    // pressing Delete/Backspace afterwards removes the whole line instead
-    // of leaving an empty one behind - selectNodeContents alone only ever
-    // grabbed what's inside this line's own <div>, never the boundary that
-    // actually separates it from its neighbor.
-    const range = document.createRange();
-    if (children.length === 1) {
-      range.selectNodeContents(target);
-    } else if (!isLast) {
-      range.setStart(el, index);
-      range.setEnd(el, index + 1);
-    } else {
-      // Last line: there's no next line to extend into, so swallow the
-      // break *before* it instead. A parent-indexed boundary can only sit
-      // between whole siblings, so "before the previous line" (like the
-      // branch above) would pull that entire line in too - the break itself
-      // only exists at the *end* of the previous line's own content.
-      const prev = target.previousSibling!;
-      const prevEnd = prev.nodeType === Node.TEXT_NODE ? (prev.textContent?.length ?? 0) : prev.childNodes.length;
-      range.setStart(prev, prevEnd);
-      range.setEnd(el, index + 1);
-    }
-    const selection = window.getSelection();
-    selection?.removeAllRanges();
-    selection?.addRange(range);
-
-    const text = (target.textContent ?? "") + (isLast ? "" : "\n");
-    navigator.clipboard?.writeText(text).catch(() => {});
+    });
+    const text = bodyRef.current;
+    const start = core.lineStartOffset(text, index);
+    const end = core.lineEnd(text, start);
+    const isLast = end === text.length;
+    const range = isLast ? { anchor: start > 0 ? start - 1 : 0, head: end } : { anchor: start, head: end + 1 };
+    showSels([range], { scroll: false });
+    const lineText = text.slice(start, end) + (isLast ? "" : "\n");
+    navigator.clipboard?.writeText(lineText).catch(() => {});
   };
 
   return (
     <>
-      <div className="note-body-row">
+      <div className="find-anchor">
+        {find && (
+          <FindBar
+            mode={find.mode}
+            query={find.query}
+            replacement={find.replacement}
+            caseSensitive={find.caseSensitive}
+            matchCount={matches.length}
+            currentIndex={currentMatch}
+            lineCount={core.lineCount(body)}
+            focusToken={find.focusToken}
+            onQueryChange={(query) =>
+              setFind((f) =>
+                f ? { ...f, query, index: firstMatchFrom(bodyRef.current, query, f.caseSensitive, findOrigin.current) } : f
+              )
+            }
+            onReplacementChange={(replacement) => setFind((f) => (f ? { ...f, replacement } : f))}
+            onToggleCase={() =>
+              setFind((f) =>
+                f
+                  ? {
+                      ...f,
+                      caseSensitive: !f.caseSensitive,
+                      index: firstMatchFrom(bodyRef.current, f.query, !f.caseSensitive, findOrigin.current),
+                      focusToken: f.focusToken + 1,
+                    }
+                  : f
+              )
+            }
+            onToggleReplace={() =>
+              setFind((f) => (f ? { ...f, mode: f.mode === "replace" ? "find" : "replace", focusToken: f.focusToken + 1 } : f))
+            }
+            onNext={() => stepMatch(1)}
+            onPrev={() => stepMatch(-1)}
+            onReplaceOne={replaceOne}
+            onReplaceAll={replaceAll}
+            onGoToLine={goToLine}
+            onClose={closeFind}
+          />
+        )}
+      </div>
+      <div className="note-body-row" ref={rowRef}>
         <div className="line-gutter" title="Clique para copiar a linha" onClick={onGutterClick} />
         <div
           ref={ref}
@@ -529,30 +799,20 @@ export function ContentArea({
           className="note-body"
           onPaste={onPaste}
           onKeyDown={onKeyDown}
-          onMouseDown={clearMultiSelect}
-          onBlur={clearMultiSelect}
+          onMouseDown={onMouseDown}
+          onFocus={paintExtras}
+          onBlur={paintExtras}
           onInput={(e) => {
-            const el = e.currentTarget;
-            const newBody = getBodyText(el);
-
-            if (occurrences.length > 1) {
-              const result = applyMultiEdit(body, newBody, occurrences);
-              if (result) {
-                const others = result.newOccurrences.filter((_, i) => i !== result.primaryIndex);
-                rebuildDom(el, result.patchedBody, others);
-                const primary = result.newOccurrences[result.primaryIndex];
-                setSelectionRange(el, primary.end, primary.end);
-                setOccurrences(result.newOccurrences);
-                onBodyInput(result.patchedBody);
-                return;
-              }
-              setOccurrences([]);
-              setMultiQuery(null);
-            }
-
+            if (composingFrom.current) return;
+            const newBody = readBody(e.currentTarget);
+            if (multiRef.current.length > 1) setMulti([]);
+            bodyRef.current = newBody;
             onBodyInput(newBody);
           }}
         />
+        {caretBoxes.map((b, i) => (
+          <div key={i} className="fake-caret" style={{ left: b.left, top: b.top, height: b.height }} />
+        ))}
       </div>
 
       {sketches.map((sketch) => (

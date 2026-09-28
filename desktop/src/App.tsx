@@ -17,7 +17,7 @@ import {
   toggleMaximizeAppWindow,
 } from "./tauriWindow";
 import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
-import { saveNoteAsCynote, writeCynoteFile } from "./export";
+import { exportNoteAsTxt, saveNoteAsCynote, writeCynoteFile } from "./export";
 import { onOpenNoteFile, readNoteFileRaw, takeStartupFile } from "./dashboardApi";
 import { parseNoteFile } from "./cynoteFormat";
 import { loadNotes, saveNotes } from "./notesStore";
@@ -94,6 +94,19 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
   const [zoom, setZoom] = useState(100);
+  const zoomBy = (delta: number) => setZoom((z) => Math.min(200, Math.max(50, z + delta)));
+
+  // Ctrl+wheel zooms the note, like Notepad and VS Code (passive: false, or
+  // preventDefault is ignored and the page itself would try to zoom).
+  useEffect(() => {
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey) return;
+      e.preventDefault();
+      zoomBy(e.deltaY < 0 ? 10 : -10);
+    };
+    window.addEventListener("wheel", onWheel, { passive: false });
+    return () => window.removeEventListener("wheel", onWheel);
+  }, []);
   const [drawColor, setDrawColor] = useState("#ff8c3a");
   const [pinned, setPinned] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -363,6 +376,18 @@ function App() {
         if (count <= 1) return;
         setTabsMenuOpen(false);
         setActiveTab((prev) => (e.shiftKey ? (prev - 1 + count) % count : (prev + 1) % count));
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        reopenClosedTab();
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && (e.key === "=" || e.key === "+")) {
+        e.preventDefault();
+        zoomBy(10);
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === "-") {
+        e.preventDefault();
+        zoomBy(-10);
+      } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === "0") {
+        e.preventDefault();
+        setZoom(100);
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -389,6 +414,18 @@ function App() {
       if (from > prev && to <= prev) return prev + 1;
       return prev;
     });
+  };
+
+  // Ctrl+Shift+T brings back the most recently closed tab, like a browser or VS Code.
+  const closedTabsRef = useRef<TabData[]>([]);
+  const reopenClosedTab = () => {
+    const tab = closedTabsRef.current.pop();
+    if (!tab) return;
+    forgetDeletedNote(tab.id);
+    if (tabsRef.current.some((t) => t.id === tab.id)) return;
+    markSaved(tab);
+    setActiveTab(tabsRef.current.length);
+    setTabs((prev) => [...prev, tab]);
   };
 
   const addTab = () => {
@@ -576,7 +613,10 @@ function App() {
 
     const removeTab = () => {
       const closing = tabsRef.current[i];
-      if (closing) markNotesDeleted([closing.id]);
+      if (closing) {
+        markNotesDeleted([closing.id]);
+        closedTabsRef.current.push(closing);
+      }
       setTabs((prev) => {
         const next = prev.slice();
         next.splice(i, 1);
@@ -806,7 +846,8 @@ function App() {
         onToggleDrawing={toggleDrawing}
         settingsOpen={showSettings}
         onToggleSettings={() => setShowSettings((v) => !v)}
-        onExportTxt={exportActiveNoteTxt}
+        onSaveAs={exportActiveNoteTxt}
+        onExportTxt={() => exportNoteAsTxt(tabsRef.current[activeTabRef.current])}
         pinned={pinned}
         onTogglePin={() => setPinned((v) => !v)}
         onMinimize={minimizeAppWindow}
@@ -850,6 +891,7 @@ function App() {
           >
             <ContentArea
               key={tabs[activeTab].id}
+              noteId={tabs[activeTab].id}
               body={tabs[activeTab].body}
               sketches={tabs[activeTab].sketches}
               spellCheck={spellCheckEnabled}
@@ -883,8 +925,8 @@ function App() {
         col={caret.col}
         charCount={charCount}
         zoom={zoom}
-        onZoomIn={() => setZoom((z) => Math.min(200, z + 10))}
-        onZoomOut={() => setZoom((z) => Math.max(50, z - 10))}
+        onZoomIn={() => zoomBy(10)}
+        onZoomOut={() => zoomBy(-10)}
         readingMode={readingMode}
         onToggleReadingMode={() => setReadingMode((v) => !v)}
         syncStatus={syncStatus}
