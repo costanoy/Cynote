@@ -2,6 +2,8 @@ mod cloud_sync;
 mod dashboard;
 mod identity;
 mod sync;
+#[cfg(windows)]
+mod taskbar;
 
 use std::fs;
 use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
@@ -295,10 +297,16 @@ fn show_dashboard_window(app: &AppHandle, popup: bool) {
         // Distinct taskbar icon so a visible Dashboard window doesn't look
         // like a second copy of the main Cynote window - both share the same
         // .exe icon by default unless overridden here.
-        if let Some(icon_path) = dashboard::dashboard_icon_path(app) {
-            if let Ok(icon) = tauri::image::Image::from_path(&icon_path) {
+        let icon_path = dashboard::dashboard_icon_path(app);
+        if let Some(icon_path) = &icon_path {
+            if let Ok(icon) = tauri::image::Image::from_path(icon_path) {
                 let _ = window.set_icon(icon);
             }
+        }
+        // Its own taskbar button, apart from Cynote's (see taskbar.rs).
+        #[cfg(windows)]
+        if let (Ok(hwnd), Ok(exe)) = (window.hwnd(), std::env::current_exe()) {
+            taskbar::separate_dashnotes_window(hwnd.0 as isize, &exe, icon_path.as_deref());
         }
         #[cfg(windows)]
         disable_browser_accelerator_keys(&window);

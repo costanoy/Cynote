@@ -183,15 +183,10 @@ fn start_menu_programs_dir(app: &AppHandle) -> Option<std::path::PathBuf> {
 }
 
 fn write_shortcut(target: &Path, args: &str, icon: Option<&Path>, output: &Path) {
-    use mslnk::ShellLink;
-    let Ok(mut link) = ShellLink::new(target) else { return };
-    link.set_arguments(Some(args.to_string()));
-    if let Some(icon_path) = icon {
-        link.set_icon_location(Some(icon_path.to_string_lossy().to_string()));
-    }
-    if let Err(e) = link.create_lnk(output) {
-        eprintln!("Failed to create shortcut {}: {e}", output.display());
-    }
+    #[cfg(windows)]
+    drop(crate::taskbar::write_dashnotes_shortcut(target, args, icon, output));
+    #[cfg(not(windows))]
+    let _ = (target, args, icon, output);
 }
 
 const SHORTCUT_NAME: &str = "Dashnotes.lnk";
