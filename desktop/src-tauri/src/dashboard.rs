@@ -17,17 +17,19 @@ pub struct ScannedNote {
     /// Last-modified time, in milliseconds since the Unix epoch (0 if unknown).
     #[serde(rename = "modifiedMs")]
     pub modified_ms: u64,
-    /// The first few words of the note, for its card in Dashnotes.
-    pub preview: String,
 }
 
 /// How much of each file is read to build its preview - enough for three
-/// lines on a card, without pulling whole notes off disk during a scan.
+/// lines on a card.
 const PREVIEW_READ_BYTES: u64 = 1024;
 const PREVIEW_MAX_CHARS: usize = 220;
+/// Previews are only built for the notes on screen; this caps one request.
+const PREVIEW_MAX_FILES: usize = 300;
 
-fn modified_ms(path: &Path) -> u64 {
-    fs::metadata(path)
+/// Straight from the directory listing - no need to open the file.
+fn modified_ms(entry: &fs::DirEntry) -> u64 {
+    entry
+        .metadata()
         .and_then(|m| m.modified())
         .ok()
         .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
@@ -98,13 +100,11 @@ fn collect_txt_files(dir: &Path, root_label: &str, rel: &mut Vec<String>, depth:
             collect_txt_files(&entry.path(), root_label, rel, depth + 1, out);
             rel.pop();
         } else if file_type.is_file() && has_note_extension(&name) {
-            let path = entry.path();
             out.push(ScannedNote {
-                full_path: path.to_string_lossy().to_string(),
+                full_path: entry.path().to_string_lossy().to_string(),
                 root_label: root_label.to_string(),
                 relative_dirs: rel.clone(),
-                modified_ms: modified_ms(&path),
-                preview: read_preview(&path, name.to_lowercase().ends_with(".cyte")),
+                modified_ms: modified_ms(&entry),
                 file_name: name,
             });
         }
@@ -113,16 +113,39 @@ fn collect_txt_files(dir: &Path, root_label: &str, rel: &mut Vec<String>, depth:
 
 /// Scoped to Desktop + Documents rather than the whole disk, for speed and
 /// so Cynote isn't silently indexing unrelated parts of the user's computer.
+/// Walking those can take a while on a full disk, so it runs on a worker
+/// thread - a plain (sync) command would run on the main thread and freeze
+/// every Cynote window until it finished.
 #[tauri::command]
-pub fn scan_txt_notes(app: AppHandle) -> Vec<ScannedNote> {
-    let mut out = Vec::new();
-    if let Ok(desktop) = app.path().desktop_dir() {
-        collect_txt_files(&desktop, "Área de Trabalho", &mut Vec::new(), 0, &mut out);
-    }
-    if let Ok(docs) = app.path().document_dir() {
-        collect_txt_files(&docs, "Documentos", &mut Vec::new(), 0, &mut out);
-    }
-    out
+pub async fn scan_txt_notes(app: AppHandle) -> Vec<ScannedNote> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let mut out = Vec::new();
+        if let Ok(desktop) = app.path().desktop_dir() {
+            collect_txt_files(&desktop, "Área de Trabalho", &mut Vec::new(), 0, &mut out);
+        }
+        if let Ok(docs) = app.path().document_dir() {
+            collect_txt_files(&docs, "Documentos", &mut Vec::new(), 0, &mut out);
+        }
+        out
+    })
+    .await
+    .unwrap_or_default()
+}
+
+/// The first few words of each given note, for the cards Dashnotes is
+/// showing right now. Kept out of the scan itself: opening every note file
+/// under Desktop and Documents made it far too slow.
+#[tauri::command]
+pub async fn note_previews(paths: Vec<String>) -> Vec<String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        paths
+            .iter()
+            .take(PREVIEW_MAX_FILES)
+            .map(|p| read_preview(Path::new(p), p.to_lowercase().ends_with(".cyte")))
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
 }
 
 /// Returns the file's raw text - title/body/metadata splitting now happens
@@ -171,34 +194,53 @@ fn write_shortcut(target: &Path, args: &str, icon: Option<&Path>, output: &Path)
     }
 }
 
-/// One-time setup: gives the user a second, distinct entry point ("Dashnotes",
-/// formerly "Cynote Dashboard") into the folder/notes overview, alongside the regular Cynote
-/// shortcut the installer already creates. The Desktop copy is flagged so it
-/// opens as a compact popup; the Start Menu copy opens as a normal window.
-pub fn create_dashboard_shortcuts_once(app: &AppHandle) {
+const SHORTCUT_NAME: &str = "Dashnotes.lnk";
+/// What the shortcut was called before Dashnotes got its name.
+const OLD_SHORTCUT_NAME: &str = "Cynote Dashboard.lnk";
+
+/// Gives the user a second, distinct entry point ("Dashnotes") into the
+/// folder/notes overview, alongside the regular Cynote shortcut the installer
+/// already creates. The Desktop copy is flagged so it opens as a compact
+/// popup; the Start Menu copy opens as a normal window.
+///
+/// Created once, on first launch. On every later launch the shortcuts that
+/// still exist are rewritten to point at this copy of the app and its current
+/// icon - otherwise they keep whatever exe path and icon they were made with,
+/// so an update (or a reinstall elsewhere) left them launching a stale copy
+/// with the old icon. Shortcuts under the old "Cynote Dashboard" name are
+/// renamed; ones the user deleted stay deleted.
+pub fn sync_dashboard_shortcuts(app: &AppHandle) {
     let Ok(dir) = app.path().app_data_dir() else { return };
     if fs::create_dir_all(&dir).is_err() {
         return;
     }
     let marker = dir.join("dashboard_shortcuts_created");
-    if marker.exists() {
-        return;
-    }
+    let first_run = !marker.exists();
     let Ok(exe) = std::env::current_exe() else { return };
     let icon = dashboard_icon_path(app);
 
+    let mut places: Vec<(std::path::PathBuf, &str)> = Vec::new();
     if let Ok(desktop) = app.path().desktop_dir() {
-        write_shortcut(
-            &exe,
-            "--dashboard --popup",
-            icon.as_deref(),
-            &desktop.join("Dashnotes.lnk"),
-        );
+        places.push((desktop, "--dashboard --popup"));
     }
     if let Some(start_menu) = start_menu_programs_dir(app) {
         let _ = fs::create_dir_all(&start_menu);
-        write_shortcut(&exe, "--dashboard", icon.as_deref(), &start_menu.join("Dashnotes.lnk"));
+        places.push((start_menu, "--dashboard"));
     }
 
-    let _ = fs::write(marker, "");
+    for (folder, args) in places {
+        let current = folder.join(SHORTCUT_NAME);
+        let old = folder.join(OLD_SHORTCUT_NAME);
+        let had_old = old.exists();
+        if had_old {
+            let _ = fs::remove_file(&old);
+        }
+        if first_run || had_old || current.exists() {
+            write_shortcut(&exe, args, icon.as_deref(), &current);
+        }
+    }
+
+    if first_run {
+        let _ = fs::write(marker, "");
+    }
 }

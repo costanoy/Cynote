@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./theme.css";
 import "./dashboard.css";
-import { scanTxtNotes, openNoteInMain, type ScannedNote } from "./dashboardApi";
+import { scanTxtNotes, notePreviews, openNoteInMain, type ScannedNote } from "./dashboardApi";
 import {
   ArchShape,
   BackIcon,
@@ -92,17 +92,23 @@ function applyTheme() {
 }
 
 const GHOSTS = [0, 1, 2, 3, 4];
+// Only the first screenful cascades in; a folder with thousands of notes
+// would otherwise keep the last ones invisible for minutes.
+const CASCADE_MAX = 16;
 
 export default function Dashboard() {
   const [notes, setNotes] = useState<ScannedNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [path, setPath] = useState<string[]>([]);
   const [opening, setOpening] = useState<string | null>(null);
+  // Note previews by path, read only for the folder on screen.
+  const [previews, setPreviews] = useState<Map<string, string>>(new Map());
   const scanId = useRef(0);
 
   const scan = () => {
     const id = ++scanId.current;
     setLoading(true);
+    setPreviews(new Map());
     scanTxtNotes()
       .then((found) => {
         if (id === scanId.current) setNotes(found);
@@ -152,6 +158,26 @@ export default function Dashboard() {
     files.sort((a, b) => b.modifiedMs - a.modifiedMs);
     return { folders, files, sample };
   }, [notes, path]);
+
+  useEffect(() => {
+    const missing = files.map((f) => f.fullPath).filter((p) => !previews.has(p));
+    if (missing.length === 0) return;
+    let cancelled = false;
+    notePreviews(missing)
+      .then((texts) => {
+        if (cancelled) return;
+        setPreviews((prev) => {
+          const next = new Map(prev);
+          texts.forEach((text, i) => next.set(missing[i], text));
+          return next;
+        });
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files]);
 
   // A folder that was there before a rescan may be gone after it.
   useEffect(() => {
@@ -273,7 +299,7 @@ export default function Dashboard() {
                             {
                               "--glass": `var(--glass-${hue})`,
                               "--bead": `var(--glass-${(hue + 1) % 4})`,
-                              animationDelay: i * 50 + "ms",
+                              animationDelay: Math.min(i, CASCADE_MAX) * 50 + "ms",
                             } as React.CSSProperties
                           }
                           onClick={() => setPath([...path, folder.name])}
@@ -306,7 +332,7 @@ export default function Dashboard() {
                         <button
                           key={note.fullPath}
                           className="dash-note"
-                          style={{ animationDelay: folders.length * 50 + i * 45 + "ms" }}
+                          style={{ animationDelay: Math.min(folders.length + i, CASCADE_MAX) * 45 + "ms" }}
                           onClick={() => openNote(note)}
                           disabled={opening === note.fullPath}
                           title={isNativeFormat(note) ? "Nota Cynote" : "Arquivo de texto importado"}
@@ -319,7 +345,9 @@ export default function Dashboard() {
                             <span className="dash-note-date">{formatDate(note.modifiedMs)}</span>
                           </span>
                           <span className="dash-note-title">{note.fileName.replace(NOTE_EXT_RE, "")}</span>
-                          {note.preview && <span className="dash-note-preview">{note.preview}</span>}
+                          {previews.get(note.fullPath) && (
+                            <span className="dash-note-preview">{previews.get(note.fullPath)}</span>
+                          )}
                         </button>
                       );
                     })}

@@ -357,7 +357,7 @@ pub fn run() {
             }
 
             undo_forced_autostart_once(app.handle());
-            dashboard::create_dashboard_shortcuts_once(app.handle());
+            dashboard::sync_dashboard_shortcuts(app.handle());
 
             if let Ok(identity) = identity::load_or_create(app.handle()) {
                 sync::start(app.handle().clone(), identity);
@@ -459,6 +459,7 @@ pub fn run() {
             quit_app,
             take_startup_file,
             dashboard::scan_txt_notes,
+            dashboard::note_previews,
             dashboard::read_txt_file,
             dashboard::open_note_in_main,
             identity::get_device_identity,

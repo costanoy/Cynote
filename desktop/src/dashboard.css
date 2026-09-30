@@ -87,11 +87,12 @@
   transform: scale(0.95);
 }
 
+/* Inside the page's inner rule, so cards never scroll across it. */
 .dash-scroll,
 .dash-loading {
   position: absolute;
-  inset: 0;
-  padding: 26px 34px 30px;
+  inset: 8px;
+  padding: 18px 26px 22px;
   display: flex;
   flex-direction: column;
 }
@@ -101,7 +102,7 @@
 }
 .dash-loading {
   overflow: hidden;
-  padding-top: 30px;
+  padding-top: 22px;
   gap: 22px;
   animation: cyFade 0.3s ease;
 }
@@ -357,8 +358,8 @@
 @media (max-width: 620px) {
   .dash-scroll,
   .dash-loading {
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-left: 12px;
+    padding-right: 12px;
   }
   .dash-rescan {
     padding: 0 9px;

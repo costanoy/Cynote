@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { NoteSketch } from "../types";
-import { EditIcon, Leaf, TrashIcon } from "../icons";
+import { EditIcon, TrashIcon } from "../icons";
 import * as core from "../editorCore";
 import type { EditorState, Sel } from "../editorCore";
 import { FindBar, type FindMode } from "./FindBar";
@@ -215,7 +215,6 @@ type Props = {
   spellCheck: boolean;
   onBodyInput: (value: string) => void;
   onCaretChange: (line: number, col: number) => void;
-  onToast: (message: string) => void;
   onMoveSketch: (id: string, x: number, y: number) => void;
   onResizeSketch: (id: string, width: number, height: number) => void;
   onEditSketch: (id: string) => void;
@@ -229,7 +228,6 @@ export function ContentArea({
   spellCheck,
   onBodyInput,
   onCaretChange,
-  onToast,
   onMoveSketch,
   onResizeSketch,
   onEditSketch,
@@ -250,8 +248,6 @@ export function ContentArea({
   // so the ring is drawn as overlay boxes, like the extra carets.
   const [matchBoxes, setMatchBoxes] = useState<{ left: number; top: number; width: number; height: number }[]>([]);
   const currentMatchRef = useRef<Sel | null>(null);
-  // Where the leaf marking the line under the mouse sits in the margin.
-  const [gutterLeafTop, setGutterLeafTop] = useState<number | null>(null);
   const composingFrom = useRef<EditorState | null>(null);
   const [find, setFind] = useState<FindState | null>(null);
   const findOrigin = useRef(0);
@@ -773,32 +769,51 @@ export function ContentArea({
     return best;
   };
 
-  // A little leaf in the margin marks which line a click there would take.
-  const onGutterMove = (e: React.MouseEvent<HTMLDivElement>) => {
-    const hit = lineAtY(e.clientY);
-    const el = ref.current;
-    if (!hit || !el) return setGutterLeafTop(null);
-    const firstRow = Math.min(hit.rect.height, parseFloat(getComputedStyle(el).lineHeight) || hit.rect.height);
-    const top = Math.round(hit.rect.top - e.currentTarget.getBoundingClientRect().top + firstRow / 2 - 6);
-    setGutterLeafTop((prev) => (prev === top ? prev : top));
-  };
-
-  // Notepad-margin-click: select the whole line at the click's height
-  // (including its line break, so Delete removes the line) and copy it.
-  const onGutterClick = (e: React.MouseEvent) => {
-    const hit = lineAtY(e.clientY);
-    if (!hit) return;
-    mem.history.breakGroup();
-    const index = hit.index;
+  /** Start of line `index`, and its end including the line break (if any). */
+  const lineBounds = (index: number) => {
     const text = bodyRef.current;
     const start = core.lineStartOffset(text, index);
     const end = core.lineEnd(text, start);
-    const isLast = end === text.length;
-    const range = isLast ? { anchor: start > 0 ? start - 1 : 0, head: end } : { anchor: start, head: end + 1 };
-    showSels([range], { scroll: false });
-    const lineText = text.slice(start, end) + (isLast ? "" : "\n");
-    navigator.clipboard?.writeText(lineText).catch(() => {});
-    onToast("Linha copiada");
+    return { start, end: end < text.length ? end + 1 : end };
+  };
+
+  // The left margin works like Notepad's: press to select the whole line
+  // under the mouse, drag up or down to extend the selection line by line.
+  const onGutterMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    const first = lineAtY(e.clientY);
+    if (!first) return;
+    e.preventDefault();
+    mem.history.breakGroup();
+    const anchorLine = first.index;
+
+    const selectTo = (clientY: number) => {
+      const hit = lineAtY(clientY);
+      if (!hit) return;
+      const a = lineBounds(anchorLine);
+      const b = lineBounds(hit.index);
+      const range =
+        hit.index >= anchorLine ? { anchor: a.start, head: b.end } : { anchor: a.end, head: b.start };
+      showSels([range], { scroll: false });
+    };
+    selectTo(e.clientY);
+
+    // Dragging past the top or bottom edge scrolls the note along.
+    const onMove = (ev: MouseEvent) => {
+      const sc = scroller();
+      if (sc) {
+        const box = sc.getBoundingClientRect();
+        if (ev.clientY < box.top) sc.scrollTop -= box.top - ev.clientY;
+        else if (ev.clientY > box.bottom) sc.scrollTop += ev.clientY - box.bottom;
+      }
+      selectTo(ev.clientY);
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
   };
 
   return (
@@ -845,19 +860,7 @@ export function ContentArea({
         )}
       </div>
       <div className="note-body-row" ref={rowRef}>
-        <div
-          className="line-gutter"
-          title="Clique para selecionar e copiar a linha"
-          onClick={onGutterClick}
-          onMouseMove={onGutterMove}
-          onMouseLeave={() => setGutterLeafTop(null)}
-        >
-          {gutterLeafTop !== null && (
-            <span className="line-gutter-leaf" style={{ top: gutterLeafTop }}>
-              <Leaf rotate={90} />
-            </span>
-          )}
-        </div>
+        <div className="line-gutter" onMouseDown={onGutterMouseDown} />
         <div
           ref={ref}
           contentEditable

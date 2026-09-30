@@ -12,13 +12,17 @@ export interface ScannedNote {
   fileName: string;
   /** Last-modified time in ms since the epoch (0 if unknown). */
   modifiedMs: number;
-  /** First few words of the note's text. */
-  preview: string;
 }
 
 export async function scanTxtNotes(): Promise<ScannedNote[]> {
   if (!isTauri()) return [];
   return invoke<ScannedNote[]>("scan_txt_notes");
+}
+
+/** The first few words of each note, in the same order as `paths`. */
+export async function notePreviews(paths: string[]): Promise<string[]> {
+  if (!isTauri() || paths.length === 0) return [];
+  return invoke<string[]>("note_previews", { paths });
 }
 
 /** Brings the main window to front and hands it this note to open as a tab. */

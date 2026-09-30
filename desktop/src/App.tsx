@@ -958,7 +958,6 @@ function App() {
               onCaretChange={(line, col) =>
                 setCaret((prev) => (prev.line === line && prev.col === col ? prev : { line, col }))
               }
-              onToast={showToast}
               onMoveSketch={moveSketch}
               onResizeSketch={resizeSketch}
               onEditSketch={editSketch}
