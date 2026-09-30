@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../icons.dart';
 import '../theme.dart';
-import '../widgets/switch_toggle.dart';
+import '../widgets/greenhouse.dart';
 
 class SettingsScreen extends StatelessWidget {
   final CyColors t;
@@ -29,85 +28,50 @@ class SettingsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      color: t.bg,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(18, 40, 18, 20),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.border))),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: onBack,
-                  child: SizedBox(
-                    width: 30 * kScale,
-                    height: 30 * kScale,
-                    child: Center(child: BackChevronIcon(size: 17 * kScale, color: t.mutedText)),
-                  ),
-                ),
-                const SizedBox(width: 6 * kScale),
-                Text(
-                  'Configurações',
-                  style: GoogleFonts.bricolageGrotesque(
-                    fontWeight: FontWeight.w700,
-                    fontSize: 15.5 * kScale,
-                    color: t.text,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.all(28),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+    return GreenhouseScreen(
+      t: t,
+      header: [
+        Medallion(t: t, onTap: onBack, child: BackChevronIcon(color: t.frameInk)),
+        const SizedBox(width: 12),
+        Expanded(child: Text('Configurações', style: CyType.display(21, t.frameInk, letterSpacing: 0.63))),
+      ],
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        color: t.paper,
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(22, ArchHeader.overhang + 14, 22, 50),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
                 children: [
-                  Container(
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.border))),
-                    child: Row(
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Tema escuro',
-                                style: GoogleFonts.manrope(
-                                  fontWeight: FontWeight.w600,
-                                  fontSize: 13.5 * kScale,
-                                  color: t.text,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                'Ativa a interface escura do bloquinho',
-                                style: GoogleFonts.manrope(fontSize: 11.5 * kScale, color: t.mutedText),
-                              ),
-                            ],
-                          ),
-                        ),
-                        SwitchToggle(on: darkMode, onTap: onToggleDarkMode, t: t),
+                        Text('Tema escuro', style: CyType.ui(15.5, t.ink, weight: FontWeight.w500)),
+                        const SizedBox(height: 2),
+                        Text('A estufa à noite', style: CyType.ui(13, t.inkSoft, height: 1.45)),
                       ],
                     ),
                   ),
-                  Padding(
-                    padding: const EdgeInsets.only(top: 20),
-                    child: _CloudSyncSection(
-                      t: t,
-                      syncId: cloudSyncId,
-                      onGenerate: onGenerateCloudCode,
-                      onJoin: onJoinCloudCode,
-                      onClear: onClearCloudCode,
-                    ),
-                  ),
+                  const SizedBox(width: 16),
+                  CySwitch(t: t, on: darkMode, onTap: onToggleDarkMode),
                 ],
               ),
-            ),
+              const SizedBox(height: 12),
+              LeafDivider(t: t),
+              const SizedBox(height: 18),
+              _CloudSyncSection(
+                t: t,
+                syncId: cloudSyncId,
+                onGenerate: onGenerateCloudCode,
+                onJoin: onJoinCloudCode,
+                onClear: onClearCloudCode,
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -134,12 +98,20 @@ class _CloudSyncSection extends StatefulWidget {
 
 class _CloudSyncSectionState extends State<_CloudSyncSection> {
   final _controller = TextEditingController();
+  final _focus = FocusNode();
   bool _generating = false;
   bool _joining = false;
   bool _copied = false;
 
   @override
+  void initState() {
+    super.initState();
+    _focus.addListener(() => setState(() {}));
+  }
+
+  @override
   void dispose() {
+    _focus.dispose();
     _controller.dispose();
     super.dispose();
   }
@@ -176,121 +148,97 @@ class _CloudSyncSectionState extends State<_CloudSyncSection> {
   Widget build(BuildContext context) {
     final t = widget.t;
     final id = widget.syncId;
+    final hint = CyType.ui(13, t.inkSoft, height: 1.45);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Sincronização pela internet',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13.5 * kScale, color: t.text),
-        ),
-        const SizedBox(height: 3),
-        Text(
-          'Sincronize com outro dispositivo em qualquer rede, usando um código de pareamento',
-          style: GoogleFonts.manrope(fontSize: 11.5 * kScale, height: 1.4, color: t.mutedText),
-        ),
-        const SizedBox(height: 14),
+        Text('Sincronização pela internet', style: CyType.display(17, t.ink, letterSpacing: 0.5)),
+        const SizedBox(height: 4),
+        Text('Sincronize com outro dispositivo em qualquer rede, usando um código de pareamento', style: hint),
+        const SizedBox(height: 12),
         if (id != null) ...[
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
             decoration: BoxDecoration(
-              color: t.cardBg,
-              border: Border.all(color: t.cardBorder),
-              borderRadius: BorderRadius.circular(10),
+              color: t.paper2,
+              border: Border.all(color: t.goldLine),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Row(
               children: [
                 Expanded(
                   child: Text(
                     id,
-                    style: TextStyle(
-                      fontFamily: 'monospace',
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12.5 * kScale,
-                      letterSpacing: 0.4,
-                      color: t.text,
-                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: CyType.mono(13, t.ink, letterSpacing: 0.4),
                   ),
                 ),
-                GestureDetector(
+                const SizedBox(width: 8),
+                PillButton(
+                  t: t,
+                  label: _copied ? 'Copiado!' : 'Copiar',
+                  kind: PillKind.primary,
+                  height: 40,
+                  horizontalPadding: 14,
+                  fontSize: 13.5,
                   onTap: _copy,
-                  child: Text(
-                    _copied ? 'Copiado!' : 'Copiar',
-                    style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 12.5 * kScale, color: t.accentDark),
-                  ),
                 ),
               ],
             ),
           ),
-          const SizedBox(height: 8),
-          Text(
-            'Digite esse código no outro dispositivo para conectá-lo',
-            style: GoogleFonts.manrope(fontSize: 11 * kScale, color: t.mutedText),
-          ),
           const SizedBox(height: 10),
-          GestureDetector(
+          Text('Digite esse código no outro dispositivo para conectá-lo', style: hint),
+          PillButton(
+            t: t,
+            label: 'Desativar sincronização pela internet',
+            kind: PillKind.danger,
+            fontSize: 13.5,
             onTap: widget.onClear,
-            child: Text(
-              'Desativar sincronização pela internet',
-              style: GoogleFonts.manrope(
-                fontSize: 11.5 * kScale,
-                fontWeight: FontWeight.w600,
-                color: t.mutedText,
-                decoration: TextDecoration.underline,
-              ),
-            ),
           ),
         ] else ...[
-          GestureDetector(
-            onTap: _generating ? null : _generate,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(color: t.accentTint, borderRadius: BorderRadius.circular(8)),
-              child: Text(
-                _generating ? 'Gerando…' : 'Gerar código',
-                style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 12.5 * kScale, color: t.accentDark),
+          PillButton(
+            t: t,
+            label: _generating ? 'Gerando…' : 'Gerar código',
+            kind: PillKind.primary,
+            enabled: !_generating,
+            onTap: _generate,
+          ),
+          const SizedBox(height: 12),
+          Text('Ou cole um código gerado em outro dispositivo:', style: hint),
+          const SizedBox(height: 12),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            height: kTouchTarget,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            decoration: BoxDecoration(
+              color: t.field,
+              border: Border.all(color: _focus.hasFocus ? t.gold : t.fieldBorder),
+              borderRadius: BorderRadius.circular(12),
+              boxShadow: _focus.hasFocus ? [BoxShadow(color: t.goldSoft, spreadRadius: 3)] : null,
+            ),
+            child: TextField(
+              controller: _controller,
+              focusNode: _focus,
+              onChanged: (_) => setState(() {}),
+              cursorColor: t.accent,
+              style: CyType.mono(14, t.fieldInk),
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Código de pareamento',
+                hintStyle: CyType.mono(14, t.inkFaint),
               ),
             ),
           ),
-          const SizedBox(height: 14),
-          Text(
-            'Ou cole um código gerado em outro dispositivo:',
-            style: GoogleFonts.manrope(fontSize: 11.5 * kScale, color: t.mutedText),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              Expanded(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: t.cardBorder),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: TextField(
-                    controller: _controller,
-                    style: TextStyle(fontFamily: 'monospace', fontSize: 12 * kScale, color: t.text),
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: 'Código de pareamento',
-                      hintStyle: GoogleFonts.manrope(fontSize: 12 * kScale, color: t.subtleText),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              GestureDetector(
-                onTap: _joining ? null : _join,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  decoration: BoxDecoration(color: t.accentTint, borderRadius: BorderRadius.circular(8)),
-                  child: Text(
-                    _joining ? 'Conectando…' : 'Conectar',
-                    style: GoogleFonts.manrope(fontWeight: FontWeight.w700, fontSize: 12 * kScale, color: t.accentDark),
-                  ),
-                ),
-              ),
-            ],
+          const SizedBox(height: 12),
+          PillButton(
+            t: t,
+            label: _joining ? 'Conectando…' : 'Conectar',
+            enabled: !_joining && _controller.text.trim().isNotEmpty,
+            onTap: _join,
           ),
         ],
       ],

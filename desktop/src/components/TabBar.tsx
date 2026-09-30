@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { TabData } from "../types";
-import { ChevronDownIcon, GripIcon, TabCloseIcon } from "../icons";
+import { ChevronDownIcon, CloseIcon, GripIcon, Leaf, PlusIcon } from "../icons";
 
 type Props = {
   tabs: TabData[];
@@ -15,6 +15,14 @@ type Props = {
   onRename: (i: number, title: string) => void;
   isDirty: (tab: TabData) => boolean;
 };
+
+// Each tab is a pane of stained glass, in one of four colors. Picked from the
+// note's id (not its position) so a tab keeps its color when reordered.
+function glassOf(id: string): string {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
+  return `var(--glass-${h % 4})`;
+}
 
 export function TabBar({
   tabs,
@@ -142,90 +150,108 @@ export function TabBar({
         onMouseUp={onRowUp}
         onMouseLeave={onRowUp}
       >
-        {tabs.map((tab, i) => (
-          <div
-            key={tab.id}
-            className={"tab" + (i === activeTab ? " active" : "") + (i === draggingIndex ? " dragging" : "")}
-            onClick={() => select(i)}
-            onDoubleClick={() => setRenamingIndex(i)}
-            onMouseDown={(e) => {
-              if (e.button === 1) {
-                e.preventDefault();
-                onClose(i);
+        {tabs.map((tab, i) => {
+          const renaming = renamingIndex === i;
+          return (
+            <div
+              key={tab.id}
+              className={
+                "tab" +
+                (i === activeTab ? " active" : "") +
+                (i === draggingIndex ? " dragging" : "") +
+                (renaming ? " renaming" : "")
               }
-            }}
-          >
-            {renamingIndex === i ? (
-              <input
-                ref={renameInputRef}
-                className="tab-rename-input"
-                defaultValue={tab.title}
-                onClick={(e) => e.stopPropagation()}
-                onBlur={(e) => commitRename(i, e.currentTarget.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") commitRename(i, e.currentTarget.value);
-                  else if (e.key === "Escape") setRenamingIndex(null);
-                }}
-              />
-            ) : (
-              <span className="tab-label">{tab.title}</span>
-            )}
-            {renamingIndex !== i && isDirty(tab) && (
-              <span className="tab-dirty-dot" title="Alterações não salvas" />
-            )}
-            <span
-              className="tab-close"
-              title="Fechar (Ctrl+W)"
-              onClick={(e) => {
-                e.stopPropagation();
-                onClose(i);
+              style={{ "--glass": glassOf(tab.id) } as React.CSSProperties}
+              title={tab.title}
+              onClick={() => select(i)}
+              onDoubleClick={() => setRenamingIndex(i)}
+              onMouseDown={(e) => {
+                if (e.button === 1) {
+                  e.preventDefault();
+                  onClose(i);
+                }
               }}
             >
-              <TabCloseIcon />
-            </span>
-            <span
-              className="tab-move"
-              onMouseDown={(e) => onGripMouseDown(e, i)}
-              title="Arraste para reordenar"
-            >
-              <GripIcon />
-            </span>
-          </div>
-        ))}
+              <span className="tab-came" />
+              {i === activeTab && <span className="tab-bloom" />}
+              <span
+                className="tab-move"
+                onMouseDown={(e) => onGripMouseDown(e, i)}
+                title="Arraste para reordenar"
+              >
+                <GripIcon />
+              </span>
+              {renaming ? (
+                <input
+                  ref={renameInputRef}
+                  className="tab-rename-input"
+                  defaultValue={tab.title}
+                  onClick={(e) => e.stopPropagation()}
+                  onMouseDown={(e) => e.stopPropagation()}
+                  onBlur={(e) => commitRename(i, e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") commitRename(i, e.currentTarget.value);
+                    else if (e.key === "Escape") setRenamingIndex(null);
+                  }}
+                />
+              ) : (
+                <span className="tab-label">{tab.title}</span>
+              )}
+              {!renaming && isDirty(tab) && <span className="tab-dirty-dot" title="Alterações não salvas" />}
+              <button
+                className="tab-close"
+                title="Fechar guia (Ctrl+W)"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onClose(i);
+                }}
+              >
+                <CloseIcon size={8} width={2.2} />
+              </button>
+            </div>
+          );
+        })}
       </div>
-      <div style={{ position: "relative", flex: "none" }}>
-        <button className="chevron-btn" onClick={onToggleMenu} title="Todas as guias">
+      <div className="tab-bar-actions">
+        <button
+          className={"medallion small" + (tabsMenuOpen ? " active" : "")}
+          onClick={onToggleMenu}
+          title="Todas as guias"
+        >
           <ChevronDownIcon />
         </button>
-        {tabsMenuOpen && (
-          <>
-            <div className="tabs-menu-backdrop" onClick={onCloseMenu} />
-            <div className="tabs-menu">
-              {tabs.map((tab, i) => (
-                <div
-                  key={tab.id}
-                  className={"tabs-menu-row" + (i === activeTab ? " active" : "")}
-                  onClick={() => {
-                    onSelect(i);
-                    onCloseMenu();
-                  }}
-                >
-                  <span className={"tabs-menu-dot" + (tab.favorite ? " favorite" : "")} />
-                  <span
-                    style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}
-                  >
-                    {tab.title}
-                  </span>
-                  {isDirty(tab) && <span className="tab-dirty-dot" title="Alterações não salvas" />}
-                </div>
-              ))}
-            </div>
-          </>
-        )}
+        <button className="medallion small" onClick={onAdd} title="Nova guia (Ctrl+N ou Ctrl+T)">
+          <PlusIcon />
+        </button>
       </div>
-      <button className="plus-btn" onClick={onAdd} title="Nova guia (Ctrl+N ou Ctrl+T)">
-        +
-      </button>
+      {tabsMenuOpen && (
+        <>
+          <div className="menu-backdrop" onClick={onCloseMenu} />
+          <div className="tabs-menu">
+            <div className="tabs-menu-heading">Todas as guias</div>
+            {tabs.map((tab, i) => (
+              <button
+                key={tab.id}
+                className={"menu-item" + (i === activeTab ? " current" : "")}
+                style={{ animationDelay: i * 35 + "ms" }}
+                onClick={() => {
+                  onSelect(i);
+                  onCloseMenu();
+                }}
+              >
+                <span className="tabs-menu-bead" style={{ background: glassOf(tab.id) }} />
+                <span className="menu-item-label">{tab.title}</span>
+                {isDirty(tab) && <span className="tab-dirty-dot" title="Alterações não salvas" />}
+                {tab.favorite && (
+                  <span title="Favorita" style={{ display: "flex" }}>
+                    <Leaf color="var(--gold)" rotate={40} />
+                  </span>
+                )}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

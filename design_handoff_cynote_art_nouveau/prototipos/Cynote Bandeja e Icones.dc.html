@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Jost:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;
+--wall:#E4DECB;--frame:#37604F;--frame-2:#274A3C;--frame-ink:#F3EBD3;--frame-ink-soft:#C3D3BC;--gold:#C9A04E;--gold-line:rgba(226,190,110,.55);--gold-soft:rgba(226,190,110,.22);--glow:rgba(240,200,110,.45);
+--paper:#FBF6E9;--paper-2:#F2EAD5;--rule:#DCCDA6;--ink:#2A2A22;--ink-soft:#645F4C;--ink-faint:#9C957C;
+--accent:#3D7A4C;--accent-ink:#FFFDF4;--petrol:#2E6470;--selection:rgba(214,170,76,.34);--match:rgba(143,184,120,.40);--match-cur:#EBC46C;--match-cur-ring:#B8893A;--extra-sel:rgba(46,100,112,.20);--cursor:#2A2A22;
+--danger:#A8483A;--alert:#F5B9A8;--lead:#1C3027;--shadow:rgba(38,52,32,.30);--scrim:rgba(28,44,34,.38);--field:#FFFDF6;--field-border:#CFBF97;--field-ink:#2A2A22;
+background:var(--wall);transition:background-color .5s ease;}
+body[data-theme="dark"]{
+--wall:#070F0C;--frame:#10211A;--frame-2:#0A1712;--frame-ink:#EADFC2;--frame-ink-soft:#91A58E;--gold:#E2B85C;--gold-line:rgba(226,184,92,.55);--gold-soft:rgba(226,184,92,.18);--glow:rgba(236,190,90,.55);
+--paper:#15251E;--paper-2:#1B2E26;--rule:#2F4A3D;--ink:#E9E2CC;--ink-soft:#AEB49E;--ink-faint:#6F7F6D;
+--accent:#86B96F;--accent-ink:#0E1C16;--petrol:#7FC2CA;--selection:rgba(226,184,92,.28);--match:rgba(134,185,111,.30);--match-cur:rgba(226,184,92,.72);--match-cur-ring:#E2B85C;--extra-sel:rgba(127,194,202,.24);--cursor:#F2E7C8;
+--danger:#E58A74;--alert:#F2A08C;--lead:#040A08;--shadow:rgba(0,0,0,.55);--scrim:rgba(2,8,6,.55);--field:#0E1D17;--field-border:#39584A;--field-ink:#E9E2CC;}
+textarea::selection{background:var(--selection);color:transparent}
+::-webkit-scrollbar{width:8px;height:6px}::-webkit-scrollbar-thumb{background:var(--gold-soft);border-radius:8px}::-webkit-scrollbar-track{background:transparent}
+a{color:var(--accent)}a:hover{color:var(--gold)}
+@keyframes cyBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes cyBloom{0%{transform:scale(.15) rotate(-60deg);opacity:0}70%{transform:scale(1.12) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes cyBud{0%,100%{transform:scale(.88);opacity:.75}50%{transform:scale(1.04);opacity:1}}
+@keyframes cyDroop{0%{transform:rotate(0)}100%{transform:rotate(38deg)}}
+@keyframes cyVine{from{stroke-dashoffset:420}to{stroke-dashoffset:0}}
+@keyframes cyRise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes cyGrow{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes cyFade{from{opacity:0}to{opacity:1}}
+@keyframes cySway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes cyProg{from{width:0}to{width:100%}}
+@keyframes cyLamp{0%,100%{box-shadow:0 0 6px var(--glow)}50%{box-shadow:0 0 14px var(--glow)}}
+
+@keyframes cyTrayA{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes cyTrayB{0%,49%{opacity:0}50%,100%{opacity:1}}</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height:100vh; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; gap:34px; padding:28px 20px 60px; background:var(--wall); transition:background-color .5s ease; font-family:Jost, sans-serif; color:var(--ink);">
+  <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:10px 18px;">
+    <a href="Cynote Dashboard.dc.html" style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.06em; color:var(--ink-soft); text-decoration:none; transition:color .2s;" style-hover="color:var(--accent);">← Dashnotes</a>
+    <sc-for list="{{ demo }}" as="g" hint-placeholder-count="2">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft);">{{ g.label }}</span>
+        <div style="display:flex; gap:2px; padding:2px; border:1px solid var(--field-border); border-radius:16px;">
+          <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="2">
+            <button onClick="{{ o.onClick }}" style="border:none; cursor:pointer; white-space:nowrap; font-family:Jost, sans-serif; font-size:12px; padding:4px 10px; border-radius:999px; background:{{ o.bg }}; color:{{ o.fg }}; transition:background .2s, box-shadow .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.94);">{{ o.t }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <section data-screen-label="Bandeja" style="width:100%; max-width:980px; display:flex; flex-direction:column; gap:14px;">
+    <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+      <h2 style="margin:0; font-family:Marcellus, serif; font-weight:400; font-size:24px; letter-spacing:.03em;">Bandeja do Windows</h2>
+      <span style="font-family:Literata, serif; font-style:italic; font-size:14px; color:var(--ink-soft);">Clique no ícone para abrir o menu. Com um pedido de sincronização, o ícone pisca.</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%, 440px), 1fr)); gap:18px;">
+      <sc-for list="{{ bars }}" as="b" hint-placeholder-count="2">
+        <div style="position:relative; display:flex; flex-direction:column; gap:8px;">
+          <span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft);">{{ b.label }}</span>
+          <div style="position:relative; height:250px; border-radius:14px; overflow:visible; background:{{ b.desk }}; border:1px solid var(--rule);">
+            <sc-if value="{{ b.menuOpen }}">
+              <div onClick="{{ closeMenu }}" style="position:absolute; inset:0; z-index:4;"></div>
+              <div style="position:absolute; right:88px; bottom:58px; z-index:5; width:220px; padding:6px; background:var(--paper); border:1px solid var(--gold-line); border-radius:14px 14px 6px 14px; box-shadow:0 14px 30px var(--shadow); transform-origin:100% 100%; animation:cyGrow .22s cubic-bezier(.3,.7,.2,1);">
+                <sc-if value="{{ pending }}">
+                  <button onClick="{{ openPair }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:8px 10px; margin-bottom:4px; border:none; border-radius:9px; cursor:pointer; background:var(--gold-soft); color:var(--ink); font-family:Jost, sans-serif; font-size:13px; text-align:left; transition:background .2s, transform .18s cubic-bezier(.3,.7,.2,1), box-shadow .2s;" style-hover="transform:translateX(3px); box-shadow:inset 2px 0 0 var(--gold);" style-active="transform:translateX(3px) scale(.98);">
+                    <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" style="flex:0 0 auto; color:var(--accent);"><rect x="4.5" y="1.5" width="7" height="13" rx="1.8"></rect><path d="M7 12.2h2"></path></svg>
+                    <span style="flex:1;">Celular do Vini quer sincronizar</span>
+                  </button>
+                </sc-if>
+                <sc-for list="{{ trayItems }}" as="it" hint-placeholder-count="2">
+                  <button onClick="{{ it.onClick }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:8px 10px; border:none; border-radius:9px; cursor:pointer; background:transparent; color:{{ it.fg }}; font-family:Jost, sans-serif; font-size:13px; text-align:left; animation:cyRise .22s ease both; animation-delay:{{ it.delay }}; transition:background .2s, transform .18s cubic-bezier(.3,.7,.2,1), box-shadow .2s;" style-hover="background:var(--paper-2); transform:translateX(3px); box-shadow:inset 2px 0 0 var(--gold);" style-active="background:var(--gold-soft); transform:translateX(3px) scale(.98);">
+                    <span style="flex:1;">{{ it.label }}</span>
+                    <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--ink-faint);">{{ it.key }}</span>
+                  </button>
+                </sc-for>
+              </div>
+            </sc-if>
+            <div style="position:absolute; left:0; right:0; bottom:0; height:48px; display:flex; align-items:center; gap:4px; padding:0 10px; box-sizing:border-box; border-radius:0 0 14px 14px; background:{{ b.bar }}; color:{{ b.ink }}; border-top:1px solid {{ b.edge }};">
+              <div style="flex:1;"></div>
+              <div style="width:28px; height:32px; display:grid; place-items:center; opacity:.7;"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 10l4-4 4 4"></path></svg></div>
+              <div style="width:28px; height:32px; display:grid; place-items:center;"><span style="width:14px; height:14px; border-radius:3px; background:{{ b.ghost }};"></span></div>
+              <button title="Cynote" onClick="{{ b.onTray }}" style="position:relative; width:34px; height:34px; border:none; border-radius:8px; display:grid; place-items:center; cursor:pointer; background:{{ b.trayBg }}; transition:background .2s, transform .15s;" style-hover="background:{{ b.hover }};" style-active="transform:scale(.9);">
+                <span style="position:relative; width:16px; height:16px; display:block;">
+                  <svg width="16" height="16" viewBox="0 0 16 16" style="position:absolute; inset:0; animation:{{ blinkA }};"><circle cx="8" cy="8" r="7.3" fill="#37604F" stroke="#1C3027" stroke-width="1"></circle><path d="M10.9 5.1A4.1 4.1 0 1 0 10.9 10.9" fill="none" stroke="#E2B85C" stroke-width="1.9" stroke-linecap="round"></path></svg>
+                  <svg width="16" height="16" viewBox="0 0 16 16" style="position:absolute; inset:0; opacity:0; animation:{{ blinkB }};"><circle cx="8" cy="8" r="7.3" fill="#E2B85C" stroke="#1C3027" stroke-width="1"></circle><path d="M10.9 5.1A4.1 4.1 0 1 0 10.9 10.9" fill="none" stroke="#1C3027" stroke-width="1.9" stroke-linecap="round"></path></svg>
+                </span>
+              </button>
+              <div style="width:28px; height:32px; display:grid; place-items:center;"><span style="width:14px; height:10px; border-radius:2px; border:1.5px solid currentColor; opacity:.75;"></span></div>
+              <div style="display:flex; flex-direction:column; align-items:flex-end; padding:0 6px 0 8px; font-size:11.5px; line-height:1.3; font-variant-numeric:tabular-nums;"><span>09:41</span><span>29/09/2026</span></div>
+            </div>
+          </div>
+        </div>
+      </sc-for>
+    </div>
+    <div style="font-size:12.5px; color:var(--ink-soft); line-height:1.6; max-width:760px; text-wrap:pretty;">Ícone da bandeja: disco verde com o C dourado e contorno escuro de 1 px, que funciona em barra clara e escura. Alerta: o disco fica dourado e o C verde, alternando a cada 600 ms (steps, sem suavizar) até o usuário abrir o menu. O menu é do próprio Cynote, com o mesmo papel e filete dourado das outras telas.</div>
+  </section>
+
+  <section data-screen-label="Ícone do app" style="width:100%; max-width:980px; display:flex; flex-direction:column; gap:14px;">
+    <h2 style="margin:0; font-family:Marcellus, serif; font-weight:400; font-size:24px; letter-spacing:.03em;">Ícone do app</h2>
+    <div style="display:flex; flex-wrap:wrap; gap:18px;">
+      <sc-for list="{{ appIcons }}" as="a" hint-placeholder-count="2">
+        <div style="flex:1 1 300px; display:flex; align-items:flex-end; gap:22px; padding:22px 24px 16px; border-radius:16px; background:{{ a.bg }}; border:1px solid var(--rule); flex-wrap:wrap;">
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><img src="icons/icone-do-app.png" alt="Ícone do app" width="112" height="112" style="width:112px; height:112px; clip-path:circle(38.5% at 50% 49.9%); transform:scale(1.28);"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ a.ink }};">256 / 48</span></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><img src="icons/bandeja-32.svg" alt="" width="32" height="32"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ a.ink }};">32</span></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><img src="icons/bandeja-16.svg" alt="" width="16" height="16"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ a.ink }};">16</span></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><img src="icons/bandeja-32-alerta.svg" alt="" width="32" height="32"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ a.ink }};">32 alerta</span></div>
+          <div style="display:flex; flex-direction:column; align-items:center; gap:6px;"><img src="icons/bandeja-16-alerta.svg" alt="" width="16" height="16"><span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:{{ a.ink }};">16 alerta</span></div>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+
+  <section data-screen-label="Ícones" style="width:100%; max-width:980px; display:flex; flex-direction:column; gap:14px;">
+    <div style="display:flex; align-items:baseline; gap:12px; flex-wrap:wrap;">
+      <h2 style="margin:0; font-family:Marcellus, serif; font-weight:400; font-size:24px; letter-spacing:.03em;">Ícones da interface</h2>
+      <span style="font-family:Literata, serif; font-style:italic; font-size:14px; color:var(--ink-soft);">16 × 16, traço 1.5, pontas arredondadas, currentColor — pasta icons/</span>
+    </div>
+    <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(118px, 1fr)); gap:10px;">
+      <sc-for list="{{ icons }}" as="i" hint-placeholder-count="12">
+        <div title="{{ i.file }}" style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:16px 8px 12px; border-radius:12px; background:var(--paper); border:1px solid var(--rule); transition:transform .2s cubic-bezier(.3,.7,.2,1), box-shadow .25s, border-color .2s;" style-hover="transform:translateY(-2px); box-shadow:0 8px 16px var(--shadow); border-color:var(--gold-line);">
+          <div style="display:flex; gap:8px;">
+            <div style="width:36px; height:36px; border-radius:50%; display:grid; place-items:center; background:var(--paper-2);"><div style="width:16px; height:16px; background:var(--ink); -webkit-mask:url('{{ i.src }}') center/contain no-repeat; mask:url('{{ i.src }}') center/contain no-repeat;"></div></div>
+            <div style="width:36px; height:36px; border-radius:50%; display:grid; place-items:center; background:var(--frame); border:1px solid var(--gold-line); box-sizing:border-box;"><div style="width:16px; height:16px; background:{{ i.onFrame }}; -webkit-mask:url('{{ i.src }}') center/contain no-repeat; mask:url('{{ i.src }}') center/contain no-repeat;"></div></div>
+          </div>
+          <span style="font-size:12px; text-align:center;">{{ i.label }}</span>
+          <span style="font-family:'JetBrains Mono', monospace; font-size:10px; color:var(--ink-faint);">{{ i.file }}</span>
+        </div>
+      </sc-for>
+    </div>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const THEMES = { light: {"--wall":"#E4DECB","--frame":"#37604F","--frame-2":"#274A3C","--frame-ink":"#F3EBD3","--frame-ink-soft":"#C3D3BC","--gold":"#C9A04E","--gold-line":"rgba(226,190,110,.55)","--gold-soft":"rgba(226,190,110,.22)","--glow":"rgba(240,200,110,.45)","--paper":"#FBF6E9","--paper-2":"#F2EAD5","--rule":"#DCCDA6","--ink":"#2A2A22","--ink-soft":"#645F4C","--ink-faint":"#9C957C","--accent":"#3D7A4C","--accent-ink":"#FFFDF4","--petrol":"#2E6470","--selection":"rgba(214,170,76,.34)","--match":"rgba(143,184,120,.40)","--match-cur":"#EBC46C","--match-cur-ring":"#B8893A","--extra-sel":"rgba(46,100,112,.20)","--cursor":"#2A2A22","--danger":"#A8483A","--alert":"#F5B9A8","--lead":"#1C3027","--shadow":"rgba(38,52,32,.30)","--scrim":"rgba(28,44,34,.38)","--field":"#FFFDF6","--field-border":"#CFBF97","--field-ink":"#2A2A22"}, dark: {"--wall":"#070F0C","--frame":"#10211A","--frame-2":"#0A1712","--frame-ink":"#EADFC2","--frame-ink-soft":"#91A58E","--gold":"#E2B85C","--gold-line":"rgba(226,184,92,.55)","--gold-soft":"rgba(226,184,92,.18)","--glow":"rgba(236,190,90,.55)","--paper":"#15251E","--paper-2":"#1B2E26","--rule":"#2F4A3D","--ink":"#E9E2CC","--ink-soft":"#AEB49E","--ink-faint":"#6F7F6D","--accent":"#86B96F","--accent-ink":"#0E1C16","--petrol":"#7FC2CA","--selection":"rgba(226,184,92,.28)","--match":"rgba(134,185,111,.30)","--match-cur":"rgba(226,184,92,.72)","--match-cur-ring":"#E2B85C","--extra-sel":"rgba(127,194,202,.24)","--cursor":"#F2E7C8","--danger":"#E58A74","--alert":"#F2A08C","--lead":"#040A08","--shadow":"rgba(0,0,0,.55)","--scrim":"rgba(2,8,6,.55)","--field":"#0E1D17","--field-border":"#39584A","--field-ink":"#E9E2CC"} };
+
+const ICONS = [
+  ['menu', 'Menu'], ['note-styling', 'Note Styling'], ['configuracoes', 'Configurações'], ['fixar', 'Fixar janela'],
+  ['minimizar', 'Minimizar'], ['maximizar', 'Maximizar'], ['fechar', 'Fechar'], ['nova-guia', 'Nova guia'],
+  ['todas-as-guias', 'Todas as guias'], ['expandir', 'Expandir substituir'], ['anterior', 'Anterior'], ['proximo', 'Próximo'],
+  ['modo-leitura', 'Modo leitura'], ['editar', 'Editar'], ['excluir', 'Excluir'], ['voltar', 'Voltar'],
+  ['buscar', 'Buscar'], ['desfazer', 'Desfazer'], ['refazer', 'Refazer'], ['pasta', 'Pasta'],
+  ['atualizar-busca', 'Procurar de novo'], ['computador', 'Computador'], ['celular', 'Celular'], ['atualizacao', 'Atualização'],
+  ['sync-ok', 'Sincronizado'], ['sync-andamento', 'Sincronizando'], ['sync-erro', 'Erro de sincronização'],
+];
+class Component extends DCLogic {
+  rootRef = React.createRef();
+  state = { theme: 'light', pending: true, menu: null };
+  applyTheme() { const v = THEMES[this.state.theme]; [document.body, this.rootRef.current].forEach(el => { if (el) for (const k in v) el.style.setProperty(k, v[k]); }); }
+  renderVals() {
+    const s = this.state;
+    if (this._pt !== s.theme) { this._pt = s.theme; setTimeout(() => this.applyTheme(), 0); }
+    const dark = s.theme === 'dark';
+    const opt = (t, on, fn) => ({ t, onClick: fn, bg: on ? 'var(--frame)' : 'transparent', fg: on ? 'var(--frame-ink)' : 'var(--ink-soft)' });
+    const demo = [
+      { label: 'Tema', opts: [opt('Dia', !dark, () => this.setState({ theme: 'light' })), opt('Noite', dark, () => this.setState({ theme: 'dark' }))] },
+      { label: 'Pedido de sincronização', opts: [opt('Nenhum', !s.pending, () => this.setState({ pending: false })), opt('Piscando', s.pending, () => this.setState({ pending: true }))] },
+    ];
+    const bar = (id, label, light) => ({
+      id, label, menuOpen: s.menu === id,
+      desk: light ? 'linear-gradient(160deg, #DCE3D6, #C9D3C4)' : 'linear-gradient(160deg, #1D2622, #121815)',
+      bar: light ? 'rgba(246,246,242,.94)' : 'rgba(28,30,29,.96)', ink: light ? '#1E211F' : '#EDEFEC', edge: light ? 'rgba(0,0,0,.08)' : 'rgba(255,255,255,.06)',
+      ghost: light ? 'rgba(0,0,0,.28)' : 'rgba(255,255,255,.35)', hover: light ? 'rgba(0,0,0,.07)' : 'rgba(255,255,255,.09)',
+      trayBg: s.menu === id ? (light ? 'rgba(0,0,0,.09)' : 'rgba(255,255,255,.12)') : 'transparent',
+      onTray: () => this.setState({ menu: s.menu === id ? null : id }),
+    });
+    return {
+      rootRef: this.rootRef, demo, pending: s.pending,
+      bars: [bar('l', 'Barra clara', true), bar('d', 'Barra escura', false)],
+      blinkA: s.pending ? 'cyTrayA 1.2s steps(1) infinite' : 'none', blinkB: s.pending ? 'cyTrayB 1.2s steps(1) infinite' : 'none',
+      closeMenu: () => this.setState({ menu: null }),
+      openPair: () => this.setState({ menu: null, pending: false }),
+      trayItems: [{ label: 'Mostrar/Ocultar', key: 'Ctrl+Shift+Space', fg: 'var(--ink)' }, { label: 'Sair', key: '', fg: 'var(--danger)' }].map((t, i) => ({ ...t, delay: 40 + i * 40 + 'ms', onClick: () => this.setState({ menu: null }) })),
+      appIcons: [{ bg: '#F4F1E8', ink: '#645F4C' }, { bg: '#16201B', ink: '#AEB49E' }],
+      icons: ICONS.map(([f, label]) => ({ file: f + '.svg', src: 'icons/' + f + '.svg', label, onFrame: f === 'sync-erro' ? 'var(--alert)' : f.startsWith('sync') ? 'var(--gold)' : 'var(--frame-ink)' })),
+    };
+  }
+}
+</script>
+</body>
+</html>

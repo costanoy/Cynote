@@ -1,10 +1,11 @@
 import {
+  ArchShape,
+  ArchVines,
   CloseIcon,
   DrawIcon,
-  ExportIcon,
-  FormatIcon,
-  LogoIcon,
+  LogoMedallion,
   MaximizeIcon,
+  MenuIcon,
   MinimizeIcon,
   PinIcon,
   SettingsIcon,
@@ -47,105 +48,90 @@ export function Header({
   onToggleMaximize,
   onClose,
 }: Props) {
+  const menuItems: { label: string; key?: string; run: () => void }[] = [
+    { label: "Salvar como…", key: "Ctrl+Shift+S", run: onSaveAs },
+    { label: "Exportar como .txt", run: onExportTxt },
+    { label: "Localizar", key: "Ctrl+F", run: () => sendShortcut("f") },
+    { label: "Substituir", key: "Ctrl+H", run: () => sendShortcut("h") },
+    { label: "Ir para a linha", key: "Ctrl+G", run: () => sendShortcut("g") },
+  ];
+
   return (
-    <div className="header" data-tauri-drag-region>
-      <LogoIcon />
-      <div className="format-menu-wrap">
-        <button className="icon-btn" onClick={onToggleFormatMenu} title="Formatação">
-          <FormatIcon />
+    <div className="cy-arch" data-tauri-drag-region>
+      <ArchShape />
+      <ArchVines />
+      <div className="cy-lamp" />
+
+      <div className="cy-arch-strip" data-tauri-drag-region>
+        <div className="cy-brand">
+          <LogoMedallion />
+          <span className="cy-brand-name">Cynote</span>
+        </div>
+        <button
+          className={"medallion" + (formatMenuOpen ? " active" : "")}
+          onClick={onToggleFormatMenu}
+          title="Menu"
+        >
+          <MenuIcon />
         </button>
-        {formatMenuOpen && (
-          <>
-            <div className="tabs-menu-backdrop" onClick={onCloseFormatMenu} />
-            <div className="format-menu">
-              <div
-                className="format-item"
-                onClick={() => {
-                  onSaveAs();
-                  onCloseFormatMenu();
-                }}
-              >
-                <ExportIcon />
-                <span>Salvar como…</span>
-                <span className="format-key">Ctrl+Shift+S</span>
-              </div>
-              <div
-                className="format-item"
-                onClick={() => {
-                  onExportTxt();
-                  onCloseFormatMenu();
-                }}
-              >
-                <ExportIcon />
-                <span>Exportar como .txt</span>
-              </div>
-              <div className="format-divider" />
-              <div
-                className="format-item"
-                onClick={() => {
-                  onCloseFormatMenu();
-                  sendShortcut("f");
-                }}
-              >
-                <span>Localizar</span>
-                <span className="format-key">Ctrl+F</span>
-              </div>
-              <div
-                className="format-item"
-                onClick={() => {
-                  onCloseFormatMenu();
-                  sendShortcut("h");
-                }}
-              >
-                <span>Substituir</span>
-                <span className="format-key">Ctrl+H</span>
-              </div>
-              <div
-                className="format-item"
-                onClick={() => {
-                  onCloseFormatMenu();
-                  sendShortcut("g");
-                }}
-              >
-                <span>Ir para a linha</span>
-                <span className="format-key">Ctrl+G</span>
-              </div>
-            </div>
-          </>
-        )}
+        <div className="cy-spacer" data-tauri-drag-region />
+        <button
+          className={"medallion" + (drawingOpen ? " active" : "")}
+          onClick={onToggleDrawing}
+          title="Note Styling (Ctrl+Shift+D)"
+        >
+          <DrawIcon />
+        </button>
+        <button
+          className={"medallion" + (settingsOpen ? " active" : "")}
+          onClick={onToggleSettings}
+          title={settingsOpen ? "Fechar configurações" : "Configurações"}
+          aria-pressed={settingsOpen}
+        >
+          <SettingsIcon />
+        </button>
+        <button className={"medallion" + (pinned ? " active" : "")} onClick={onTogglePin} title="Fixar janela">
+          <PinIcon />
+        </button>
+        <div className="cy-arch-divider" />
+        <button className="medallion win" onClick={onMinimize} title="Minimizar">
+          <MinimizeIcon />
+        </button>
+        <button className="medallion win" onClick={onToggleMaximize} title="Maximizar">
+          <MaximizeIcon />
+        </button>
+        <button className="medallion win close" onClick={onClose} title="Fechar (vai para a bandeja)">
+          <CloseIcon />
+        </button>
       </div>
-      <button
-        className={"draw-btn" + (drawingOpen ? " active" : "")}
-        onClick={onToggleDrawing}
-        title="Note Styling (Ctrl+Shift+D)"
-      >
-        <DrawIcon />
-      </button>
-      <div style={{ flex: 1 }} />
-      <button
-        className={"icon-btn" + (settingsOpen ? " active" : "")}
-        onClick={onToggleSettings}
-        title={settingsOpen ? "Fechar configurações" : "Configurações"}
-        aria-pressed={settingsOpen}
-      >
-        <SettingsIcon />
-      </button>
-      <button
-        className={"icon-btn" + (pinned ? " active" : "")}
-        onClick={onTogglePin}
-        title="Fixar janela"
-      >
-        <PinIcon />
-      </button>
-      <button className="icon-btn" onClick={onMinimize} title="Minimizar">
-        <MinimizeIcon />
-      </button>
-      <button className="icon-btn" onClick={onToggleMaximize} title="Maximizar">
-        <MaximizeIcon />
-      </button>
-      <button className="icon-btn" onClick={onClose} title="Fechar">
-        <CloseIcon />
-      </button>
+
+      {formatMenuOpen && (
+        <>
+          <div className="menu-backdrop" onClick={onCloseFormatMenu} />
+          <div className="main-menu">
+            <svg className="main-menu-vine" width="12" viewBox="0 0 12 200" preserveAspectRatio="none">
+              <path
+                d="M6 0 C1 25 11 50 6 75 C1 100 11 125 6 150 C1 175 11 190 6 200"
+                vectorEffect="non-scaling-stroke"
+              />
+            </svg>
+            {menuItems.map((item, i) => (
+              <button
+                key={item.label}
+                className="menu-item"
+                style={{ animationDelay: 60 + i * 40 + "ms" }}
+                onClick={() => {
+                  onCloseFormatMenu();
+                  item.run();
+                }}
+              >
+                <span className="menu-item-label">{item.label}</span>
+                {item.key && <span className="menu-item-key">{item.key}</span>}
+              </button>
+            ))}
+          </div>
+        </>
+      )}
     </div>
   );
 }

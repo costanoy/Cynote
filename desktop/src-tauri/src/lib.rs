@@ -4,7 +4,7 @@ mod identity;
 mod sync;
 
 use std::fs;
-use std::sync::atomic::{AtomicI64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicI64, Ordering};
 use std::sync::Mutex;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::{
@@ -156,29 +156,69 @@ fn undo_forced_autostart_once(app: &AppHandle) {
     let _ = fs::remove_file(marker);
 }
 
-/// Toggles the tray icon a few times so Cynote calls attention to itself the
-/// moment a peer asks to sync - the tray icon is the one thing that's always
-/// present, whether the main window is shown, minimized, or hidden away
-/// (its usual state, since closing the window hides it to the tray instead
-/// of quitting).
+/// Tray marks, as raw RGBA written by scripts/generate-tray-icons.mjs. The
+/// "simple" pair is the small-size drawing (gold C on the green disc); the
+/// "detailed" pair adds the inner ring and the leaf, for high-DPI taskbars
+/// where the tray icon really gets 32 pixels. Each has an "alert" twin with
+/// the colors swapped.
+const TRAY_ICON_SIZE: u32 = 32;
+static TRAY_SIMPLE: &[u8] = include_bytes!("../icons/tray/simple.rgba");
+static TRAY_SIMPLE_ALERT: &[u8] = include_bytes!("../icons/tray/simple-alert.rgba");
+static TRAY_DETAILED: &[u8] = include_bytes!("../icons/tray/detailed.rgba");
+static TRAY_DETAILED_ALERT: &[u8] = include_bytes!("../icons/tray/detailed-alert.rgba");
+
+/// Below this display scale the tray shows the icon at well under 32px, where
+/// the ring and leaf would only turn to mush.
+const TRAY_DETAILED_MIN_SCALE: f64 = 1.75;
+static TRAY_USE_DETAILED: AtomicBool = AtomicBool::new(false);
+static TRAY_ALERTING: AtomicBool = AtomicBool::new(false);
+
+const TRAY_ALERT_STEP_MS: u64 = 600;
+/// Safety net: stop blinking on our own after a minute if nobody reacts.
+const TRAY_ALERT_MAX_BLINKS: u32 = 50;
+
+fn tray_image(alert: bool) -> tauri::image::Image<'static> {
+    let bytes = match (TRAY_USE_DETAILED.load(Ordering::Relaxed), alert) {
+        (false, false) => TRAY_SIMPLE,
+        (false, true) => TRAY_SIMPLE_ALERT,
+        (true, false) => TRAY_DETAILED,
+        (true, true) => TRAY_DETAILED_ALERT,
+    };
+    tauri::image::Image::new(bytes, TRAY_ICON_SIZE, TRAY_ICON_SIZE)
+}
+
+/// Alternates the tray icon with its alert twin so Cynote calls attention to
+/// itself the moment a peer asks to sync - the tray icon is the one thing
+/// that's always present, whether the main window is shown, minimized, or
+/// hidden away (its usual state, since closing the window hides it to the
+/// tray instead of quitting). Keeps going until the request is noticed (see
+/// stop_tray_alert).
 pub fn flash_tray_icon(app: &AppHandle) {
     use tauri::tray::TrayIcon;
     let Some(tray) = app.try_state::<TrayIcon<tauri::Wry>>() else { return };
     let tray = tray.inner().clone();
-    let Some(normal) = app.default_window_icon().cloned().map(|i| i.to_owned()) else { return };
-    let blank = tauri::image::Image::new_owned(
-        vec![0u8; (normal.width() * normal.height() * 4) as usize],
-        normal.width(),
-        normal.height(),
-    );
+    if TRAY_ALERTING.swap(true, Ordering::SeqCst) {
+        return; // already blinking
+    }
     std::thread::spawn(move || {
-        for _ in 0..4 {
-            let _ = tray.set_icon(Some(blank.clone()));
-            std::thread::sleep(std::time::Duration::from_millis(400));
-            let _ = tray.set_icon(Some(normal.clone()));
-            std::thread::sleep(std::time::Duration::from_millis(400));
+        let step = std::time::Duration::from_millis(TRAY_ALERT_STEP_MS);
+        for _ in 0..TRAY_ALERT_MAX_BLINKS {
+            if !TRAY_ALERTING.load(Ordering::SeqCst) {
+                break;
+            }
+            let _ = tray.set_icon(Some(tray_image(true)));
+            std::thread::sleep(step);
+            let _ = tray.set_icon(Some(tray_image(false)));
+            std::thread::sleep(step);
         }
+        TRAY_ALERTING.store(false, Ordering::SeqCst);
     });
+}
+
+/// Called once the sync request has been seen: the tray was clicked, the
+/// window came to the front, or the request was answered.
+pub fn stop_tray_alert() {
+    TRAY_ALERTING.store(false, Ordering::SeqCst);
 }
 
 /// show() + set_focus() alone often leaves the window visible but stuck
@@ -239,7 +279,7 @@ fn show_dashboard_window(app: &AppHandle, popup: bool) {
 
     let url = if popup { "index.html?dashboard-popup=1" } else { "index.html" };
     let mut builder = tauri::WebviewWindowBuilder::new(app, "dashboard", tauri::WebviewUrl::App(url.into()))
-        .title("Cynote Dashboard")
+        .title("Dashnotes")
         .decorations(false)
         .transparent(true)
         .shadow(false)
@@ -248,7 +288,7 @@ fn show_dashboard_window(app: &AppHandle, popup: bool) {
     builder = if popup {
         builder.inner_size(560.0, 480.0).skip_taskbar(true)
     } else {
-        builder.inner_size(780.0, 580.0).skip_taskbar(false)
+        builder.inner_size(880.0, 600.0).skip_taskbar(false)
     };
 
     if let Ok(window) = builder.build() {
@@ -343,12 +383,20 @@ pub fn run() {
             let quit = MenuItem::with_id(app, "quit", "Sair", true, None::<&str>)?;
             let tray_menu = Menu::with_items(app, &[&show_hide, &quit])?;
 
+            let scale = app
+                .get_webview_window("main")
+                .and_then(|w| w.scale_factor().ok())
+                .unwrap_or(1.0);
+            TRAY_USE_DETAILED.store(scale >= TRAY_DETAILED_MIN_SCALE, Ordering::Relaxed);
+
             let tray = TrayIconBuilder::new()
-                .icon(app.default_window_icon().unwrap().clone())
+                .icon(tray_image(false))
+                .tooltip("Cynote")
                 .menu(&tray_menu)
                 .show_menu_on_left_click(false)
                 .on_menu_event(|app, event| match event.id.as_ref() {
                     "show_hide" => {
+                        stop_tray_alert();
                         if let Some(window) = app.get_webview_window("main") {
                             toggle_window(&window);
                         }
@@ -366,6 +414,9 @@ pub fn run() {
                     _ => {}
                 })
                 .on_tray_icon_event(|tray, event| {
+                    if let tauri::tray::TrayIconEvent::Click { .. } = event {
+                        stop_tray_alert();
+                    }
                     if let tauri::tray::TrayIconEvent::Click {
                         button: tauri::tray::MouseButton::Left,
                         button_state: tauri::tray::MouseButtonState::Up,
@@ -397,6 +448,7 @@ pub fn run() {
                 WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
                     save_window_geometry(window.app_handle(), window);
                 }
+                WindowEvent::Focused(true) => stop_tray_alert(),
                 _ => {}
             }
         })

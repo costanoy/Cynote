@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../icons.dart';
 import '../models/note.dart';
 import '../theme.dart';
+import '../widgets/greenhouse.dart';
 
-enum SyncState { synced, syncing, error }
+export '../widgets/greenhouse.dart' show SyncState;
 
 class EditorScreen extends StatefulWidget {
   final CyColors t;
@@ -14,6 +14,9 @@ class EditorScreen extends StatefulWidget {
   final void Function(String title) onTitleChanged;
   final void Function(String body) onBodyChanged;
 
+  /// Tapping the sync pill: save (and so sync) right away.
+  final VoidCallback onRetrySync;
+
   const EditorScreen({
     super.key,
     required this.t,
@@ -22,25 +25,52 @@ class EditorScreen extends StatefulWidget {
     required this.onBack,
     required this.onTitleChanged,
     required this.onBodyChanged,
+    required this.onRetrySync,
   });
 
   @override
   State<EditorScreen> createState() => _EditorScreenState();
 }
 
+/// What the formatting sheet can drop into the note.
+enum _Format {
+  bullets('—', 'Lista com marcadores', '— '),
+  numbered('1.', 'Lista numerada', '1. '),
+  checkbox('[ ]', 'Caixa de seleção', '[ ] '),
+  dateTime('12:00', 'Inserir data e hora', null);
+
+  final String glyph;
+  final String label;
+
+  /// Text put at the start of the current line; null means "insert the
+  /// current date and time at the cursor".
+  final String? linePrefix;
+  const _Format(this.glyph, this.label, this.linePrefix);
+}
+
 class _EditorScreenState extends State<EditorScreen> {
   late final TextEditingController _titleController = TextEditingController(text: widget.note.title);
   late final TextEditingController _bodyController = TextEditingController(text: widget.note.body);
+  final _titleFocus = FocusNode();
+  final _bodyFocus = FocusNode();
   // Shared across both fields: Flutter tracks which one is focused and
   // undoes/redoes into that field only, so one pair of buttons works for
   // title and body without us having to track focus ourselves.
   final UndoHistoryController _undoController = UndoHistoryController();
-  bool _formatMenuOpen = false;
+  bool _sheetOpen = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _titleFocus.addListener(() => setState(() {}));
+  }
 
   @override
   void dispose() {
     _titleController.dispose();
     _bodyController.dispose();
+    _titleFocus.dispose();
+    _bodyFocus.dispose();
     _undoController.dispose();
     super.dispose();
   }
@@ -58,174 +88,269 @@ class _EditorScreenState extends State<EditorScreen> {
   void _showExternalChange(TextEditingController controller, String value) {
     if (controller.text == value) return;
     final caret = controller.selection.baseOffset.clamp(0, value.length);
-    controller.value = TextEditingValue(text: value, selection: TextSelection.collapsed(offset: caret));
+    controller.value = TextEditingValue(
+      text: value,
+      selection: TextSelection.collapsed(offset: caret),
+    );
   }
 
-  static const Map<SyncState, Color> _colors = {
-    SyncState.synced: Color(0xFF2FAE5A),
-    SyncState.syncing: Color(0xFFFF8C3A),
-    SyncState.error: Color(0xFFE0432C),
-  };
+  Future<void> _openSheet() async {
+    setState(() => _sheetOpen = true);
+    final t = widget.t;
+    final picked = await showModalBottomSheet<_Format>(
+      context: context,
+      backgroundColor: const Color(0x00000000),
+      barrierColor: t.scrim,
+      sheetAnimationStyle: const AnimationStyle(duration: Duration(milliseconds: 320), curve: CyMotion.grow),
+      builder: (ctx) => _FormatSheet(t: t),
+    );
+    if (!mounted) return;
+    setState(() => _sheetOpen = false);
+    if (picked != null) _applyFormat(picked);
+  }
 
-  static String _syncLabel(SyncState s) => switch (s) {
-        SyncState.synced => 'Sincronizado',
-        SyncState.syncing => 'Sincronizando…',
-        SyncState.error => 'Erro de sincronização',
-      };
+  void _applyFormat(_Format format) {
+    final text = _bodyController.text;
+    final selection = _bodyController.selection;
+    final caret = selection.isValid ? selection.baseOffset.clamp(0, text.length) : text.length;
+    final String insert;
+    final int at;
+    if (format.linePrefix != null) {
+      insert = format.linePrefix!;
+      at = caret == 0 ? 0 : text.lastIndexOf('\n', caret - 1) + 1;
+    } else {
+      final now = DateTime.now();
+      String two(int n) => n.toString().padLeft(2, '0');
+      insert = '${two(now.day)}/${two(now.month)}/${now.year}, ${two(now.hour)}:${two(now.minute)}';
+      at = caret;
+    }
+    final next = text.substring(0, at) + insert + text.substring(at);
+    _bodyController.value = TextEditingValue(
+      text: next,
+      selection: TextSelection.collapsed(offset: caret + insert.length),
+    );
+    widget.onBodyChanged(next);
+    _bodyFocus.requestFocus();
+  }
 
   @override
   Widget build(BuildContext context) {
     final t = widget.t;
-    return Container(
-      color: t.bg,
-      child: Column(
-        children: [
-          Container(
-            padding: const EdgeInsets.fromLTRB(18, 40, 18, 20),
-            decoration: BoxDecoration(border: Border(bottom: BorderSide(color: t.border))),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: widget.onBack,
-                  child: SizedBox(
-                    width: 30 * kScale,
-                    height: 30 * kScale,
-                    child: Center(child: BackChevronIcon(size: 17 * kScale, color: t.mutedText)),
-                  ),
-                ),
-                const SizedBox(width: 6 * kScale),
-                Expanded(
-                  child: TextField(
-                    controller: _titleController,
-                    undoController: _undoController,
-                    onChanged: widget.onTitleChanged,
-                    style: GoogleFonts.bricolageGrotesque(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 15.5 * kScale,
-                      color: t.text,
-                    ),
-                    decoration: const InputDecoration(isDense: true, border: InputBorder.none),
-                  ),
-                ),
-                ValueListenableBuilder(
-                  valueListenable: _undoController,
-                  builder: (context, value, _) => GestureDetector(
-                    onTap: value.canUndo ? _undoController.undo : null,
-                    child: SizedBox(
-                      width: 30 * kScale,
-                      height: 30 * kScale,
-                      child: Center(
-                        child: Opacity(
-                          opacity: value.canUndo ? 1 : 0.35,
-                          child: UndoIcon(size: 15 * kScale, color: t.mutedText),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                ValueListenableBuilder(
-                  valueListenable: _undoController,
-                  builder: (context, value, _) => GestureDetector(
-                    onTap: value.canRedo ? _undoController.redo : null,
-                    child: SizedBox(
-                      width: 30 * kScale,
-                      height: 30 * kScale,
-                      child: Center(
-                        child: Opacity(
-                          opacity: value.canRedo ? 1 : 0.35,
-                          child: RedoIcon(size: 15 * kScale, color: t.mutedText),
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    GestureDetector(
-                      onTap: () => setState(() => _formatMenuOpen = !_formatMenuOpen),
-                      child: SizedBox(
-                        width: 30 * kScale,
-                        height: 30 * kScale,
-                        child: Center(child: FormatIcon(size: 15 * kScale, color: t.mutedText)),
-                      ),
-                    ),
-                    if (_formatMenuOpen)
-                      Positioned(
-                        top: 34 * kScale,
-                        right: 0,
-                        child: _FormatMenu(t: t, onItemTap: () => setState(() => _formatMenuOpen = false)),
-                      ),
-                  ],
-                ),
-              ],
+    final sync = widget.syncStatus;
+    return GreenhouseScreen(
+      t: t,
+      header: [
+        Medallion(
+          t: t,
+          onTap: widget.onBack,
+          child: BackChevronIcon(color: t.frameInk),
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Container(
+            height: 40,
+            alignment: Alignment.centerLeft,
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            decoration: BoxDecoration(
+              border: Border(bottom: BorderSide(color: _titleFocus.hasFocus ? t.gold : const Color(0x00000000))),
             ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(18, 20, 18, 20),
-              child: TextField(
-                controller: _bodyController,
-                undoController: _undoController,
-                onChanged: widget.onBodyChanged,
-                maxLines: null,
-                expands: true,
-                textAlignVertical: TextAlignVertical.top,
-                style: GoogleFonts.manrope(fontSize: 14.5 * kScale, height: 1.65, color: t.text),
-                decoration: const InputDecoration(isDense: true, border: InputBorder.none),
+            child: TextField(
+              controller: _titleController,
+              focusNode: _titleFocus,
+              undoController: _undoController,
+              onChanged: widget.onTitleChanged,
+              cursorColor: t.gold,
+              style: CyType.display(19, t.frameInk, letterSpacing: 0.38),
+              decoration: InputDecoration(
+                isDense: true,
+                border: InputBorder.none,
+                hintText: 'Sem título',
+                hintStyle: CyType.display(19, t.frameInkSoft, letterSpacing: 0.38),
               ),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 28),
-            decoration: BoxDecoration(border: Border(top: BorderSide(color: t.border))),
-            child: Row(
-              children: [
-                ValueListenableBuilder(
-                  valueListenable: _bodyController,
-                  builder: (context, value, _) => Text(
-                    '${value.text.length} caracteres',
-                    style: GoogleFonts.manrope(fontSize: 11 * kScale, color: t.mutedText),
-                  ),
-                ),
-                const Spacer(),
-                Tooltip(
-                  message: _syncLabel(widget.syncStatus),
-                  child: Container(
-                    width: 7 * kScale,
-                    height: 7 * kScale,
-                    decoration: BoxDecoration(shape: BoxShape.circle, color: _colors[widget.syncStatus]),
-                  ),
-                ),
-              ],
-            ),
+        ),
+        ValueListenableBuilder(
+          valueListenable: _undoController,
+          builder: (context, value, _) => Medallion(
+            t: t,
+            bordered: false,
+            enabled: value.canUndo,
+            onTap: _undoController.undo,
+            child: UndoIcon(color: t.frameInk),
           ),
-        ],
+        ),
+        ValueListenableBuilder(
+          valueListenable: _undoController,
+          builder: (context, value, _) => Medallion(
+            t: t,
+            bordered: false,
+            enabled: value.canRedo,
+            onTap: _undoController.redo,
+            child: RedoIcon(color: t.frameInk),
+          ),
+        ),
+        Medallion(
+          t: t,
+          active: _sheetOpen,
+          onTap: _openSheet,
+          child: Text('Aa', style: CyType.display(17, _sheetOpen ? t.frame2 : t.frameInk, height: 1)),
+        ),
+      ],
+      body: AnimatedContainer(
+        duration: const Duration(milliseconds: 500),
+        color: t.paper,
+        child: Column(
+          children: [
+            Expanded(
+              child: Stack(
+                children: [
+                  // The fine rule framing the page.
+                  Positioned(
+                    left: 10,
+                    right: 10,
+                    top: 8,
+                    bottom: 8,
+                    child: IgnorePointer(
+                      child: DecoratedBox(
+                        decoration: BoxDecoration(
+                          border: Border.all(color: t.rule),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Positioned.fill(
+                    child: TextField(
+                      controller: _bodyController,
+                      focusNode: _bodyFocus,
+                      undoController: _undoController,
+                      onChanged: widget.onBodyChanged,
+                      maxLines: null,
+                      expands: true,
+                      textAlignVertical: TextAlignVertical.top,
+                      cursorColor: t.accent,
+                      style: CyType.body(16.5, t.ink, height: 1.7),
+                      decoration: InputDecoration(
+                        isDense: true,
+                        border: InputBorder.none,
+                        contentPadding: const EdgeInsets.fromLTRB(26, ArchHeader.overhang + 4, 26, 24),
+                        hintText: 'Plante a primeira linha…',
+                        hintStyle: CyType.body(16.5, t.inkFaint, height: 1.7),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            AnimatedContainer(
+              duration: const Duration(milliseconds: 500),
+              color: t.frame,
+              padding: EdgeInsets.fromLTRB(20, 6, 20, 18 + MediaQuery.paddingOf(context).bottom),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Flexible(
+                    child: Tooltip(
+                      message: sync == SyncState.error ? 'Tocar para tentar de novo' : 'Sincronização',
+                      child: Pressable(
+                        onTap: widget.onRetrySync,
+                        builder: (context, pressed) => Container(
+                          height: kTouchTarget,
+                          padding: const EdgeInsets.fromLTRB(8, 0, 12, 0),
+                          decoration: BoxDecoration(
+                            color: pressed ? t.goldSoft : null,
+                            border: Border.all(color: t.goldLine),
+                            borderRadius: BorderRadius.circular(999),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              SyncFlower(t: t, status: sync),
+                              const SizedBox(width: 7),
+                              Flexible(
+                                child: Text(
+                                  syncLabel(sync),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: CyType.ui(13, sync == SyncState.error ? t.alert : t.frameInkSoft),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ValueListenableBuilder(
+                    valueListenable: _bodyController,
+                    builder: (context, value, _) => Text(
+                      '${value.text.length} caracteres',
+                      style: CyType.ui(
+                        12.5,
+                        t.frameInkSoft,
+                      ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
-class _FormatMenu extends StatelessWidget {
+/// The formatting sheet: rises from the bottom, with a handle and a vine.
+class _FormatSheet extends StatelessWidget {
   final CyColors t;
-  final VoidCallback onItemTap;
-  const _FormatMenu({required this.t, required this.onItemTap});
+  const _FormatSheet({required this.t});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 170 * kScale,
-      padding: const EdgeInsets.all(4),
+      padding: EdgeInsets.fromLTRB(14, 10, 14, 30 + MediaQuery.paddingOf(context).bottom),
       decoration: BoxDecoration(
-        color: t.menuBg,
-        border: Border.all(color: t.border),
-        borderRadius: BorderRadius.circular(10),
-        boxShadow: t.shadow,
+        color: t.paper,
+        border: Border(top: BorderSide(color: t.goldLine)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
+        boxShadow: [BoxShadow(color: t.shadow, blurRadius: 30, offset: const Offset(0, -10))],
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _FormatItem(t: t, label: 'Negrito', mark: 'B', bold: true, shortcut: 'Ctrl+B', onTap: onItemTap),
-          _FormatItem(t: t, label: 'Itálico', mark: 'i', bold: false, shortcut: 'Ctrl+I', onTap: onItemTap),
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              margin: const EdgeInsets.only(bottom: 10),
+              decoration: BoxDecoration(color: t.rule, borderRadius: BorderRadius.circular(4)),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+            child: Row(
+              children: [
+                Text('Formatação', style: CyType.display(17, t.ink, letterSpacing: 0.5)),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: VineUnderline(t: t, width: double.infinity),
+                ),
+              ],
+            ),
+          ),
+          for (var i = 0; i < _Format.values.length; i++)
+            RiseIn(
+              delay: Duration(milliseconds: 60 + i * 40),
+              child: _FormatItem(
+                t: t,
+                format: _Format.values[i],
+                onTap: () => Navigator.of(context).pop(_Format.values[i]),
+              ),
+            ),
         ],
       ),
     );
@@ -234,42 +359,23 @@ class _FormatMenu extends StatelessWidget {
 
 class _FormatItem extends StatelessWidget {
   final CyColors t;
-  final String label;
-  final String mark;
-  final bool bold;
-  final String shortcut;
+  final _Format format;
   final VoidCallback onTap;
-  const _FormatItem({
-    required this.t,
-    required this.label,
-    required this.mark,
-    required this.bold,
-    required this.shortcut,
-    required this.onTap,
-  });
+  const _FormatItem({required this.t, required this.format, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
+    return Pressable(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(6),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+      pressedScale: 0.98,
+      builder: (context, pressed) => Container(
+        height: 50,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        decoration: BoxDecoration(color: pressed ? t.goldSoft : null, borderRadius: BorderRadius.circular(12)),
         child: Row(
           children: [
-            Text(
-              mark,
-              style: GoogleFonts.manrope(
-                fontWeight: bold ? FontWeight.w700 : FontWeight.w400,
-                fontStyle: bold ? FontStyle.normal : FontStyle.italic,
-                fontSize: 13 * kScale,
-                color: t.text,
-              ),
-            ),
-            const SizedBox(width: 8),
-            Text(label, style: GoogleFonts.manrope(fontSize: 13 * kScale, color: t.text)),
-            const Spacer(),
-            Text(shortcut, style: GoogleFonts.manrope(fontSize: 10.5 * kScale, color: t.subtleText)),
+            SizedBox(width: 48, child: Text(format.glyph, style: CyType.mono(13, t.accent))),
+            Expanded(child: Text(format.label, style: CyType.ui(15, t.ink))),
           ],
         ),
       ),

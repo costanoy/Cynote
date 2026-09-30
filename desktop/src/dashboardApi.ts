@@ -10,6 +10,10 @@ export interface ScannedNote {
   rootLabel: string;
   relativeDirs: string[];
   fileName: string;
+  /** Last-modified time in ms since the epoch (0 if unknown). */
+  modifiedMs: number;
+  /** First few words of the note's text. */
+  preview: string;
 }
 
 export async function scanTxtNotes(): Promise<ScannedNote[]> {

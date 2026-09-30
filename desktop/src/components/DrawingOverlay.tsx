@@ -1,7 +1,11 @@
 import { useEffect, useRef } from "react";
 
-const COLORS_DARK = ["#ff8c3a", "#ffb02e", "#c1530a", "#f5eee6"];
-const COLORS_LIGHT = ["#ff8c3a", "#ffb02e", "#c1530a", "#2a1a10"];
+export const DRAW_COLORS = [
+  { name: "Verde-folha", hex: "#4E8A4A" },
+  { name: "Azul-petróleo", hex: "#2E6F7C" },
+  { name: "Terracota", hex: "#A65A3A" },
+  { name: "Âmbar", hex: "#C98A2E" },
+];
 
 const MAX_WIDTH = 3.2;
 const MIN_WIDTH = 1.1;
@@ -11,26 +15,50 @@ const TAPER_STEPS = 6;
 const TAPER_LENGTH = 9;
 const TAPER_SHRINK = 0.7;
 
+// The inserted image is cropped to what was actually drawn, plus this margin.
+const CROP_PADDING = 8;
+// Where an existing sketch is placed on the canvas when reopened for editing.
+const EDIT_ORIGIN = { x: 24, y: 20 };
+
 type Point = { x: number; y: number };
+type Box = { x0: number; y0: number; x1: number; y1: number };
 
 type Props = {
   open: boolean;
-  darkMode: boolean;
   drawColor: string;
   onSetColor: (c: string) => void;
   onCancel: () => void;
-  onInsert: (canvas: HTMLCanvasElement) => void;
+  /** Receives the drawing cropped to its bounding box, and that crop's width in CSS pixels. */
+  onInsert: (canvas: HTMLCanvasElement, width: number) => void;
   /** When set, the canvas opens pre-loaded with this sketch instead of blank, for editing. */
   initialImage?: string;
+  /** Display width of `initialImage` in the note, so it reopens at the same size. */
+  initialWidth?: number;
 };
 
-export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel, onInsert, initialImage }: Props) {
+export function DrawingOverlay({
+  open,
+  drawColor,
+  onSetColor,
+  onCancel,
+  onInsert,
+  initialImage,
+  initialWidth,
+}: Props) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const cssSize = useRef({ w: 0, h: 0 });
   const points = useRef<Point[]>([]);
   const currentWidth = useRef(MAX_WIDTH * 0.6);
+  // Bounding box of everything on the canvas, in CSS pixels - null while blank.
+  const bbox = useRef<Box | null>(null);
 
-  const colors = darkMode ? COLORS_DARK : COLORS_LIGHT;
+  const grow = (x0: number, y0: number, x1: number, y1: number) => {
+    const b = bbox.current;
+    bbox.current = b
+      ? { x0: Math.min(b.x0, x0), y0: Math.min(b.y0, y0), x1: Math.max(b.x1, x1), y1: Math.max(b.y1, y1) }
+      : { x0, y0, x1, y1 };
+  };
+  const growAround = (p: Point, r: number) => grow(p.x - r, p.y - r, p.x + r, p.y + r);
 
   // Keep the canvas's real pixel buffer matching its displayed CSS size (at
   // device pixel ratio) instead of the fixed 360x200 it used to render at -
@@ -43,10 +71,12 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
       if (points.current.length > 0) return;
       const rect = canvas.getBoundingClientRect();
       if (rect.width === 0 || rect.height === 0) return;
+      if (rect.width === cssSize.current.w && rect.height === cssSize.current.h) return;
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.round(rect.width * dpr);
       canvas.height = Math.round(rect.height * dpr);
       cssSize.current = { w: rect.width, h: rect.height };
+      bbox.current = null; // resizing the pixel buffer wipes the canvas
       const ctx = canvas.getContext("2d");
       if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
@@ -57,25 +87,31 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
   }, []);
 
   // Each time the overlay opens, start from a clean canvas - editing an
-  // existing sketch loads its image scaled to fit; a brand-new sketch stays
-  // blank instead of showing whatever was left over from a prior session.
+  // existing sketch loads its image at the size it has in the note; a
+  // brand-new sketch stays blank instead of showing whatever was left over
+  // from a prior session.
   useEffect(() => {
     if (!open) return;
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext("2d");
     if (!canvas || !ctx) return;
     ctx.clearRect(0, 0, cssSize.current.w, cssSize.current.h);
+    bbox.current = null;
     if (!initialImage) return;
     const img = new Image();
     img.onload = () => {
-      const cw = cssSize.current.w;
-      const ch = cssSize.current.h;
-      const scale = Math.min(cw / img.width, ch / img.height, 1);
+      const cw = cssSize.current.w - EDIT_ORIGIN.x;
+      const ch = cssSize.current.h - EDIT_ORIGIN.y;
+      const wanted = initialWidth ?? img.width;
+      const scale = Math.min(wanted / img.width, cw / img.width, ch / img.height);
       const w = img.width * scale;
       const h = img.height * scale;
-      ctx.drawImage(img, (cw - w) / 2, (ch - h) / 2, w, h);
+      ctx.globalAlpha = 1;
+      ctx.drawImage(img, EDIT_ORIGIN.x, EDIT_ORIGIN.y, w, h);
+      grow(EDIT_ORIGIN.x, EDIT_ORIGIN.y, EDIT_ORIGIN.x + w, EDIT_ORIGIN.y + h);
     };
     img.src = initialImage;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialImage]);
 
   const posFromEvent = (e: { clientX: number; clientY: number }): Point => {
@@ -166,14 +202,20 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
     const pos = posFromEvent(e);
     points.current = [pos];
     currentWidth.current = MAX_WIDTH * 0.6;
+    growAround(pos, MAX_WIDTH);
 
     const onMove = (ev: MouseEvent) => {
-      points.current.push(posFromEvent(ev));
+      const p = posFromEvent(ev);
+      points.current.push(p);
+      growAround(p, MAX_WIDTH);
       drawSegment();
     };
     const endStroke = () => {
-      if (points.current.length > 2) taperEnd();
-      else if (points.current.length > 0) dot(points.current[0]);
+      const last = points.current[points.current.length - 1];
+      if (points.current.length > 2) {
+        taperEnd();
+        growAround(last, TAPER_LENGTH);
+      } else if (points.current.length > 0) dot(points.current[0]);
       points.current = [];
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", endStroke);
@@ -192,44 +234,63 @@ export function DrawingOverlay({ open, darkMode, drawColor, onSetColor, onCancel
     const canvas = canvasRef.current;
     if (!canvas) return;
     canvas.getContext("2d")?.clearRect(0, 0, cssSize.current.w, cssSize.current.h);
+    bbox.current = null;
+  };
+
+  // Hands over only the part of the canvas that was drawn on (plus a small
+  // margin), so the sketch lands in the note as a tight image instead of a
+  // canvas-sized sheet that's mostly empty.
+  const insert = () => {
+    const canvas = canvasRef.current;
+    const b = bbox.current;
+    if (!canvas || !b) {
+      onCancel();
+      return;
+    }
+    const dpr = canvas.width / cssSize.current.w || 1;
+    const sx = Math.max(0, b.x0 - CROP_PADDING);
+    const sy = Math.max(0, b.y0 - CROP_PADDING);
+    const w = Math.min(cssSize.current.w, b.x1 + CROP_PADDING) - sx;
+    const h = Math.min(cssSize.current.h, b.y1 + CROP_PADDING) - sy;
+    if (w < 1 || h < 1) {
+      onCancel();
+      return;
+    }
+    const crop = document.createElement("canvas");
+    crop.width = Math.round(w * dpr);
+    crop.height = Math.round(h * dpr);
+    crop.getContext("2d")?.drawImage(canvas, sx * dpr, sy * dpr, w * dpr, h * dpr, 0, 0, crop.width, crop.height);
+    onInsert(crop, w);
+    clearCanvas();
   };
 
   return (
     <div className={"overlay" + (open ? " open" : "")}>
       <div className="overlay-header">
-        <span className="overlay-title heading-font">Note Styling</span>
-        <div style={{ flex: 1 }} />
-        {colors.map((c) => (
-          <button
-            key={c}
-            className={"swatch" + (drawColor === c ? " selected" : "")}
-            style={{ background: c }}
-            onClick={() => onSetColor(c)}
-          />
-        ))}
-        <button className="clear-btn" onClick={clearCanvas}>
+        <span className="overlay-title">Note Styling</span>
+        <span className="overlay-subtitle">caderno de botânica</span>
+      </div>
+      <canvas ref={canvasRef} className="draw-canvas" onMouseDown={onDown} />
+      <div className="overlay-footer">
+        <div className="swatches">
+          {DRAW_COLORS.map((c) => (
+            <button
+              key={c.hex}
+              title={c.name}
+              className={"swatch" + (drawColor === c.hex ? " selected" : "")}
+              style={{ background: c.hex }}
+              onClick={() => onSetColor(c.hex)}
+            />
+          ))}
+        </div>
+        <div className="cy-spacer" />
+        <button className="pill ghost" onClick={clearCanvas}>
           Limpar
         </button>
-      </div>
-      <canvas
-        ref={canvasRef}
-        className="draw-canvas"
-        style={{
-          background: `repeating-linear-gradient(0deg, var(--canvas-bg), var(--canvas-bg) 27px, var(--canvas-line) 28px)`,
-        }}
-        onMouseDown={onDown}
-      />
-      <div className="overlay-footer">
-        <button className="cancel-btn" onClick={onCancel}>
+        <button className="pill" onClick={onCancel}>
           Cancelar
         </button>
-        <button
-          className="insert-btn"
-          onClick={() => {
-            if (canvasRef.current) onInsert(canvasRef.current);
-            clearCanvas();
-          }}
-        >
+        <button className="pill primary" onClick={insert}>
           Inserir no texto
         </button>
       </div>

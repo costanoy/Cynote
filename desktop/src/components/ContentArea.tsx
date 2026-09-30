@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { NoteSketch } from "../types";
-import { DrawIcon, TrashIcon } from "../icons";
+import { EditIcon, Leaf, TrashIcon } from "../icons";
 import * as core from "../editorCore";
 import type { EditorState, Sel } from "../editorCore";
 import { FindBar, type FindMode } from "./FindBar";
@@ -215,6 +215,7 @@ type Props = {
   spellCheck: boolean;
   onBodyInput: (value: string) => void;
   onCaretChange: (line: number, col: number) => void;
+  onToast: (message: string) => void;
   onMoveSketch: (id: string, x: number, y: number) => void;
   onResizeSketch: (id: string, width: number, height: number) => void;
   onEditSketch: (id: string) => void;
@@ -228,6 +229,7 @@ export function ContentArea({
   spellCheck,
   onBodyInput,
   onCaretChange,
+  onToast,
   onMoveSketch,
   onResizeSketch,
   onEditSketch,
@@ -244,6 +246,12 @@ export function ContentArea({
   const multiRef = useRef<Sel[]>([]);
   const [multiSels, setMultiSels] = useState<Sel[]>([]);
   const [caretBoxes, setCaretBoxes] = useState<{ left: number; top: number; height: number }[]>([]);
+  // Outline around the current search match: highlights can only tint text,
+  // so the ring is drawn as overlay boxes, like the extra carets.
+  const [matchBoxes, setMatchBoxes] = useState<{ left: number; top: number; width: number; height: number }[]>([]);
+  const currentMatchRef = useRef<Sel | null>(null);
+  // Where the leaf marking the line under the mouse sits in the margin.
+  const [gutterLeafTop, setGutterLeafTop] = useState<number | null>(null);
   const composingFrom = useRef<EditorState | null>(null);
   const [find, setFind] = useState<FindState | null>(null);
   const findOrigin = useRef(0);
@@ -349,6 +357,25 @@ export function ContentArea({
 
   useLayoutEffect(paintExtras, [multiSels, body]);
 
+  const paintMatchRing = () => {
+    const el = ref.current;
+    const row = rowRef.current;
+    const cur = currentMatchRef.current;
+    if (!el || !row || !cur || core.hi(cur) > bodyRef.current.length) {
+      setMatchBoxes((prev) => (prev.length === 0 ? prev : []));
+      return;
+    }
+    const rowBox = row.getBoundingClientRect();
+    setMatchBoxes(
+      Array.from(domRange(el, cur.anchor, cur.head).getClientRects()).map((r) => ({
+        left: r.left - rowBox.left,
+        top: r.top - rowBox.top,
+        width: r.width,
+        height: r.height,
+      }))
+    );
+  };
+
   // Mount: fill the editor once, then restore where this note was left.
   useLayoutEffect(() => {
     const el = ref.current!;
@@ -363,7 +390,10 @@ export function ContentArea({
       if (sc) mem.scrollTop = sc.scrollTop;
     };
     sc?.addEventListener("scroll", onScroll);
-    const resize = new ResizeObserver(() => paintExtras());
+    const resize = new ResizeObserver(() => {
+      paintExtras();
+      paintMatchRing();
+    });
     resize.observe(el);
     return () => {
       if (sc) mem.scrollTop = sc.scrollTop;
@@ -435,6 +465,8 @@ export function ContentArea({
     if (currentMatch === -1) {
       setHighlight("cy-find", []);
       setHighlight("cy-find-current", []);
+      currentMatchRef.current = null;
+      paintMatchRing();
       return;
     }
     setHighlight(
@@ -443,6 +475,8 @@ export function ContentArea({
     );
     const cur = matches[currentMatch];
     setHighlight("cy-find-current", [domRange(el, cur.anchor, cur.head)]);
+    currentMatchRef.current = cur;
+    paintMatchRing();
     scrollToPos(cur.anchor);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matches, currentMatch]);
@@ -715,17 +749,13 @@ export function ContentArea({
     if (multiRef.current.length > 1) setMulti([]);
   };
 
-  // Notepad-margin-click: select the whole line at the click's height
-  // (including its line break, so Delete removes the line) and copy it.
-  const onGutterClick = (e: React.MouseEvent) => {
+  /** The line (top-level child of the editor) closest to a given screen height. */
+  const lineAtY = (y: number): { index: number; rect: DOMRect } | null => {
     const el = ref.current;
-    if (!el || el.childNodes.length === 0) return;
-    mem.history.breakGroup();
-    const y = e.clientY;
-    const children = Array.from(el.childNodes);
-    let index = 0;
+    if (!el || el.childNodes.length === 0) return null;
+    let best: { index: number; rect: DOMRect } | null = null;
     let bestDist = Infinity;
-    children.forEach((child, i) => {
+    Array.from(el.childNodes).forEach((child, i) => {
       const rect =
         child.nodeType === Node.ELEMENT_NODE
           ? (child as HTMLElement).getBoundingClientRect()
@@ -737,9 +767,29 @@ export function ContentArea({
       const dist = y < rect.top ? rect.top - y : y > rect.bottom ? y - rect.bottom : 0;
       if (dist < bestDist) {
         bestDist = dist;
-        index = i;
+        best = { index: i, rect };
       }
     });
+    return best;
+  };
+
+  // A little leaf in the margin marks which line a click there would take.
+  const onGutterMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const hit = lineAtY(e.clientY);
+    const el = ref.current;
+    if (!hit || !el) return setGutterLeafTop(null);
+    const firstRow = Math.min(hit.rect.height, parseFloat(getComputedStyle(el).lineHeight) || hit.rect.height);
+    const top = Math.round(hit.rect.top - e.currentTarget.getBoundingClientRect().top + firstRow / 2 - 6);
+    setGutterLeafTop((prev) => (prev === top ? prev : top));
+  };
+
+  // Notepad-margin-click: select the whole line at the click's height
+  // (including its line break, so Delete removes the line) and copy it.
+  const onGutterClick = (e: React.MouseEvent) => {
+    const hit = lineAtY(e.clientY);
+    if (!hit) return;
+    mem.history.breakGroup();
+    const index = hit.index;
     const text = bodyRef.current;
     const start = core.lineStartOffset(text, index);
     const end = core.lineEnd(text, start);
@@ -748,6 +798,7 @@ export function ContentArea({
     showSels([range], { scroll: false });
     const lineText = text.slice(start, end) + (isLast ? "" : "\n");
     navigator.clipboard?.writeText(lineText).catch(() => {});
+    onToast("Linha copiada");
   };
 
   return (
@@ -794,7 +845,19 @@ export function ContentArea({
         )}
       </div>
       <div className="note-body-row" ref={rowRef}>
-        <div className="line-gutter" title="Clique para copiar a linha" onClick={onGutterClick} />
+        <div
+          className="line-gutter"
+          title="Clique para selecionar e copiar a linha"
+          onClick={onGutterClick}
+          onMouseMove={onGutterMove}
+          onMouseLeave={() => setGutterLeafTop(null)}
+        >
+          {gutterLeafTop !== null && (
+            <span className="line-gutter-leaf" style={{ top: gutterLeafTop }}>
+              <Leaf rotate={90} />
+            </span>
+          )}
+        </div>
         <div
           ref={ref}
           contentEditable
@@ -816,6 +879,9 @@ export function ContentArea({
         />
         {caretBoxes.map((b, i) => (
           <div key={i} className="fake-caret" style={{ left: b.left, top: b.top, height: b.height }} />
+        ))}
+        {matchBoxes.map((b, i) => (
+          <div key={i} className="match-ring" style={b} />
         ))}
       </div>
 
@@ -922,7 +988,7 @@ function DraggableSketch({
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => onEdit(sketch.id)}
         >
-          <DrawIcon size={11} />
+          <EditIcon />
         </button>
         <button
           className="sketch-tool-btn delete"
@@ -930,7 +996,7 @@ function DraggableSketch({
           onMouseDown={(e) => e.stopPropagation()}
           onClick={() => onDelete(sketch.id)}
         >
-          <TrashIcon size={11} />
+          <TrashIcon />
         </button>
       </div>
       <div className="sketch-resize-handle" title="Redimensionar" onMouseDown={onResizeMouseDown} />

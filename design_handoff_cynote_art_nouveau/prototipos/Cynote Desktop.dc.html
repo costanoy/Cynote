@@ -1,0 +1,810 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Jost:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;
+--wall:#E4DECB;--frame:#37604F;--frame-2:#274A3C;--frame-ink:#F3EBD3;--frame-ink-soft:#C3D3BC;--gold:#C9A04E;--gold-line:rgba(226,190,110,.55);--gold-soft:rgba(226,190,110,.22);--glow:rgba(240,200,110,.45);
+--paper:#FBF6E9;--paper-2:#F2EAD5;--rule:#DCCDA6;--ink:#2A2A22;--ink-soft:#645F4C;--ink-faint:#9C957C;
+--accent:#3D7A4C;--accent-ink:#FFFDF4;--petrol:#2E6470;--selection:rgba(214,170,76,.34);--match:rgba(143,184,120,.40);--match-cur:#EBC46C;--match-cur-ring:#B8893A;--extra-sel:rgba(46,100,112,.20);--cursor:#2A2A22;
+--danger:#A8483A;--alert:#F5B9A8;--lead:#1C3027;--shadow:rgba(38,52,32,.30);--scrim:rgba(28,44,34,.38);--field:#FFFDF6;--field-border:#CFBF97;--field-ink:#2A2A22;
+background:var(--wall);transition:background-color .5s ease;}
+body[data-theme="dark"]{
+--wall:#070F0C;--frame:#10211A;--frame-2:#0A1712;--frame-ink:#EADFC2;--frame-ink-soft:#91A58E;--gold:#E2B85C;--gold-line:rgba(226,184,92,.55);--gold-soft:rgba(226,184,92,.18);--glow:rgba(236,190,90,.55);
+--paper:#15251E;--paper-2:#1B2E26;--rule:#2F4A3D;--ink:#E9E2CC;--ink-soft:#AEB49E;--ink-faint:#6F7F6D;
+--accent:#86B96F;--accent-ink:#0E1C16;--petrol:#7FC2CA;--selection:rgba(226,184,92,.28);--match:rgba(134,185,111,.30);--match-cur:rgba(226,184,92,.72);--match-cur-ring:#E2B85C;--extra-sel:rgba(127,194,202,.24);--cursor:#F2E7C8;
+--danger:#E58A74;--alert:#F2A08C;--lead:#040A08;--shadow:rgba(0,0,0,.55);--scrim:rgba(2,8,6,.55);--field:#0E1D17;--field-border:#39584A;--field-ink:#E9E2CC;}
+textarea::selection{background:var(--selection);color:transparent}
+::-webkit-scrollbar{width:8px;height:6px}::-webkit-scrollbar-thumb{background:var(--gold-soft);border-radius:8px}::-webkit-scrollbar-track{background:transparent}
+a{color:var(--accent)}a:hover{color:var(--gold)}
+@keyframes cyBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes cyBloom{0%{transform:scale(.15) rotate(-60deg);opacity:0}70%{transform:scale(1.12) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes cyBud{0%,100%{transform:scale(.88);opacity:.75}50%{transform:scale(1.04);opacity:1}}
+@keyframes cyDroop{0%{transform:rotate(0)}100%{transform:rotate(38deg)}}
+@keyframes cyVine{from{stroke-dashoffset:420}to{stroke-dashoffset:0}}
+@keyframes cyRise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes cyGrow{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes cyFade{from{opacity:0}to{opacity:1}}
+@keyframes cySway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes cyProg{from{width:0}to{width:100%}}
+@keyframes cyLamp{0%,100%{box-shadow:0 0 6px var(--glow)}50%{box-shadow:0 0 14px var(--glow)}}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height:100vh; box-sizing:border-box; background:var(--wall); transition:background-color .5s ease; display:flex; flex-direction:column; align-items:center; gap:22px; padding:28px 20px 48px; font-family:Jost, sans-serif; color:var(--ink);">
+  <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:10px 18px; max-width:1040px;">
+    <div style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.06em; color:var(--ink-soft);">Bancada de demonstração</div>
+    <a href="Cynote Mobile.dc.html" style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.06em; color:var(--accent); text-decoration:none; transition:color .2s;" style-hover="color:var(--gold);">Mobile →</a>
+    <a href="Cynote Dashboard.dc.html" style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.06em; color:var(--accent); text-decoration:none; transition:color .2s;" style-hover="color:var(--gold);">Dashnotes →</a>
+    <sc-for list="{{ demo }}" as="g" hint-placeholder-count="4">
+      <div style="display:flex; align-items:center; gap:6px;">
+        <span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft);">{{ g.label }}</span>
+        <div style="display:flex; gap:2px; padding:2px; border:1px solid var(--field-border); border-radius:999px;">
+          <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="3">
+            <button onClick="{{ o.onClick }}" style="border:none; cursor:pointer; font-family:Jost, sans-serif; font-size:12px; padding:4px 10px; border-radius:999px; background:{{ o.bg }}; color:{{ o.fg }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">{{ o.t }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+  </div>
+
+  <sc-if value="{{ hidden }}" hint-placeholder-val="{{ false }}">
+    <div style="width:{{ winW }}px; height:{{ winH }}px; max-width:100%; display:grid; place-items:center;">
+      <div style="display:flex; flex-direction:column; align-items:center; gap:10px; padding:22px 28px; border:1px dashed var(--field-border); border-radius:16px; animation:cyFade .4s ease;">
+        <div style="font-family:Marcellus, serif; font-size:18px;">O Cynote está na bandeja</div>
+        <div style="font-size:13px; color:var(--ink-soft);">Ctrl+Shift+Space para mostrar de novo</div>
+        <button onClick="{{ show }}" style="margin-top:4px; border:none; cursor:pointer; background:var(--accent); color:var(--accent-ink); font-family:Jost, sans-serif; font-size:13px; font-weight:500; padding:7px 16px; border-radius:999px; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">Mostrar</button>
+      </div>
+    </div>
+  </sc-if>
+
+  <sc-if value="{{ shown }}" hint-placeholder-val="{{ true }}">
+  <div data-screen-label="Janela principal" style="position:relative; width:{{ winW }}px; height:{{ winH }}px; max-width:100%; display:flex; flex-direction:column; filter:drop-shadow(0 18px 28px var(--shadow)); transition:width .35s cubic-bezier(.3,.7,.2,1), height .35s cubic-bezier(.3,.7,.2,1);">
+
+    <!-- Cabeçalho: arco Guimard -->
+    <div style="position:relative; height:56px; flex:0 0 auto; cursor:grab;">
+      <svg viewBox="0 0 600 56" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%; overflow:visible;">
+        <path d="M0 56 V22 Q0 11 14 11 H190 C245 11 262 1 300 1 C338 1 355 11 410 11 H586 Q600 11 600 22 V56 Z" style="fill:var(--frame); transition:fill .5s;"></path>
+        <path d="M14 14.5 H190 C245 14.5 262 4.5 300 4.5 C338 4.5 355 14.5 410 14.5 H586" vector-effect="non-scaling-stroke" style="fill:none; stroke:var(--gold-line); stroke-width:1;"></path>
+      </svg>
+      <sc-if value="{{ full }}" hint-placeholder-val="{{ true }}">
+        <svg width="132" height="16" viewBox="0 0 132 16" style="position:absolute; left:50%; top:4px; transform:translateX(-50%); overflow:visible; pointer-events:none;">
+          <path d="M58 8 C50 2 40 13 30 8 C24 5 21 10 25 11.5 M74 8 C82 2 92 13 102 8 C108 5 111 10 107 11.5" style="fill:none; stroke:var(--gold); stroke-width:1; stroke-linecap:round; opacity:.85;"></path>
+          <path d="M40 9.5 C37 6.5 33 7 32 9 C35 10.5 38 10.5 40 9.5 Z M92 9.5 C95 6.5 99 7 100 9 C97 10.5 94 10.5 92 9.5 Z" style="fill:var(--gold); opacity:.7;"></path>
+        </svg>
+      </sc-if>
+      <div style="position:absolute; left:50%; top:3px; width:7px; height:7px; margin-left:-3.5px; border-radius:50%; background:var(--gold); animation:cyLamp 4s ease-in-out infinite;"></div>
+
+      <div style="position:absolute; left:10px; right:8px; bottom:3px; height:30px; display:flex; align-items:center; gap:6px;">
+        <div style="display:flex; align-items:center; gap:8px; padding-right:4px;">
+          <div style="position:relative; width:24px; height:24px; border-radius:50%; border:1px solid var(--gold); display:grid; place-items:center; box-shadow:inset 0 0 0 2px var(--frame), inset 0 0 0 3px var(--gold-line);">
+            <span style="font-family:Marcellus, serif; font-size:14px; line-height:1; color:var(--gold); margin-left:-1px;">C</span>
+            <svg width="8" height="8" viewBox="-4 -4 8 8" style="position:absolute; right:3px; top:4px;"><path d="M0 -3.5 C2.6 -1.8 2.6 1.8 0 3.5 C-2.6 1.8 -2.6 -1.8 0 -3.5 Z" style="fill:var(--accent);" transform="rotate(35)"></path></svg>
+          </div>
+          <sc-if value="{{ full }}" hint-placeholder-val="{{ true }}">
+            <span style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.1em; color:var(--frame-ink);">Cynote</span>
+          </sc-if>
+        </div>
+        <button title="Menu" onClick="{{ toggleMenu }}" style="width:28px; height:28px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:{{ menuA.bg }}; color:{{ menuA.fg }}; box-shadow:{{ menuA.sh }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 5h10M3 8h10M3 11h6"></path></svg>
+        </button>
+        <div style="flex:1; align-self:stretch;"></div>
+        <button title="Note Styling" onClick="{{ toggleStyling }}" style="width:28px; height:28px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:{{ stylA.bg }}; color:{{ stylA.fg }}; box-shadow:{{ stylA.sh }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5C8 2.5 4.5 6.5 3 13.5"></path><path d="M13.5 2.5C13.5 7 10.5 10 6 10.5"></path></svg>
+        </button>
+        <button title="Configurações" onClick="{{ toggleSettings }}" style="width:28px; height:28px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:{{ setA.bg }}; color:{{ setA.fg }}; box-shadow:{{ setA.sh }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+          <svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h6.2M11.8 4H14M2 8h1.2M6.8 8H14M2 12h7.2M12.8 12H14"></path><circle cx="10" cy="4" r="1.8"></circle><circle cx="5" cy="8" r="1.8"></circle><circle cx="11" cy="12" r="1.8"></circle></svg>
+        </button>
+        <button title="Fixar janela" onClick="{{ togglePin }}" style="width:28px; height:28px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:{{ pinA.bg }}; color:{{ pinA.fg }}; box-shadow:{{ pinA.sh }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h4l-.8 4 2.8 3H4l2.8-3z"></path><path d="M8 9v5"></path></svg>
+        </button>
+        <div style="width:1px; height:18px; margin:0 3px; background:var(--gold-line);"></div>
+        <button title="Minimizar" onClick="{{ hide }}" style="width:22px; height:22px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8.5h8"></path></svg>
+        </button>
+        <button title="Maximizar" onClick="{{ toggleMax }}" style="width:22px; height:22px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 13.5V7.5a4 4 0 0 1 8 0v6z"></path></svg>
+        </button>
+        <button title="Fechar (vai para a bandeja)" onClick="{{ hide }}" style="width:22px; height:22px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:#B4533F; color:#FFF6EE; border-color:#B4533F; box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Corpo em ferro -->
+    <div style="position:relative; flex:1; min-height:0; display:flex; flex-direction:column; background:var(--frame); border-radius:0 0 16px 16px; transition:background .5s;">
+      <!-- Guias de vitral -->
+      <div style="display:flex; align-items:flex-end; gap:6px; height:36px; padding:0 8px 0 10px; flex:0 0 auto;">
+        <div style="flex:1; min-width:0; height:100%; display:flex; align-items:flex-end; gap:5px; overflow-x:auto; overflow-y:hidden; scrollbar-width:none; padding-top:6px;">
+          <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="4">
+            <div draggable="true" onClick="{{ tab.onClick }}" onDoubleClick="{{ tab.onDbl }}" onMouseEnter="{{ tab.onEnter }}" onMouseLeave="{{ tab.onLeave }}" onDragStart="{{ tab.onDragStart }}" onDragOver="{{ tab.onDragOver }}" onDragEnd="{{ tab.onDragEnd }}" title="{{ tab.title }}" style-hover="filter:brightness(1.08);" style-active="filter:brightness(.92); transform:translateY(1px);" style="position:relative; flex:0 0 auto; box-sizing:border-box; display:flex; align-items:center; gap:5px; height:{{ tab.h }}px; min-width:{{ tabMin }}px; max-width:168px; padding:0 10px 0 {{ tab.padL }}px; margin-bottom:{{ tab.mb }}px; border:1.5px solid var(--lead); border-bottom:none; border-radius:9px 9px 0 0; background:{{ tab.bg }}; color:{{ tab.fg }}; box-shadow:{{ tab.shadow }}; cursor:pointer; opacity:{{ tab.op }}; transition:height .22s cubic-bezier(.3,.7,.2,1), box-shadow .35s, background .35s, color .35s, filter .2s, transform .15s;">
+              <div style="position:absolute; left:3px; right:3px; top:3px; height:62%; border:1px solid rgba(20,40,30,.22); border-bottom:none; border-radius:6px 6px 0 0; pointer-events:none;"></div>
+              <sc-if value="{{ tab.active }}">
+                <div style="position:absolute; left:50%; top:-5px; width:7px; height:7px; margin-left:-3.5px; border-radius:50%; background:var(--gold); border:1px solid var(--lead); box-shadow:0 0 8px var(--glow); animation:cyBloom .45s cubic-bezier(.3,.7,.2,1);"></div>
+              </sc-if>
+              <sc-if value="{{ tab.showHandle }}">
+                <svg width="6" height="12" viewBox="0 0 6 12" style="position:absolute; left:6px; top:50%; margin-top:-6px; opacity:.6; cursor:grab; animation:cyFade .2s ease;"><g fill="currentColor"><circle cx="1.5" cy="2" r="1"></circle><circle cx="4.5" cy="2" r="1"></circle><circle cx="1.5" cy="6" r="1"></circle><circle cx="4.5" cy="6" r="1"></circle><circle cx="1.5" cy="10" r="1"></circle><circle cx="4.5" cy="10" r="1"></circle></g></svg>
+              </sc-if>
+              <sc-if value="{{ tab.renaming }}">
+                <input autoFocus="{{ true }}" value="{{ renameVal }}" onChange="{{ onRename }}" onKeyDown="{{ onRenameKey }}" onBlur="{{ commitRename }}" onClick="{{ stop }}" style="width:112px; min-width:0; height:20px; box-sizing:border-box; margin-left:-4px; padding:0 7px; border:1px solid var(--gold); border-radius:6px; outline:none; background:var(--paper); color:var(--ink); caret-color:var(--accent); font-family:Jost, sans-serif; font-size:12.5px; font-weight:500; letter-spacing:.01em; box-shadow:0 0 0 3px var(--gold-soft), inset 0 1px 2px var(--shadow); animation:cyGrow .2s cubic-bezier(.3,.7,.2,1);">
+              </sc-if>
+              <sc-if value="{{ tab.notRenaming }}">
+                <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:12.5px; font-weight:{{ tab.fw }}; letter-spacing:.01em;">{{ tab.title }}</span>
+              </sc-if>
+              <sc-if value="{{ tab.showDot }}">
+                <span title="Alterações não salvas" style="flex:0 0 auto; width:7px; height:7px; border-radius:50%; background:var(--gold); border:1px solid var(--lead);"></span>
+              </sc-if>
+              <sc-if value="{{ tab.showClose }}">
+                <button title="Fechar guia" onClick="{{ tab.onClose }}" style="flex:0 0 auto; width:16px; height:16px; margin-right:-4px; border:none; border-radius:50%; display:grid; place-items:center; cursor:pointer; background:transparent; color:inherit; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:rgba(20,40,30,.18); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+                  <svg width="8" height="8" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"></path></svg>
+                </button>
+              </sc-if>
+            </div>
+          </sc-for>
+        </div>
+        <div style="display:flex; gap:4px; padding-bottom:5px;">
+          <button title="Todas as guias" onClick="{{ toggleAllTabs }}" style="width:24px; height:24px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:{{ allA.bg }}; color:{{ allA.fg }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+            <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 6l4.5 4.5L12.5 6"></path></svg>
+          </button>
+          <button title="Nova guia" onClick="{{ newTab }}" style="width:24px; height:24px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">
+            <svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 3v10M3 8h10"></path></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Página -->
+      <div style="position:relative; flex:1; min-height:0; margin:0 7px; background:var(--paper); border-top:1px solid var(--gold-line); border-radius:2px 2px 8px 8px; overflow:hidden; transition:background .5s;">
+        <div style="position:absolute; inset:7px; border:1px solid var(--rule); border-radius:3px; pointer-events:none; z-index:1;"></div>
+        <sc-if value="{{ full }}" hint-placeholder-val="{{ true }}">
+          <svg width="22" height="22" viewBox="0 0 22 22" style="position:absolute; left:4px; top:4px; z-index:2; pointer-events:none;"><path d="M3 21 V11 C3 6.5 6.5 3 11 3 H21 M3 14 C6.5 14 8.5 11 7.5 8.8 C6.8 7.4 5 7.8 5.4 9.3" style="fill:none; stroke:var(--gold); stroke-width:1.1; stroke-linecap:round;"></path></svg>
+          <svg width="22" height="22" viewBox="0 0 22 22" style="position:absolute; right:4px; top:4px; transform:scaleX(-1); z-index:2; pointer-events:none;"><path d="M3 21 V11 C3 6.5 6.5 3 11 3 H21 M3 14 C6.5 14 8.5 11 7.5 8.8 C6.8 7.4 5 7.8 5.4 9.3" style="fill:none; stroke:var(--gold); stroke-width:1.1; stroke-linecap:round;"></path></svg>
+          <svg width="22" height="22" viewBox="0 0 22 22" style="position:absolute; left:4px; bottom:4px; transform:scaleY(-1); z-index:2; pointer-events:none;"><path d="M3 21 V11 C3 6.5 6.5 3 11 3 H21 M3 14 C6.5 14 8.5 11 7.5 8.8 C6.8 7.4 5 7.8 5.4 9.3" style="fill:none; stroke:var(--gold); stroke-width:1.1; stroke-linecap:round;"></path></svg>
+          <svg width="22" height="22" viewBox="0 0 22 22" style="position:absolute; right:4px; bottom:4px; transform:scale(-1,-1); z-index:2; pointer-events:none;"><path d="M3 21 V11 C3 6.5 6.5 3 11 3 H21 M3 14 C6.5 14 8.5 11 7.5 8.8 C6.8 7.4 5 7.8 5.4 9.3" style="fill:none; stroke:var(--gold); stroke-width:1.1; stroke-linecap:round;"></path></svg>
+        </sc-if>
+
+        <sc-if value="{{ isEditor }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute; inset:0;">
+            <div ref="{{ bdRef }}" style="position:absolute; inset:0; box-sizing:border-box; overflow:hidden; scrollbar-gutter:stable; padding:{{ padT }}px {{ padR }}px 28px {{ padL }}px; font-family:Literata, Georgia, serif; font-size:{{ fs }}px; line-height:{{ lh }}; white-space:pre-wrap; overflow-wrap:break-word; color:var(--ink); pointer-events:none; font-optical-sizing:auto;">{{ backdrop }}</div>
+            <sc-if value="{{ isEmpty }}">
+              <div style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; pointer-events:none; padding:20px; text-align:center; animation:cyFade .6s ease;">
+                <svg width="44" height="44" viewBox="0 0 40 40" style="transform-origin:50% 90%; animation:cySway 6s ease-in-out infinite;"><path d="M20 35 C20 28 20 22 20 15" style="fill:none; stroke:var(--accent); stroke-width:1.4; stroke-linecap:round;"></path><path d="M20 23 C13 23 8.5 18 8.5 13 C14.5 13 20 17 20 23 Z M20 18.5 C26 18.5 31.5 13.5 31.5 8.5 C25 8.5 20 12.5 20 18.5 Z" style="fill:var(--accent); opacity:.75;"></path><path d="M9 35.5 C15 33 25 33 31 35.5" style="fill:none; stroke:var(--gold); stroke-width:1.2; stroke-linecap:round;"></path></svg>
+                <div style="font-family:Marcellus, serif; font-size:18px; color:var(--ink-soft); letter-spacing:.03em;">Página em branco</div>
+                <div style="font-family:Literata, serif; font-style:italic; font-size:13.5px; color:var(--ink-faint);">Plante a primeira linha — o resto cresce.</div>
+              </div>
+            </sc-if>
+            <textarea ref="{{ taRef }}" value="{{ text }}" onChange="{{ onText }}" onScroll="{{ onScroll }}" onSelect="{{ updCaret }}" onKeyUp="{{ updCaret }}" onClick="{{ updCaret }}" spellCheck="{{ spell }}" style="position:absolute; inset:0; width:100%; height:100%; box-sizing:border-box; margin:0; border:none; outline:none; resize:none; background:transparent; overflow-y:auto; scrollbar-gutter:stable; padding:{{ padT }}px {{ padR }}px 28px {{ padL }}px; font-family:Literata, Georgia, serif; font-size:{{ fs }}px; line-height:{{ lh }}; white-space:pre-wrap; overflow-wrap:break-word; color:transparent; caret-color:var(--cursor); font-optical-sizing:auto; z-index:2;"></textarea>
+            <div onMouseMove="{{ gutterMove }}" onMouseLeave="{{ gutterLeave }}" onMouseDown="{{ gutterDown }}" title="Clique para selecionar e copiar a linha" style="position:absolute; left:8px; top:8px; bottom:8px; width:{{ gutterW }}px; z-index:4; cursor:url('data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%2720%27 height=%2720%27%3E%3Cpath d=%27M17 10 L4 3.5 L7 10 L4 16.5 Z%27 fill=%27%23C9A04E%27 stroke=%27%231C3027%27 stroke-width=%271.2%27 stroke-linejoin=%27round%27/%3E%3C/svg%3E') 17 10, e-resize;">
+              <sc-if value="{{ hasHoverLine }}">
+                <svg width="12" height="12" viewBox="-6 -6 12 12" style="position:absolute; right:6px; top:{{ hoverLineTop }}px; transition:top .12s ease;"><path d="M-4.5 0 C-2 -4 2.5 -4 4.5 0 C2.5 4 -2 4 -4.5 0 Z" style="fill:var(--accent); opacity:.8;"></path></svg>
+              </sc-if>
+            </div>
+            <div style="position:absolute; inset:0; overflow:hidden; pointer-events:none; z-index:3;">
+              <div ref="{{ drRef }}" style="position:absolute; left:0; top:0; right:0;">
+                <sc-for list="{{ drawings }}" as="d" hint-placeholder-count="0">
+                  <div onMouseEnter="{{ d.onEnter }}" onMouseLeave="{{ d.onLeave }}" style="position:absolute; left:{{ d.x }}px; top:{{ d.y }}px; width:{{ d.w }}px; pointer-events:auto;">
+                    <img src="{{ d.src }}" draggable="false" onMouseDown="{{ d.onMove }}" style="display:block; width:100%; cursor:move; border-radius:6px; outline:{{ d.outline }}; outline-offset:3px; user-select:none;">
+                    <sc-if value="{{ d.hover }}">
+                      <div style="position:absolute; right:-2px; top:-30px; display:flex; gap:2px; padding:3px; background:var(--frame); border:1px solid var(--gold-line); border-radius:9px; animation:cyRise .18s ease;">
+                        <button title="Editar" onClick="{{ d.onEdit }}" style="width:22px; height:20px; border:none; border-radius:6px; display:grid; place-items:center; cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M10.5 2.5l3 3-8 8H2.5v-3z"></path></svg></button>
+                        <button title="Excluir" onClick="{{ d.onDel }}" style="width:22px; height:20px; border:none; border-radius:6px; display:grid; place-items:center; cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:rgba(180,83,63,.55); box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5"></path></svg></button>
+                      </div>
+                      <div onMouseDown="{{ d.onResize }}" title="Redimensionar" style="position:absolute; right:-7px; bottom:-7px; width:13px; height:13px; border-radius:50%; background:var(--gold); border:1.5px solid var(--lead); cursor:nwse-resize; transition:transform .18s;" style-hover="transform:scale(1.25); box-shadow:0 0 8px var(--glow);"></div>
+                    </sc-if>
+                  </div>
+                </sc-for>
+              </div>
+            </div>
+
+            <sc-if value="{{ findOpen }}" hint-placeholder-val="{{ true }}">
+              <div style="position:absolute; top:14px; right:20px; z-index:20; display:flex; flex-direction:column; gap:5px; padding:6px 6px 6px 5px; background:var(--frame); border:1px solid var(--gold-line); border-radius:14px 14px 10px 10px; box-shadow:0 10px 24px var(--shadow); color:var(--frame-ink); font-family:Jost, sans-serif; animation:cyRise .28s cubic-bezier(.2,.8,.2,1);">
+                <sc-if value="{{ findModeFind }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex; align-items:center; gap:3px;">
+                    <button title="Alternar substituição" onClick="{{ toggleReplace }}" style="width:20px; height:26px; border:none; border-radius:6px; display:grid; place-items:center; cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);">
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="transform:rotate({{ expRot }}deg); transition:transform .25s ease;"><path d="M6 3.5l4.5 4.5L6 12.5"></path></svg>
+                    </button>
+                    <input ref="{{ findRef }}" value="{{ q }}" onChange="{{ onQ }}" onKeyDown="{{ onFindKey }}" placeholder="Localizar" style="width:{{ findW }}px; box-sizing:border-box; height:26px; padding:0 9px; border:1px solid var(--field-border); border-radius:8px; background:var(--field); color:var(--field-ink); font-family:Jost, sans-serif; font-size:13px; outline:none;" style-focus="border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-soft);">
+                    <button title="Diferenciar maiúsculas" onClick="{{ toggleCase }}" style="height:24px; padding:0 6px; border:1px solid {{ caseA.bd }}; border-radius:7px; cursor:pointer; background:{{ caseA.bg }}; color:{{ caseA.fg }}; font-family:Jost, sans-serif; font-size:12px; font-weight:600; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);">Aa</button>
+                    <span style="min-width:{{ statusMin }}px; padding:0 4px; text-align:center; font-size:12px; white-space:nowrap; color:{{ statusColor }};">{{ statusText }}</span>
+                    <button title="Anterior (Shift+Enter)" onClick="{{ prevMatch }}" style="width:24px; height:24px; border:none; border-radius:7px; display:grid; place-items:center; cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 13V3M4 7l4-4 4 4"></path></svg></button>
+                    <button title="Próximo (Enter)" onClick="{{ nextMatch }}" style="width:24px; height:24px; border:none; border-radius:7px; display:grid; place-items:center; cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);"><svg width="11" height="11" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M8 3v10M4 9l4 4 4-4"></path></svg></button>
+                    <button title="Fechar (Esc)" onClick="{{ closeFind }}" style="width:24px; height:24px; border:none; border-radius:7px; display:grid; place-items:center; cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"></path></svg></button>
+                  </div>
+                  <sc-if value="{{ replaceOpen }}">
+                    <div style="display:flex; align-items:center; gap:4px; padding-left:23px; animation:cyRise .22s ease;">
+                      <input value="{{ r }}" onChange="{{ onR }}" onKeyDown="{{ onReplaceKey }}" placeholder="Substituir por" style="width:{{ findW }}px; box-sizing:border-box; height:26px; padding:0 9px; border:1px solid var(--field-border); border-radius:8px; background:var(--field); color:var(--field-ink); font-family:Jost, sans-serif; font-size:13px; outline:none;" style-focus="border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-soft);">
+                      <button onClick="{{ replaceOne }}" style="height:24px; padding:0 9px; border:1px solid var(--gold-line); border-radius:999px; cursor:pointer; background:transparent; color:var(--frame-ink); font-family:Jost, sans-serif; font-size:12px; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">Substituir</button>
+                      <button onClick="{{ replaceAll }}" style="height:24px; padding:0 9px; border:1px solid var(--gold-line); border-radius:999px; cursor:pointer; background:transparent; color:var(--frame-ink); font-family:Jost, sans-serif; font-size:12px; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">Tudo</button>
+                    </div>
+                  </sc-if>
+                </sc-if>
+                <sc-if value="{{ findModeGoto }}">
+                  <div style="display:flex; align-items:center; gap:4px; padding-left:4px;">
+                    <input ref="{{ gotoRef }}" value="{{ gotoVal }}" onChange="{{ onGoto }}" onKeyDown="{{ onGotoKey }}" placeholder="{{ gotoPh }}" style="width:170px; box-sizing:border-box; height:26px; padding:0 9px; border:1px solid var(--field-border); border-radius:8px; background:var(--field); color:var(--field-ink); font-family:Jost, sans-serif; font-size:13px; outline:none;" style-focus="border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-soft);">
+                    <button title="Fechar" onClick="{{ closeFind }}" style="width:24px; height:24px; border:none; border-radius:7px; display:grid; place-items:center; cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 4l8 8M12 4l-8 8"></path></svg></button>
+                  </div>
+                </sc-if>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <!-- Configurações -->
+        <sc-if value="{{ isSettings }}">
+          <div style="position:absolute; inset:0; overflow-y:auto; padding:18px {{ setPad }}px 26px; box-sizing:border-box; animation:cyFade .3s ease; z-index:2;">
+            <div style="display:flex; flex-direction:column; gap:16px; max-width:520px; margin:0 auto;">
+              <div style="display:flex; align-items:center; gap:12px;">
+                <button onClick="{{ toggleSettings }}" style="display:flex; align-items:center; gap:5px; height:28px; padding:0 11px 0 8px; border:1px solid var(--field-border); border-radius:999px; cursor:pointer; background:transparent; color:var(--ink); font-family:Jost, sans-serif; font-size:12.5px; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--paper-2); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">
+                  <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8H3M7 4L3 8l4 4"></path></svg>Voltar
+                </button>
+                <div style="display:flex; flex-direction:column; gap:1px;">
+                  <div style="font-family:Marcellus, serif; font-size:22px; letter-spacing:.03em; line-height:1.1;">Configurações</div>
+                  <svg width="130" height="8" viewBox="0 0 130 8"><path d="M1 5 C30 -1 52 9 84 4 C100 1.5 112 2.5 128 5" style="fill:none; stroke:var(--gold); stroke-width:1.1; stroke-linecap:round; stroke-dasharray:160; animation:cyVine .9s cubic-bezier(.3,.7,.2,1) both;"></path></svg>
+                </div>
+              </div>
+
+              <sc-for list="{{ toggles }}" as="tg" hint-placeholder-count="3">
+                <div style="display:flex; align-items:center; gap:16px; animation:cyRise .3s ease both; animation-delay:{{ tg.delay }};">
+                  <div style="flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;">
+                    <div style="font-size:14px; font-weight:500;">{{ tg.label }}</div>
+                    <div style="font-size:12.5px; line-height:1.45; color:var(--ink-soft); text-wrap:pretty;">{{ tg.desc }}</div>
+                  </div>
+                  <button role="switch" onClick="{{ tg.onClick }}" style="position:relative; flex:0 0 auto; width:40px; height:22px; border-radius:11px; border:1px solid {{ tg.bd }}; background:{{ tg.bg }}; cursor:pointer; padding:0; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="box-shadow:0 0 0 3px var(--gold-soft);" style-active="transform:scale(.94);">
+                    <span style="position:absolute; top:2px; left:{{ tg.x }}px; width:16px; height:16px; border-radius:50%; background:var(--paper); border:1px solid var(--gold); box-sizing:border-box; box-shadow:0 1px 2px var(--shadow); transition:left .3s cubic-bezier(.3,.7,.2,1);"></span>
+                  </button>
+                </div>
+              </sc-for>
+
+              <div style="display:flex; align-items:center; gap:10px; margin-top:4px;"><div style="flex:1; height:1px; background:var(--rule);"></div><svg width="30" height="10" viewBox="0 0 30 10"><path d="M15 1 C19 3.5 19 6.5 15 9 C11 6.5 11 3.5 15 1 Z" style="fill:var(--gold);"></path><path d="M2 5 C6 2 9 8 12 5 M28 5 C24 2 21 8 18 5" style="fill:none; stroke:var(--gold); stroke-width:1; stroke-linecap:round;"></path></svg><div style="flex:1; height:1px; background:var(--rule);"></div></div>
+
+              <div style="display:flex; flex-direction:column; gap:8px;">
+                <div style="font-family:Marcellus, serif; font-size:15.5px; letter-spacing:.03em;">Sincronização — Dispositivos na mesma rede</div>
+                <sc-for list="{{ synced }}" as="dv" hint-placeholder-count="1">
+                  <div style="display:flex; align-items:center; gap:10px; padding:9px 12px; border:1px solid var(--rule); border-radius:12px; background:var(--paper-2); animation:cyRise .3s ease;">
+                    <svg width="14" height="14" viewBox="-10 -10 20 20"><path d="M0 4 C-1.5 -1.5 -6 -4 -9.5 -3 C-8 2 -4 4.5 0 4 Z M0 4 C1.5 -1.5 6 -4 9.5 -3 C8 2 4 4.5 0 4 Z M0 4 C-2 -1 -1.4 -6 0 -9 C1.4 -6 2 -1 0 4 Z" style="fill:var(--accent);"></path></svg>
+                    <span style="flex:1; font-size:13.5px;">{{ dv.name }}</span>
+                    <span style="font-size:12px; color:var(--accent); font-weight:500;">Sincronizado</span>
+                  </div>
+                </sc-for>
+                <sc-for list="{{ found }}" as="dv" hint-placeholder-count="2">
+                  <div style="display:flex; align-items:center; gap:10px; padding:8px 8px 8px 12px; border:1px dashed var(--field-border); border-radius:12px;">
+                    <svg width="14" height="14" viewBox="-8 -9 16 18"><path d="M0 -7 C4 -3 4 3 0 5 C-4 3 -4 -3 0 -7 Z" style="fill:none; stroke:var(--ink-soft); stroke-width:1.3;"></path><path d="M0 5 V9" style="stroke:var(--ink-soft); stroke-width:1.3;"></path></svg>
+                    <span style="flex:1; font-size:13.5px;">{{ dv.name }}</span>
+                    <button onClick="{{ dv.onClick }}" style="height:26px; padding:0 12px; border:none; border-radius:999px; cursor:pointer; background:{{ dv.bg }}; color:{{ dv.fg }}; font-family:Jost, sans-serif; font-size:12.5px; font-weight:500; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">{{ dv.label }}</button>
+                  </div>
+                </sc-for>
+                <div style="display:flex; align-items:center; gap:8px; padding:2px 12px; font-size:12.5px; color:var(--ink-faint);">
+                  <svg width="12" height="14" viewBox="-8 -9 16 18" style="animation:cyBud 1.6s ease-in-out infinite;"><path d="M0 -7 C4 -3 4 3 0 5 C-4 3 -4 -3 0 -7 Z" style="fill:var(--gold);"></path></svg>
+                  Procurando dispositivos…
+                </div>
+              </div>
+
+              <div style="display:flex; flex-direction:column; gap:9px;">
+                <div style="font-family:Marcellus, serif; font-size:15.5px; letter-spacing:.03em;">Sincronização pela internet</div>
+                <sc-if value="{{ netOff }}" hint-placeholder-val="{{ true }}">
+                  <div style="display:flex; flex-direction:column; gap:10px; animation:cyFade .3s ease;">
+                    <div><button onClick="{{ genCode }}" style="height:30px; padding:0 16px; border:none; border-radius:999px; cursor:pointer; background:var(--accent); color:var(--accent-ink); font-family:Jost, sans-serif; font-size:13px; font-weight:500; box-shadow:inset 0 0 0 1px rgba(255,255,255,.18); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">Gerar código</button></div>
+                    <div style="font-size:12.5px; color:var(--ink-soft);">Ou cole um código gerado em outro dispositivo:</div>
+                    <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                      <input value="{{ pasteCode }}" onChange="{{ onPaste }}" placeholder="Código de pareamento" style="flex:1; min-width:150px; height:30px; box-sizing:border-box; padding:0 10px; border:1px solid var(--field-border); border-radius:9px; background:var(--field); color:var(--field-ink); font-family:'JetBrains Mono', monospace; font-size:12.5px; outline:none;" style-focus="border-color:var(--gold); box-shadow:0 0 0 3px var(--gold-soft);">
+                      <button onClick="{{ connectCode }}" disabled="{{ noPaste }}" style="height:30px; padding:0 14px; border:1px solid var(--field-border); border-radius:999px; cursor:{{ pasteCursor }}; background:transparent; color:var(--ink); opacity:{{ pasteOp }}; font-family:Jost, sans-serif; font-size:13px; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">Conectar</button>
+                    </div>
+                  </div>
+                </sc-if>
+                <sc-if value="{{ netOn }}">
+                  <div style="display:flex; flex-direction:column; gap:9px; animation:cyGrow .35s cubic-bezier(.3,.7,.2,1);">
+                    <div style="display:flex; align-items:center; gap:8px; padding:8px 8px 8px 14px; border:1px solid var(--gold-line); border-radius:12px; background:var(--paper-2);">
+                      <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; font-family:'JetBrains Mono', monospace; font-size:13px; letter-spacing:.04em;">4F2A9-C81D0-77B3E-A0C54</span>
+                      <button onClick="{{ copyCode }}" style="height:26px; padding:0 12px; border:none; border-radius:999px; cursor:pointer; background:var(--accent); color:var(--accent-ink); font-family:Jost, sans-serif; font-size:12.5px; font-weight:500; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">{{ copyLabel }}</button>
+                    </div>
+                    <div style="font-size:12.5px; color:var(--ink-soft);">Digite esse código no outro dispositivo para conectá-lo</div>
+                    <a href="#" onClick="{{ netDisable }}" style="font-size:12.5px; color:var(--danger); align-self:flex-start; text-decoration-color:transparent; text-underline-offset:3px; transition:text-decoration-color .2s, opacity .2s;" style-hover="text-decoration-color:currentColor;" style-active="opacity:.7;">Desativar sincronização pela internet</a>
+                  </div>
+                </sc-if>
+              </div>
+            </div>
+          </div>
+        </sc-if>
+
+        <!-- Note Styling -->
+        <sc-if value="{{ styling }}">
+          <div style="position:absolute; inset:0; z-index:30; display:flex; flex-direction:column; background:var(--paper-2); background-image:radial-gradient(var(--rule) 0.8px, transparent 0.8px); background-size:16px 16px; animation:cyFade .3s ease;">
+            <div style="display:flex; align-items:baseline; gap:8px; padding:12px 18px 0;">
+              <span style="font-family:Marcellus, serif; font-size:16px; letter-spacing:.04em;">Note Styling</span>
+              <span style="font-family:Literata, serif; font-style:italic; font-size:12.5px; color:var(--ink-faint);">caderno de botânica</span>
+            </div>
+            <canvas ref="{{ cvRef }}" onPointerDown="{{ pDown }}" onPointerMove="{{ pMove }}" onPointerUp="{{ pUp }}" onPointerLeave="{{ pUp }}" style="flex:1; min-height:0; width:100%; cursor:crosshair; touch-action:none;"></canvas>
+            <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:10px 14px 12px; border-top:1px solid var(--rule); background:var(--paper);">
+              <div style="display:flex; gap:7px; padding-right:6px;">
+                <sc-for list="{{ palette }}" as="c" hint-placeholder-count="4">
+                  <button title="{{ c.name }}" onClick="{{ c.onClick }}" style="width:22px; height:22px; border-radius:50%; cursor:pointer; padding:0; border:1.5px solid var(--lead); background:{{ c.hex }}; box-shadow:{{ c.ring }}; transform:scale({{ c.sc }}); transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="transform:scale(1.18) rotate(-8deg); box-shadow:0 0 0 2px var(--paper), 0 0 0 3.5px var(--gold-line);" style-active="transform:scale(.9);"></button>
+                </sc-for>
+              </div>
+              <div style="flex:1;"></div>
+              <button onClick="{{ clearCanvas }}" style="height:28px; padding:0 12px; border:none; border-radius:999px; cursor:pointer; background:transparent; color:var(--ink-soft); font-family:Jost, sans-serif; font-size:12.5px; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--paper-2); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">Limpar</button>
+              <button onClick="{{ toggleStyling }}" style="height:28px; padding:0 12px; border:1px solid var(--field-border); border-radius:999px; cursor:pointer; background:transparent; color:var(--ink); font-family:Jost, sans-serif; font-size:12.5px; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--paper-2); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">Cancelar</button>
+              <button onClick="{{ insertDrawing }}" style="height:28px; padding:0 14px; border:none; border-radius:999px; cursor:pointer; background:var(--accent); color:var(--accent-ink); font-family:Jost, sans-serif; font-size:12.5px; font-weight:500; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="filter:brightness(1.08); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">Inserir no texto</button>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasToast }}">
+          <div style="position:absolute; left:50%; bottom:14px; transform:translateX(-50%); z-index:40; padding:6px 14px; border-radius:999px; background:var(--frame); color:var(--frame-ink); border:1px solid var(--gold-line); font-size:12.5px; white-space:nowrap; box-shadow:0 6px 16px var(--shadow); animation:cyRise .25s ease;">{{ toast }}</div>
+        </sc-if>
+      </div>
+
+      <!-- Barra de status -->
+      <div style="display:flex; align-items:center; gap:{{ stGap }}px; height:30px; flex:0 0 auto; padding:0 14px 1px 16px; font-size:11.5px; color:var(--frame-ink-soft); font-variant-numeric:tabular-nums;">
+        <span style="white-space:nowrap;">Ln {{ ln }}, Col {{ col }}</span>
+        <sc-if value="{{ full }}" hint-placeholder-val="{{ true }}"><span style="white-space:nowrap;">{{ chars }} caracteres</span></sc-if>
+        <div style="flex:1;"></div>
+        <div style="display:flex; align-items:center; gap:3px;">
+          <button title="Diminuir zoom" onClick="{{ zoomOut }}" style="width:18px; height:18px; border:none; border-radius:50%; cursor:pointer; background:transparent; color:var(--frame-ink); font-size:13px; line-height:1; padding:0; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">−</button>
+          <span style="min-width:34px; text-align:center;">{{ zoom }}%</span>
+          <button title="Aumentar zoom" onClick="{{ zoomIn }}" style="width:18px; height:18px; border:none; border-radius:50%; cursor:pointer; background:transparent; color:var(--frame-ink); font-size:13px; line-height:1; padding:0; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:translateY(0) scale(.88); box-shadow:0 0 0 1px var(--gold), 0 0 4px var(--glow); filter:brightness(.92);">+</button>
+        </div>
+        <button title="Modo leitura" onClick="{{ toggleReading }}" style="width:24px; height:22px; border:none; border-radius:7px; display:grid; place-items:center; cursor:pointer; background:{{ readA.bg }}; color:{{ readA.fg }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.9); filter:brightness(.92);">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M1.5 3.8c2.3-1 4.5-.8 6.5 1 2-1.8 4.2-2 6.5-1v8.4c-2.3-1-4.5-.8-6.5 1-2-1.8-4.2-2-6.5-1z"></path><path d="M8 4.8v8.4"></path></svg>
+        </button>
+        <button title="{{ syncTitle }}" onClick="{{ saveNow }}" style="display:flex; align-items:center; gap:6px; height:22px; padding:0 6px 0 4px; border:none; border-radius:999px; cursor:pointer; background:transparent; color:{{ syncColor }}; font-family:Jost, sans-serif; font-size:11.5px; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">
+          <svg width="18" height="18" viewBox="-10 -10 20 20" style="overflow:visible;">
+            <sc-if value="{{ syncOk }}" hint-placeholder-val="{{ true }}">
+              <g style="transform-origin:0 0; animation:cyBloom .6s cubic-bezier(.3,.7,.2,1);">
+                <path d="M0 4 C-1.5 -1.5 -6 -4 -9.5 -3 C-8 2 -4 4.5 0 4 Z M0 4 C1.5 -1.5 6 -4 9.5 -3 C8 2 4 4.5 0 4 Z M0 4 C-2 -1 -1.4 -6 0 -9 C1.4 -6 2 -1 0 4 Z" style="fill:var(--gold);"></path>
+                <path d="M0 4 V9.5" style="stroke:var(--gold); stroke-width:1.3; stroke-linecap:round;"></path>
+              </g>
+            </sc-if>
+            <sc-if value="{{ syncBusy }}">
+              <g style="transform-origin:0 6px; animation:cyBud 1.2s ease-in-out infinite;">
+                <path d="M0 -8 C4.5 -3.5 4.5 2.5 0 5 C-4.5 2.5 -4.5 -3.5 0 -8 Z" style="fill:var(--gold);"></path>
+                <path d="M0 5 C-2.5 3 -5 4.5 -5.5 7 M0 5 C2.5 3 5 4.5 5.5 7 M0 5 V9.5" style="fill:none; stroke:var(--frame-ink-soft); stroke-width:1.2; stroke-linecap:round;"></path>
+              </g>
+            </sc-if>
+            <sc-if value="{{ syncErr }}">
+              <g style="transform-origin:0 9px; animation:cyDroop .7s cubic-bezier(.3,.7,.2,1) forwards;">
+                <path d="M0 -7 C4 -3 4 2 0 4.5 C-4 2 -4 -3 0 -7 Z" style="fill:var(--alert);"></path>
+                <path d="M0 4.5 V9.5 M0 7 C-2 6 -4 7 -4.5 8.5" style="fill:none; stroke:var(--alert); stroke-width:1.2; stroke-linecap:round;"></path>
+              </g>
+            </sc-if>
+          </svg>
+          <sc-if value="{{ full }}" hint-placeholder-val="{{ true }}"><span style="white-space:nowrap;">{{ syncLabel }}</span></sc-if>
+        </button>
+      </div>
+    </div>
+
+    <!-- Menu principal -->
+    <sc-if value="{{ menuOpen }}">
+      <div onClick="{{ closeMenus }}" style="position:absolute; inset:0; z-index:49;"></div>
+      <div style="position:absolute; left:38px; top:54px; z-index:50; width:236px; padding:6px 6px 6px 18px; background:var(--paper); border:1px solid var(--gold-line); border-radius:6px 14px 14px 14px; box-shadow:0 14px 30px var(--shadow); transform-origin:0 0; animation:cyGrow .25s cubic-bezier(.3,.7,.2,1);">
+        <svg width="12" height="100%" viewBox="0 0 12 200" preserveAspectRatio="none" style="position:absolute; left:4px; top:8px; height:calc(100% - 16px);"><path d="M6 0 C1 25 11 50 6 75 C1 100 11 125 6 150 C1 175 11 190 6 200" vector-effect="non-scaling-stroke" style="fill:none; stroke:var(--accent); stroke-width:1.2; stroke-linecap:round; stroke-dasharray:420; animation:cyVine .55s cubic-bezier(.3,.7,.2,1) both;"></path></svg>
+        <sc-for list="{{ menuItems }}" as="it" hint-placeholder-count="5">
+          <button onClick="{{ it.onClick }}" style="width:100%; display:flex; align-items:center; gap:10px; padding:7px 10px; border:none; border-radius:8px; cursor:pointer; background:transparent; color:var(--ink); font-family:Jost, sans-serif; font-size:13px; text-align:left; animation:cyRise .25s cubic-bezier(.2,.8,.2,1) both; animation-delay:{{ it.delay }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--paper-2); transform:translateX(3px); box-shadow:inset 2px 0 0 var(--gold);" style-active="transform:translateX(3px) scale(.98); background:var(--gold-soft);">
+            <span style="flex:1;">{{ it.label }}</span>
+            <span style="font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--ink-faint);">{{ it.key }}</span>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <!-- Todas as guias -->
+    <sc-if value="{{ allTabsOpen }}">
+      <div onClick="{{ closeMenus }}" style="position:absolute; inset:0; z-index:49;"></div>
+      <div style="position:absolute; right:12px; top:90px; z-index:50; width:220px; padding:6px; background:var(--paper); border:1px solid var(--gold-line); border-radius:14px 6px 14px 14px; box-shadow:0 14px 30px var(--shadow); transform-origin:100% 0; animation:cyGrow .25s cubic-bezier(.3,.7,.2,1);">
+        <div style="padding:4px 10px 6px; font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--ink-faint);">Todas as guias</div>
+        <sc-for list="{{ tabs }}" as="tab" hint-placeholder-count="4">
+          <button onClick="{{ tab.onPick }}" style="width:100%; display:flex; align-items:center; gap:9px; padding:7px 10px; border:none; border-radius:8px; cursor:pointer; background:{{ tab.listBg }}; color:var(--ink); font-family:Jost, sans-serif; font-size:13px; font-weight:{{ tab.fw }}; text-align:left; animation:cyRise .22s ease both; animation-delay:{{ tab.delay }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--paper-2); transform:translateX(3px); box-shadow:inset 2px 0 0 var(--gold);" style-active="transform:translateX(3px) scale(.98); background:var(--gold-soft);">
+            <span style="width:11px; height:11px; border-radius:50%; flex:0 0 auto; border:1.2px solid var(--lead); background:{{ tab.glass }}; box-shadow:{{ tab.beadGlow }};"></span>
+            <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">{{ tab.title }}</span>
+            <sc-if value="{{ tab.fav }}"><svg width="12" height="12" viewBox="-6 -6 12 12"><title>Favorita</title><path d="M0 -5 C2.6 -2.4 2.6 2.4 0 5 C-2.6 2.4 -2.6 -2.4 0 -5 Z" transform="rotate(40)" style="fill:var(--gold);"></path></svg></sc-if>
+          </button>
+        </sc-for>
+      </div>
+    </sc-if>
+
+    <!-- Diálogos -->
+    <sc-if value="{{ hasDialog }}">
+      <div style="position:absolute; inset:0; z-index:60; display:grid; place-items:center; background:var(--scrim); border-radius:18px 18px 16px 16px; animation:cyFade .25s ease;">
+        <div style="position:relative; width:{{ dlgW }}px; box-sizing:border-box; padding:40px 22px 18px; background:var(--paper); border:1px solid var(--gold-line); border-radius:22px 22px 16px 16px; box-shadow:0 20px 44px var(--shadow); text-align:center; animation:cyGrow .32s cubic-bezier(.3,.7,.2,1);">
+          <div style="position:absolute; left:50%; top:-30px; margin-left:-31px; width:62px; height:62px; border-radius:50%; border:1px solid var(--gold); box-shadow:inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--gold-line); display:grid; place-items:center; background:var(--paper);">
+            <div style="width:48px; height:48px; border-radius:50%; background:var(--frame); border:1px solid var(--gold); display:grid; place-items:center; color:var(--gold); box-shadow:0 0 14px var(--glow);">
+              <sc-if value="{{ dlgUnsaved }}"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M13.5 2.5C8 2.5 4.5 6.5 3 13.5"></path><path d="M13.5 2.5C13.5 7 10.5 10 6 10.5"></path></svg></sc-if>
+              <sc-if value="{{ dlgPair }}"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="4.5" y="1.5" width="7" height="13" rx="1.8"></rect><path d="M7 12.2h2"></path></svg></sc-if>
+              <sc-if value="{{ dlgUpdate }}"><svg width="20" height="20" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12.5h12"></path><path d="M4.5 12.5a3.5 3.5 0 0 1 7 0"></path><path d="M8 2v5M5.8 4.2L8 2l2.2 2.2"></path></svg></sc-if>
+            </div>
+          </div>
+          <div style="font-family:Marcellus, serif; font-size:19px; letter-spacing:.02em; margin-bottom:8px;">{{ dlgTitle }}</div>
+          <div style="font-family:Literata, serif; font-size:14px; line-height:1.55; color:var(--ink-soft); text-wrap:pretty; margin-bottom:18px;">{{ dlgBody }}</div>
+          <sc-if value="{{ updating }}">
+            <div style="height:3px; margin:-6px 10px 18px; border-radius:3px; background:var(--rule); overflow:hidden;"><div style="height:100%; background:var(--accent); animation:cyProg 2.4s cubic-bezier(.4,.1,.3,1) forwards;"></div></div>
+          </sc-if>
+          <div style="display:flex; justify-content:center; gap:8px; flex-wrap:wrap;">
+            <sc-for list="{{ dlgButtons }}" as="b" hint-placeholder-count="2">
+              <button onClick="{{ b.onClick }}" style="height:32px; padding:0 16px; border:1px solid {{ b.bd }}; border-radius:999px; cursor:pointer; background:{{ b.bg }}; color:{{ b.fg }}; font-family:Jost, sans-serif; font-size:13px; font-weight:{{ b.fw }}; transition:background .2s, color .2s, border-color .2s, box-shadow .25s, filter .2s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="filter:brightness(1.06); transform:translateY(-1px); box-shadow:0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);" style-active="transform:translateY(0) scale(.95); box-shadow:0 1px 2px var(--shadow); filter:brightness(.94);">{{ b.label }}</button>
+            </sc-for>
+          </div>
+        </div>
+      </div>
+    </sc-if>
+  </div>
+  </sc-if>
+
+  <div style="max-width:640px; text-align:center; font-size:12px; line-height:1.6; color:var(--ink-soft);">Atalhos: Ctrl+F localizar · Ctrl+H substituir · Ctrl+G ir para a linha · Ctrl+S salvar · Ctrl+Shift+Space mostrar/ocultar · Esc fecha. Duplo clique na guia renomeia; arraste para reordenar; clique na margem esquerda copia a linha.</div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const T1 = `Estufa — ideias para o fim de semana
+
+Regar as samambaias antes das 9h.
+Trocar o vaso da costela-de-adão.
+Comprar sementes: manjericão, capuchinha, girassol.
+
+Leitura: "A casa de vidro" — cap. 4 a 7.
+Ligar para a Clara sobre a feira de mudas no sábado.
+Lembrar: a luz da manhã entra pela janela leste.`;
+const T2 = `Pão de fermentação natural
+
+500 g de farinha
+350 ml de água morna
+100 g de levain ativo
+10 g de sal
+
+Dobras a cada 30 min, por 2 h.
+Descansar 12 h na geladeira e assar a 250 °C.`;
+const T3 = `Leituras 2026
+
+— A casa de vidro (em andamento)
+— O jardim secreto
+— Ecotopia
+— A mão esquerda da escuridão
+
+Próxima: pedir emprestado na biblioteca do bairro.`;
+const SEED = 'data:image/svg+xml;utf8,' + encodeURIComponent("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 170 84'><g fill='none' stroke='#3E8A96' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'><path d='M22 46 C18 18 100 8 126 30 C146 46 102 70 56 66 C36 64 22 58 26 44'/><path d='M126 30 L158 14'/><path d='M147 11 L158 14 L153 24'/></g></svg>");
+const GL = ['#A9CB8F', '#E3B45A', '#7FB2B8', '#9AAAD0'];
+const GD = ['#8CC474', '#E5A945', '#62A7B0', '#8397C9'];
+const PAL = [{ name: 'Verde-folha', hex: '#4E8A4A' }, { name: 'Azul-petróleo', hex: '#2E6F7C' }, { name: 'Terracota', hex: '#A65A3A' }, { name: 'Âmbar', hex: '#C98A2E' }];
+const THEMES = { light: {"--wall":"#E4DECB","--frame":"#37604F","--frame-2":"#274A3C","--frame-ink":"#F3EBD3","--frame-ink-soft":"#C3D3BC","--gold":"#C9A04E","--gold-line":"rgba(226,190,110,.55)","--gold-soft":"rgba(226,190,110,.22)","--glow":"rgba(240,200,110,.45)","--paper":"#FBF6E9","--paper-2":"#F2EAD5","--rule":"#DCCDA6","--ink":"#2A2A22","--ink-soft":"#645F4C","--ink-faint":"#9C957C","--accent":"#3D7A4C","--accent-ink":"#FFFDF4","--petrol":"#2E6470","--selection":"rgba(214,170,76,.34)","--match":"rgba(143,184,120,.40)","--match-cur":"#EBC46C","--match-cur-ring":"#B8893A","--extra-sel":"rgba(46,100,112,.20)","--cursor":"#2A2A22","--danger":"#A8483A","--alert":"#F5B9A8","--lead":"#1C3027","--shadow":"rgba(38,52,32,.30)","--scrim":"rgba(28,44,34,.38)","--field":"#FFFDF6","--field-border":"#CFBF97","--field-ink":"#2A2A22"}, dark: {"--wall":"#070F0C","--frame":"#10211A","--frame-2":"#0A1712","--frame-ink":"#EADFC2","--frame-ink-soft":"#91A58E","--gold":"#E2B85C","--gold-line":"rgba(226,184,92,.55)","--gold-soft":"rgba(226,184,92,.18)","--glow":"rgba(236,190,90,.55)","--paper":"#15251E","--paper-2":"#1B2E26","--rule":"#2F4A3D","--ink":"#E9E2CC","--ink-soft":"#AEB49E","--ink-faint":"#6F7F6D","--accent":"#86B96F","--accent-ink":"#0E1C16","--petrol":"#7FC2CA","--selection":"rgba(226,184,92,.28)","--match":"rgba(134,185,111,.30)","--match-cur":"rgba(226,184,92,.72)","--match-cur-ring":"#E2B85C","--extra-sel":"rgba(127,194,202,.24)","--cursor":"#F2E7C8","--danger":"#E58A74","--alert":"#F2A08C","--lead":"#040A08","--shadow":"rgba(0,0,0,.55)","--scrim":"rgba(2,8,6,.55)","--field":"#0E1D17","--field-border":"#39584A","--field-ink":"#E9E2CC"} };
+const DIMS = { default: [643, 523], min: [420, 320], max: [1040, 700] };
+
+class Component extends DCLogic {
+  rootRef = React.createRef(); taRef = React.createRef(); bdRef = React.createRef(); drRef = React.createRef(); findRef = React.createRef(); gotoRef = React.createRef(); cvRef = React.createRef();
+  state = {
+    theme: 'light', size: 'default', hidden: false, view: 'editor',
+    tabs: [
+      { id: 1, title: 'Estufa', text: T1, dirty: true, fav: true, hue: 0 },
+      { id: 2, title: 'Receitas', text: T2, dirty: false, fav: false, hue: 1 },
+      { id: 3, title: 'Leituras 2026', text: T3, dirty: false, fav: true, hue: 2 },
+      { id: 4, title: 'Sem título', text: '', dirty: false, fav: false, hue: 3 },
+    ],
+    active: 1, hoverTab: null, renaming: null, renameVal: '', dragId: null,
+    menu: false, allTabs: false,
+    find: { open: true, mode: 'find', replace: true, q: 'ar', r: '', cs: false, idx: 2, gotoVal: '' },
+    zoom: 100, reading: false, sync: 'ok', pinned: false, styling: false, color: 0, editDraw: null,
+    dialog: null, pending: null, updating: false,
+    spell: true, startup: true,
+    synced: [{ name: 'Pixel 8 do Vini' }],
+    found: [{ id: 'a', name: 'Galaxy Tab da Clara', status: 'idle' }, { id: 'b', name: 'Notebook do escritório', status: 'idle' }],
+    internet: 'off', pasteCode: '', copied: false,
+    drawings: { 1: [{ id: 'd1', src: SEED, x: 360, y: 262, w: 150 }] }, hoverDraw: null,
+    multi: { tab: 1, cursors: [T1.indexOf('Trocar'), T1.indexOf('Comprar')], sels: [[T1.indexOf('manjericão'), T1.indexOf('manjericão') + 10]] },
+    ln: 3, col: 1, hoverLine: null, toast: null, nextId: 5,
+  };
+
+  componentDidMount() { this.mountOnce(); }
+  mountOnce() {
+    if (this._mounted) return; this._mounted = true;
+    this.applyTheme();
+    this._key = (e) => this.onKey(e);
+    this._mm = (e) => this.onDragMove(e);
+    this._mu = () => { this.op = null; };
+    window.addEventListener('keydown', this._key);
+    window.addEventListener('mousemove', this._mm);
+    window.addEventListener('mouseup', this._mu);
+    const ta = this.taRef.current;
+    if (ta) { const p = T1.indexOf('Regar'); ta.setSelectionRange(p, p); }
+  }
+  componentWillUnmount() {
+    window.removeEventListener('keydown', this._key); window.removeEventListener('mousemove', this._mm); window.removeEventListener('mouseup', this._mu);
+  }
+  afterUpdate(ps, s) {
+    if (ps.theme !== s.theme) this.applyTheme();
+    if (s.styling && !ps.styling) setTimeout(() => this.initCanvas(), 30);
+    if (s.find.open && (!ps.find.open || ps.find.mode !== s.find.mode)) setTimeout(() => { const el = s.find.mode === 'goto' ? this.gotoRef.current : this.findRef.current; el && el.focus(); el && el.select && el.select(); }, 40);
+    if (ps.find.idx !== s.find.idx || ps.find.q !== s.find.q) this.scrollToCur();
+    if (ps.active !== s.active) { const ta = this.taRef.current; if (ta) { ta.scrollTop = 0; this.onScroll(); } }
+  }
+  applyTheme() { const v = THEMES[this.state.theme]; [document.body, this.rootRef.current].forEach(el => { if (el) for (const k in v) el.style.setProperty(k, v[k]); }); }
+  toastMsg(t) { clearTimeout(this._tt); this.setState({ toast: t }); this._tt = setTimeout(() => this.setState({ toast: null }), 1800); }
+  cur() { return this.state.tabs.find(t => t.id === this.state.active) || this.state.tabs[0]; }
+  setTab(id, patch) { this.setState(s => ({ tabs: s.tabs.map(t => t.id === id ? { ...t, ...patch } : t) })); }
+  setFind(p) { this.setState(s => ({ find: { ...s.find, ...p } })); }
+
+  matches(text, q, cs) {
+    if (!q) return [];
+    const T = cs ? text : text.toLowerCase(), Q = cs ? q : q.toLowerCase(); const r = []; let i = 0;
+    while ((i = T.indexOf(Q, i)) !== -1) { r.push([i, i + Q.length]); i += Q.length; }
+    return r;
+  }
+  curMatches() { const f = this.state.find; const t = this.cur(); return (f.open && f.mode === 'find' && t) ? this.matches(t.text, f.q, f.cs) : []; }
+
+  buildBackdrop(text, marks, cursors) {
+    const h = React.createElement; const rank = { n: 0, x: 1, m: 2, c: 3 };
+    const sty = { m: { background: 'var(--match)', borderRadius: 3 }, c: { background: 'var(--match-cur)', borderRadius: 3, boxShadow: '0 0 0 1px var(--match-cur-ring)' }, x: { background: 'var(--extra-sel)', borderRadius: 2 } };
+    const out = []; let off = 0;
+    text.split('\n').forEach((ln, li) => {
+      const s = off, e = off + ln.length; const pts = new Set([s, e]);
+      marks.forEach(m => { if (m.b > s && m.a < e) { pts.add(Math.max(m.a, s)); pts.add(Math.min(m.b, e)); } });
+      cursors.forEach(c => { if (c >= s && c <= e) pts.add(c); });
+      const arr = [...pts].sort((a, b) => a - b); const kids = [];
+      arr.forEach((p, k) => {
+        if (cursors.includes(p)) kids.push(h('span', { key: 'c' + k, style: { position: 'relative' } }, h('span', { style: { position: 'absolute', left: -1, top: '0.05em', width: 2, height: '1.25em', borderRadius: 1, background: 'var(--petrol)', animation: 'cyBlink 1.06s steps(1) infinite' } })));
+        if (k < arr.length - 1) {
+          const q = arr[k + 1]; if (q <= p) return; let kind = 'n';
+          marks.forEach(m => { if (m.a <= p && m.b >= q && rank[m.t] > rank[kind]) kind = m.t; });
+          kids.push(h('span', { key: k, 'data-cur': kind === 'c' ? '1' : undefined, style: sty[kind] }, text.slice(p, q)));
+        }
+      });
+      if (!ln.length) kids.push('\u200b');
+      out.push(h('div', { key: li, 'data-s': s, 'data-e': e }, kids));
+      off = e + 1;
+    });
+    return out;
+  }
+  scrollToCur() {
+    requestAnimationFrame(() => {
+      const bd = this.bdRef.current, ta = this.taRef.current; if (!bd || !ta) return;
+      const el = bd.querySelector('[data-cur]'); if (!el) return;
+      const top = el.getBoundingClientRect().top - bd.getBoundingClientRect().top + ta.scrollTop;
+      if (top < ta.scrollTop + 50 || top > ta.scrollTop + ta.clientHeight - 40) { ta.scrollTop = Math.max(0, top - 70); this.onScroll(); }
+    });
+  }
+  onScroll = () => {
+    const ta = this.taRef.current; if (!ta) return;
+    if (this.bdRef.current) this.bdRef.current.scrollTop = ta.scrollTop;
+    if (this.drRef.current) this.drRef.current.style.transform = `translateY(${-ta.scrollTop}px)`;
+  };
+  updCaret = () => {
+    const ta = this.taRef.current; if (!ta) return;
+    const p = ta.selectionStart; const before = ta.value.slice(0, p);
+    const ln = before.split('\n').length; const col = p - before.lastIndexOf('\n');
+    if (ln !== this.state.ln || col !== this.state.col) this.setState({ ln, col });
+  };
+  lineAt(y) {
+    const bd = this.bdRef.current; if (!bd) return null;
+    for (const d of bd.children) { const r = d.getBoundingClientRect(); if (y >= r.top && y < r.bottom) return { d, r }; }
+    return null;
+  }
+
+  saveNow = () => {
+    const id = this.state.active;
+    this.setState({ sync: 'syncing' });
+    clearTimeout(this._st);
+    this._st = setTimeout(() => { this.setState(s => ({ sync: 'ok', tabs: s.tabs.map(t => t.id === id ? { ...t, dirty: false } : t) })); }, 1200);
+  };
+  closeTab(id) {
+    const t = this.state.tabs.find(x => x.id === id);
+    if (t && t.dirty) { this.setState({ dialog: 'unsaved', pending: id }); return; }
+    this.removeTab(id);
+  }
+  removeTab(id) {
+    this.setState(s => {
+      let tabs = s.tabs.filter(t => t.id !== id); let nextId = s.nextId;
+      if (!tabs.length) { tabs = [{ id: nextId, title: 'Sem título', text: '', dirty: false, fav: false, hue: 0 }]; nextId++; }
+      const idx = s.tabs.findIndex(t => t.id === id);
+      const active = s.active === id ? tabs[Math.max(0, idx - 1)].id : s.active;
+      return { tabs, active, nextId, dialog: null, pending: null };
+    });
+  }
+  newTab = () => this.setState(s => ({ tabs: [...s.tabs, { id: s.nextId, title: 'Sem título', text: '', dirty: false, fav: false, hue: s.nextId % 4 }], active: s.nextId, nextId: s.nextId + 1, view: 'editor' }));
+  commitRename = () => { const s = this.state; if (s.renaming == null) return; const v = s.renameVal.trim(); if (v) this.setTab(s.renaming, { title: v }); this.setState({ renaming: null }); };
+  openFind(mode, replace) { this.setState(s => ({ view: 'editor', menu: false, find: { ...s.find, open: true, mode, replace: replace ?? s.find.replace } })); }
+  step(d) { const n = this.curMatches().length; if (!n) return; this.setFind({ idx: (Math.min(this.state.find.idx, n - 1) + d + n) % n }); }
+  replaceOne = () => {
+    const ms = this.curMatches(); if (!ms.length) return; const t = this.cur(); const i = Math.min(this.state.find.idx, ms.length - 1); const [a, b] = ms[i];
+    this.setTab(t.id, { text: t.text.slice(0, a) + this.state.find.r + t.text.slice(b), dirty: true }); this.setState({ multi: null });
+  };
+  replaceAll = () => {
+    const ms = this.curMatches(); if (!ms.length) return; const t = this.cur(); let out = t.text;
+    for (let i = ms.length - 1; i >= 0; i--) out = out.slice(0, ms[i][0]) + this.state.find.r + out.slice(ms[i][1]);
+    this.setTab(t.id, { text: out, dirty: true }); this.setState({ multi: null }); this.toastMsg(`${ms.length} substituições`);
+  };
+  gotoLine = () => {
+    const n = parseInt(this.state.find.gotoVal, 10); const t = this.cur(); const lines = t.text.split('\n');
+    if (!n || n < 1 || n > lines.length) return;
+    const p = lines.slice(0, n - 1).reduce((a, l) => a + l.length + 1, 0);
+    const ta = this.taRef.current; this.setFind({ open: false, gotoVal: '' });
+    if (ta) { ta.focus(); ta.setSelectionRange(p, p); const d = this.bdRef.current && this.bdRef.current.children[n - 1]; if (d) { ta.scrollTop = Math.max(0, d.offsetTop - 60); this.onScroll(); } this.updCaret(); }
+  };
+  onKey(e) {
+    const k = (e.key || '').toLowerCase(); const s = this.state;
+    if (e.ctrlKey && e.shiftKey && e.code === 'Space') { e.preventDefault(); this.setState({ hidden: !s.hidden }); return; }
+    if (e.ctrlKey && !e.shiftKey && k === 'f') { e.preventDefault(); this.openFind('find', false); }
+    else if (e.ctrlKey && k === 'h') { e.preventDefault(); this.openFind('find', true); }
+    else if (e.ctrlKey && k === 'g') { e.preventDefault(); this.openFind('goto'); }
+    else if (e.ctrlKey && e.shiftKey && k === 's') { e.preventDefault(); this.toastMsg('Salvar como… abre o diálogo do Windows'); }
+    else if (e.ctrlKey && k === 's') { e.preventDefault(); this.saveNow(); }
+    else if (k === 'escape') {
+      if (s.dialog && !s.updating) this.setState({ dialog: null });
+      else if (s.menu || s.allTabs) this.setState({ menu: false, allTabs: false });
+      else if (s.styling) this.setState({ styling: false });
+      else if (s.find.open) { this.setFind({ open: false }); this.taRef.current && this.taRef.current.focus(); }
+      else if (s.multi) this.setState({ multi: null });
+    }
+  }
+  onDragMove(e) {
+    const op = this.op; if (!op) return;
+    const dx = e.clientX - op.x0, dy = e.clientY - op.y0; const id = this.state.active;
+    this.setState(s => ({ drawings: { ...s.drawings, [id]: (s.drawings[id] || []).map(d => d.id !== op.id ? d : op.kind === 'move' ? { ...d, x: Math.max(0, op.ox + dx), y: Math.max(0, op.oy + dy) } : { ...d, w: Math.max(50, op.ow + dx) }) } }));
+  }
+
+  initCanvas() {
+    const c = this.cvRef.current; if (!c) return;
+    const r = c.getBoundingClientRect(); const d = window.devicePixelRatio || 1; this.dpr = d;
+    c.width = r.width * d; c.height = r.height * d;
+    const x = c.getContext('2d'); x.setTransform(d, 0, 0, d, 0, 0); x.lineCap = 'round'; x.lineJoin = 'round';
+    this.bbox = null;
+    const ed = this.state.editDraw;
+    if (ed) { const img = new Image(); img.onload = () => { const w = ed.w, h = w * img.height / img.width; x.drawImage(img, 24, 20, w, h); this.bbox = { x0: 24, y0: 20, x1: 24 + w, y1: 20 + h }; }; img.src = ed.src; }
+  }
+  pt(e) { const r = this.cvRef.current.getBoundingClientRect(); return { x: e.clientX - r.left, y: e.clientY - r.top }; }
+  grow(p) { const b = this.bbox; this.bbox = b ? { x0: Math.min(b.x0, p.x), y0: Math.min(b.y0, p.y), x1: Math.max(b.x1, p.x), y1: Math.max(b.y1, p.y) } : { x0: p.x, y0: p.y, x1: p.x, y1: p.y }; }
+  pDown = (e) => { this.cvRef.current.setPointerCapture && this.cvRef.current.setPointerCapture(e.pointerId); this.drawing = true; this.last = this.pt(e); this.grow(this.last); };
+  pMove = (e) => {
+    if (!this.drawing) return; const p = this.pt(e); const x = this.cvRef.current.getContext('2d');
+    x.strokeStyle = PAL[this.state.color].hex; x.globalAlpha = 0.9; x.lineWidth = 2.6;
+    x.beginPath(); x.moveTo(this.last.x, this.last.y); x.lineTo(p.x, p.y); x.stroke(); this.last = p; this.grow(p);
+  };
+  pUp = () => { this.drawing = false; };
+  insertDrawing = () => {
+    const c = this.cvRef.current; const b = this.bbox; const s = this.state; const id = s.active;
+    if (!c || !b) { this.setState({ styling: false, editDraw: null }); return; }
+    const pad = 8, d = this.dpr || 1; const sx = Math.max(0, b.x0 - pad), sy = Math.max(0, b.y0 - pad);
+    const w = Math.min(c.width / d - sx, b.x1 - b.x0 + pad * 2), h = Math.min(c.height / d - sy, b.y1 - b.y0 + pad * 2);
+    const tmp = document.createElement('canvas'); tmp.width = w * d; tmp.height = h * d;
+    tmp.getContext('2d').drawImage(c, sx * d, sy * d, w * d, h * d, 0, 0, w * d, h * d);
+    const src = tmp.toDataURL('image/png'); const ta = this.taRef.current;
+    const disp = Math.min(w, 260);
+    this.setState(st => {
+      const list = (st.drawings[id] || []);
+      const nl = st.editDraw ? list.map(x => x.id === st.editDraw.id ? { ...x, src, w: disp } : x) : [...list, { id: 'd' + Date.now(), src, x: 70, y: (ta ? ta.scrollTop : 0) + 40, w: disp }];
+      return { drawings: { ...st.drawings, [id]: nl }, styling: false, editDraw: null, tabs: st.tabs.map(t => t.id === id ? { ...t, dirty: true } : t) };
+    });
+  };
+
+  renderVals() {
+    const s = this.state;
+    if (!this._mounted) setTimeout(() => this.mountOnce(), 0);
+    const prev = this._ps; this._ps = s; if (prev && prev !== s) setTimeout(() => this.afterUpdate(prev, s), 0); const tab = this.cur(); const dark = s.theme === 'dark';
+    const [winW, winH] = DIMS[s.size]; const compact = s.size === 'min'; const glass = dark ? GD : GL;
+    const text = tab ? tab.text : ''; const f = s.find;
+    const ms = this.curMatches(); const idx = ms.length ? Math.min(f.idx, ms.length - 1) : 0;
+    const marks = ms.map((m, i) => ({ a: m[0], b: m[1], t: i === idx ? 'c' : 'm' }));
+    let cursors = [];
+    if (s.multi && s.multi.tab === tab.id) { s.multi.sels.forEach(x => marks.push({ a: x[0], b: x[1], t: 'x' })); cursors = [...s.multi.cursors, ...s.multi.sels.map(x => x[1])]; }
+    const fs = Math.round((s.reading ? 18 : 15) * s.zoom / 10) / 10; const lh = s.reading ? 1.95 : 1.65;
+    const innerW = winW - 14;
+    const padL = s.reading && !compact ? Math.max(56, Math.round((innerW - 640) / 2)) : (compact ? 36 : 46);
+    const padR = s.reading && !compact ? Math.max(40, padL - 16) : (compact ? 20 : 30);
+    const act = (on) => ({ bg: on ? 'var(--gold)' : 'transparent', fg: on ? 'var(--frame-2)' : 'var(--frame-ink)', sh: on ? '0 0 12px var(--glow)' : 'none' });
+    const tabs = s.tabs.map((t, i) => {
+      const a = t.id === s.active, hv = s.hoverTab === t.id, g = glass[t.hue % 4];
+      return {
+        ...t, active: a, renaming: s.renaming === t.id, notRenaming: s.renaming !== t.id,
+        h: a ? 30 : 26, mb: a ? -1 : 0, padL: 15, op: s.dragId === t.id ? 0.5 : 1, fw: a ? 500 : 400,
+        bg: a ? `linear-gradient(180deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,0) 52%), radial-gradient(120% 90% at 50% 0%, rgba(255,244,205,.55), rgba(255,244,205,0) 60%), ${g}` : `color-mix(in oklab, ${g} ${hv ? 52 : 34}%, transparent)`,
+        fg: a ? '#1B261F' : 'var(--frame-ink)', shadow: a ? '0 0 16px var(--glow), inset 0 1px 0 rgba(255,255,255,.55)' : 'none',
+        showHandle: hv && s.renaming !== t.id, showClose: hv && s.renaming !== t.id, showDot: t.dirty && !hv,
+        glass: g, beadGlow: a ? '0 0 8px var(--glow)' : 'none', listBg: a ? 'var(--paper-2)' : 'transparent', delay: i * 35 + 'ms',
+        onClick: () => this.setState({ active: t.id, allTabs: false }),
+        onPick: () => this.setState({ active: t.id, allTabs: false, view: 'editor' }),
+        onDbl: () => this.setState({ renaming: t.id, renameVal: t.title }),
+        onEnter: () => this.setState({ hoverTab: t.id }), onLeave: () => this.setState({ hoverTab: null }),
+        onClose: (e) => { e.stopPropagation(); this.closeTab(t.id); },
+        onDragStart: (e) => { e.dataTransfer.effectAllowed = 'move'; this.setState({ dragId: t.id }); },
+        onDragOver: (e) => { e.preventDefault(); const d = this.state.dragId; if (d == null || d === t.id) return; this.setState(st => { const arr = [...st.tabs]; const from = arr.findIndex(x => x.id === d), to = arr.findIndex(x => x.id === t.id); const [m] = arr.splice(from, 1); arr.splice(to, 0, m); return { tabs: arr }; }); },
+        onDragEnd: () => this.setState({ dragId: null }),
+      };
+    });
+    const drawings = (s.drawings[tab.id] || []).map(d => ({
+      ...d, hover: s.hoverDraw === d.id, outline: s.hoverDraw === d.id ? '1px dashed var(--gold)' : '1px dashed transparent',
+      onEnter: () => this.setState({ hoverDraw: d.id }), onLeave: () => { if (!this.op) this.setState({ hoverDraw: null }); },
+      onMove: (e) => { e.preventDefault(); this.op = { kind: 'move', id: d.id, x0: e.clientX, y0: e.clientY, ox: d.x, oy: d.y }; },
+      onResize: (e) => { e.preventDefault(); e.stopPropagation(); this.op = { kind: 'size', id: d.id, x0: e.clientX, ow: d.w }; },
+      onEdit: () => this.setState({ styling: true, editDraw: d, view: 'editor' }),
+      onDel: () => this.setState(st => ({ drawings: { ...st.drawings, [tab.id]: st.drawings[tab.id].filter(x => x.id !== d.id) }, hoverDraw: null })),
+    }));
+    const sync = s.sync;
+    const opt = (t, on, fn) => ({ t, onClick: fn, bg: on ? 'var(--frame)' : 'transparent', fg: on ? 'var(--frame-ink)' : 'var(--ink-soft)' });
+    const demo = [
+      { label: 'Tema', opts: [opt('Dia', !dark, () => this.setState({ theme: 'light' })), opt('Noite', dark, () => this.setState({ theme: 'dark' }))] },
+      { label: 'Janela', opts: [opt('643×523', s.size === 'default', () => this.setState({ size: 'default', hidden: false })), opt('420×320', compact, () => this.setState({ size: 'min', hidden: false })), opt('Maximizada', s.size === 'max', () => this.setState({ size: 'max', hidden: false }))] },
+      { label: 'Sincronização', opts: [opt('Sincronizado', sync === 'ok', () => this.setState({ sync: 'ok' })), opt('Sincronizando', sync === 'syncing', () => this.setState({ sync: 'syncing' })), opt('Erro', sync === 'error', () => this.setState({ sync: 'error' }))] },
+      { label: 'Telas', opts: [opt('Editor', s.view === 'editor' && !s.dialog && !s.styling, () => this.setState({ view: 'editor', dialog: null, styling: false })), opt('Configurações', s.view === 'settings', () => this.setState({ view: 'settings', dialog: null, styling: false })), opt('Desenho', s.styling, () => this.setState({ styling: true, view: 'editor', editDraw: null })), opt('Não salvo', s.dialog === 'unsaved', () => this.setState({ dialog: 'unsaved', pending: s.active })), opt('Pareamento', s.dialog === 'pair', () => this.setState({ dialog: 'pair' })), opt('Atualização', s.dialog === 'update', () => this.setState({ dialog: 'update', updating: false }))] },
+    ];
+    const tgl = (label, desc, on, fn, i) => ({ label, desc, onClick: fn, bg: on ? 'var(--accent)' : 'var(--paper-2)', bd: on ? 'var(--accent)' : 'var(--field-border)', x: on ? 21 : 2, delay: i * 50 + 'ms' });
+    const toggles = [
+      tgl('Tema escuro', 'Ativa a interface escura do bloquinho', dark, () => this.setState({ theme: dark ? 'light' : 'dark' }), 0),
+      tgl('Verificação ortográfica', 'Sublinhado vermelho embaixo de possíveis erros', s.spell, () => this.setState({ spell: !s.spell }), 1),
+      tgl('Iniciar com o Windows', 'Abre o Cynote em segundo plano ao ligar o computador, para o atalho Ctrl+Shift+Space estar sempre disponível', s.startup, () => this.setState({ startup: !s.startup }), 2),
+    ];
+    const found = s.found.map(d => ({ ...d, label: d.status === 'idle' ? 'Conectar' : 'Conectando…', bg: d.status === 'idle' ? 'var(--accent)' : 'var(--paper-2)', fg: d.status === 'idle' ? 'var(--accent-ink)' : 'var(--ink-soft)',
+      onClick: () => { if (d.status !== 'idle') return; this.setState(st => ({ found: st.found.map(x => x.id === d.id ? { ...x, status: 'busy' } : x) })); setTimeout(() => this.setState(st => ({ found: st.found.filter(x => x.id !== d.id), synced: [...st.synced, { name: d.name }] })), 1600); } }));
+    const pendingTab = s.tabs.find(t => t.id === s.pending);
+    let dlg = { t: '', b: '', btn: [] };
+    const B = (label, kind, fn) => ({ label, onClick: fn, bg: kind === 'p' ? 'var(--accent)' : 'transparent', fg: kind === 'p' ? 'var(--accent-ink)' : kind === 'd' ? 'var(--danger)' : 'var(--ink)', bd: kind === 'p' ? 'var(--accent)' : 'var(--field-border)', fw: kind === 'p' ? 500 : 400 });
+    if (s.dialog === 'unsaved') dlg = { t: 'Alterações não salvas', b: `“${pendingTab ? pendingTab.title : 'Esta nota'}” tem alterações que ainda não foram salvas. Deseja salvar antes de fechar?`, btn: [B('Cancelar', 'g', () => this.setState({ dialog: null, pending: null })), B('Não salvar', 'd', () => this.removeTab(s.pending)), B('Salvar', 'p', () => { this.saveNow(); this.removeTab(s.pending); })] };
+    if (s.dialog === 'pair') dlg = { t: 'Sincronizar dispositivo', b: 'Sincronizar com “Celular do Vini”?', btn: [B('Recusar', 'g', () => this.setState({ dialog: null })), B('Aceitar', 'p', () => { this.setState(st => ({ dialog: null, synced: [...st.synced, { name: 'Celular do Vini' }] })); this.toastMsg('Celular do Vini sincronizado'); })] };
+    if (s.dialog === 'update') dlg = { t: 'Atualização disponível', b: s.updating ? 'Instalando o Cynote 0.1.24…' : 'O Cynote 0.1.24 está disponível.', btn: s.updating ? [] : [B('Agora não', 'g', () => this.setState({ dialog: null })), B('Atualizar', 'p', () => { this.setState({ updating: true }); setTimeout(() => { this.setState({ updating: false, dialog: null }); this.toastMsg('Cynote atualizado para 0.1.24'); }, 2500); })] };
+    const menuItems = [
+      { label: 'Salvar como…', key: 'Ctrl+Shift+S', onClick: () => { this.setState({ menu: false }); this.toastMsg('Salvar como… abre o diálogo do Windows'); } },
+      { label: 'Exportar como .txt', key: '', onClick: () => { this.setState({ menu: false }); this.toastMsg(`Exportado: ${tab.title}.txt`); } },
+      { label: 'Localizar', key: 'Ctrl+F', onClick: () => this.openFind('find', false) },
+      { label: 'Substituir', key: 'Ctrl+H', onClick: () => this.openFind('find', true) },
+      { label: 'Ir para a linha', key: 'Ctrl+G', onClick: () => this.openFind('goto') },
+    ].map((m, i) => ({ ...m, delay: 60 + i * 40 + 'ms' }));
+    const nLines = text.split('\n').length;
+    const noPaste = !s.pasteCode.trim();
+    return {
+      rootRef: this.rootRef, demo, hidden: s.hidden, shown: !s.hidden, show: () => this.setState({ hidden: false }), hide: () => this.setState({ hidden: true, menu: false, allTabs: false }),
+      winW: s.size === 'max' ? winW : winW, winH, full: !compact, tabMin: compact ? 64 : 84, stGap: compact ? 8 : 14,
+      menuA: act(s.menu), stylA: act(s.styling), setA: act(s.view === 'settings'), pinA: act(s.pinned), allA: act(s.allTabs), readA: { bg: s.reading ? 'var(--gold)' : 'transparent', fg: s.reading ? 'var(--frame-2)' : 'var(--frame-ink)' },
+      toggleMenu: () => this.setState({ menu: !s.menu, allTabs: false }), toggleAllTabs: () => this.setState({ allTabs: !s.allTabs, menu: false }),
+      closeMenus: () => this.setState({ menu: false, allTabs: false }), menuOpen: s.menu, allTabsOpen: s.allTabs, menuItems,
+      toggleStyling: () => this.setState({ styling: !s.styling, editDraw: null, view: 'editor' }),
+      toggleSettings: () => this.setState({ view: s.view === 'settings' ? 'editor' : 'settings', styling: false }),
+      togglePin: () => { this.setState({ pinned: !s.pinned }); this.toastMsg(s.pinned ? 'Janela solta' : 'Fixada por cima das outras janelas'); },
+      toggleMax: () => this.setState({ size: s.size === 'max' ? 'default' : 'max' }),
+      tabs, newTab: this.newTab, renameVal: s.renameVal, onRename: (e) => this.setState({ renameVal: e.target.value }),
+      onRenameKey: (e) => { if (e.key === 'Enter') this.commitRename(); if (e.key === 'Escape') { e.stopPropagation(); this.setState({ renaming: null }); } },
+      commitRename: this.commitRename, stop: (e) => e.stopPropagation(),
+      isEditor: s.view === 'editor', isSettings: s.view === 'settings',
+      bdRef: this.bdRef, taRef: this.taRef, drRef: this.drRef, findRef: this.findRef, gotoRef: this.gotoRef, cvRef: this.cvRef,
+      backdrop: this.buildBackdrop(text, marks, cursors), text, isEmpty: !text.length, spell: s.spell,
+      fs, lh, padL, padR, padT: compact ? 18 : 24, gutterW: padL - 12,
+      onText: (e) => { const v = e.target.value; this.setTab(tab.id, { text: v, dirty: true }); if (s.multi) this.setState({ multi: null }); if (s.sync === 'error') return; },
+      onScroll: this.onScroll, updCaret: this.updCaret,
+      gutterMove: (e) => { const L = this.lineAt(e.clientY); const bd = this.bdRef.current; if (!L || !bd) { if (s.hoverLine != null) this.setState({ hoverLine: null }); return; } const top = Math.round(L.r.top - bd.getBoundingClientRect().top - 8 + Math.min(L.r.height, fs * lh) / 2 - 6); if (top !== s.hoverLine) this.setState({ hoverLine: top }); },
+      gutterLeave: () => this.setState({ hoverLine: null }),
+      gutterDown: (e) => { e.preventDefault(); const L = this.lineAt(e.clientY); const ta = this.taRef.current; if (!L || !ta) return; const a = +L.d.dataset.s, b = +L.d.dataset.e; ta.focus(); ta.setSelectionRange(a, Math.min(text.length, b + 1)); const line = text.slice(a, b); try { navigator.clipboard && navigator.clipboard.writeText(line); } catch (err) {} this.updCaret(); this.toastMsg('Linha copiada'); },
+      hasHoverLine: s.hoverLine != null, hoverLineTop: s.hoverLine,
+      drawings,
+      findOpen: f.open && s.view === 'editor', findModeFind: f.mode === 'find', findModeGoto: f.mode === 'goto', replaceOpen: f.replace, expRot: f.replace ? 90 : 0,
+      q: f.q, r: f.r, gotoVal: f.gotoVal, gotoPh: `Ir para a linha (1–${nLines})`, findW: compact ? 104 : 150, statusMin: compact ? 52 : 70,
+      onQ: (e) => this.setFind({ q: e.target.value, idx: 0 }), onR: (e) => this.setFind({ r: e.target.value }), onGoto: (e) => this.setFind({ gotoVal: e.target.value.replace(/\D/g, '') }),
+      onFindKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.step(e.shiftKey ? -1 : 1); } },
+      onReplaceKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.replaceOne(); } },
+      onGotoKey: (e) => { if (e.key === 'Enter') { e.preventDefault(); this.gotoLine(); } },
+      toggleReplace: () => this.setFind({ replace: !f.replace }), toggleCase: () => this.setFind({ cs: !f.cs, idx: 0 }),
+      caseA: { bg: f.cs ? 'var(--gold)' : 'transparent', fg: f.cs ? 'var(--frame-2)' : 'var(--frame-ink)', bd: f.cs ? 'var(--gold)' : 'var(--gold-line)' },
+      statusText: !f.q ? '' : ms.length ? `${idx + 1} de ${ms.length}` : 'Sem resultados', statusColor: f.q && !ms.length ? 'var(--alert)' : 'var(--frame-ink-soft)',
+      prevMatch: () => this.step(-1), nextMatch: () => this.step(1), replaceOne: this.replaceOne, replaceAll: this.replaceAll,
+      closeFind: () => { this.setFind({ open: false }); this.taRef.current && this.taRef.current.focus(); },
+      toggles, synced: s.synced, found, setPad: compact ? 18 : 30,
+      netOff: s.internet === 'off', netOn: s.internet === 'on', genCode: () => this.setState({ internet: 'on', copied: false }),
+      pasteCode: s.pasteCode, onPaste: (e) => this.setState({ pasteCode: e.target.value.toUpperCase() }), noPaste, pasteOp: noPaste ? 0.45 : 1, pasteCursor: noPaste ? 'default' : 'pointer',
+      connectCode: () => { if (noPaste) return; this.setState({ internet: 'on', pasteCode: '' }); this.toastMsg('Conectado pela internet'); },
+      copyCode: () => { try { navigator.clipboard && navigator.clipboard.writeText('4F2A9-C81D0-77B3E-A0C54'); } catch (e) {} this.setState({ copied: true }); setTimeout(() => this.setState({ copied: false }), 1600); },
+      copyLabel: s.copied ? 'Copiado!' : 'Copiar', netDisable: (e) => { e.preventDefault(); this.setState({ internet: 'off' }); },
+      styling: s.styling, palette: PAL.map((c, i) => ({ ...c, onClick: () => this.setState({ color: i }), ring: i === s.color ? '0 0 0 2px var(--paper), 0 0 0 3.5px var(--gold)' : 'none', sc: i === s.color ? 1.12 : 1 })),
+      pDown: this.pDown, pMove: this.pMove, pUp: this.pUp, clearCanvas: () => this.setState({ editDraw: null }, () => this.initCanvas()), insertDrawing: this.insertDrawing,
+      hasToast: !!s.toast, toast: s.toast,
+      ln: s.ln, col: s.col, chars: text.length, zoom: s.zoom,
+      zoomIn: () => this.setState({ zoom: Math.min(200, s.zoom + 10) }), zoomOut: () => this.setState({ zoom: Math.max(60, s.zoom - 10) }),
+      toggleReading: () => this.setState({ reading: !s.reading }),
+      saveNow: this.saveNow, syncOk: sync === 'ok', syncBusy: sync === 'syncing', syncErr: sync === 'error',
+      syncLabel: sync === 'ok' ? 'Sincronizado' : sync === 'syncing' ? 'Sincronizando…' : 'Erro de sincronização',
+      syncTitle: sync === 'error' ? 'Erro de sincronização — clique para tentar de novo' : 'Clique para salvar agora',
+      syncColor: sync === 'error' ? 'var(--alert)' : 'var(--frame-ink-soft)',
+      hasDialog: !!s.dialog, dlgUnsaved: s.dialog === 'unsaved', dlgPair: s.dialog === 'pair', dlgUpdate: s.dialog === 'update',
+      dlgTitle: dlg.t, dlgBody: dlg.b, dlgButtons: dlg.btn, updating: s.updating, dlgW: compact ? 300 : 340,
+    };
+  }
+}
+</script>
+</body>
+</html>

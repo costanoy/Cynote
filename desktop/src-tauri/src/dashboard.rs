@@ -1,5 +1,6 @@
 use serde::Serialize;
 use std::fs;
+use std::io::Read;
 use std::path::Path;
 use tauri::{AppHandle, Emitter, Manager};
 
@@ -13,6 +14,40 @@ pub struct ScannedNote {
     pub relative_dirs: Vec<String>,
     #[serde(rename = "fileName")]
     pub file_name: String,
+    /// Last-modified time, in milliseconds since the Unix epoch (0 if unknown).
+    #[serde(rename = "modifiedMs")]
+    pub modified_ms: u64,
+    /// The first few words of the note, for its card in Dashnotes.
+    pub preview: String,
+}
+
+/// How much of each file is read to build its preview - enough for three
+/// lines on a card, without pulling whole notes off disk during a scan.
+const PREVIEW_READ_BYTES: u64 = 1024;
+const PREVIEW_MAX_CHARS: usize = 220;
+
+fn modified_ms(path: &Path) -> u64 {
+    fs::metadata(path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+        .map(|d| d.as_millis() as u64)
+        .unwrap_or(0)
+}
+
+fn read_preview(path: &Path, is_cyte: bool) -> String {
+    let Ok(file) = fs::File::open(path) else { return String::new() };
+    let mut buf = Vec::new();
+    if file.take(PREVIEW_READ_BYTES).read_to_end(&mut buf).is_err() {
+        return String::new();
+    }
+    let text = String::from_utf8_lossy(&buf);
+    // A .cyte file is "title, blank line, body, metadata footer" - the card
+    // already shows the title, and the footer is never meant to be read.
+    let text = text.split("<!--CYNOTE:").next().unwrap_or("");
+    let text = if is_cyte { text.split_once('\n').map(|(_, rest)| rest).unwrap_or("") } else { text };
+    let flat = text.split_whitespace().collect::<Vec<_>>().join(" ");
+    flat.chars().filter(|c| *c != '\u{FFFD}').take(PREVIEW_MAX_CHARS).collect()
 }
 
 /// Common dev-tool/build directory names that bury the user's own notes under
@@ -63,10 +98,13 @@ fn collect_txt_files(dir: &Path, root_label: &str, rel: &mut Vec<String>, depth:
             collect_txt_files(&entry.path(), root_label, rel, depth + 1, out);
             rel.pop();
         } else if file_type.is_file() && has_note_extension(&name) {
+            let path = entry.path();
             out.push(ScannedNote {
-                full_path: entry.path().to_string_lossy().to_string(),
+                full_path: path.to_string_lossy().to_string(),
                 root_label: root_label.to_string(),
                 relative_dirs: rel.clone(),
+                modified_ms: modified_ms(&path),
+                preview: read_preview(&path, name.to_lowercase().ends_with(".cyte")),
                 file_name: name,
             });
         }
@@ -133,8 +171,8 @@ fn write_shortcut(target: &Path, args: &str, icon: Option<&Path>, output: &Path)
     }
 }
 
-/// One-time setup: gives the user a second, distinct entry point ("Cynote
-/// Dashboard") into the folder/notes overview, alongside the regular Cynote
+/// One-time setup: gives the user a second, distinct entry point ("Dashnotes",
+/// formerly "Cynote Dashboard") into the folder/notes overview, alongside the regular Cynote
 /// shortcut the installer already creates. The Desktop copy is flagged so it
 /// opens as a compact popup; the Start Menu copy opens as a normal window.
 pub fn create_dashboard_shortcuts_once(app: &AppHandle) {
@@ -154,12 +192,12 @@ pub fn create_dashboard_shortcuts_once(app: &AppHandle) {
             &exe,
             "--dashboard --popup",
             icon.as_deref(),
-            &desktop.join("Cynote Dashboard.lnk"),
+            &desktop.join("Dashnotes.lnk"),
         );
     }
     if let Some(start_menu) = start_menu_programs_dir(app) {
         let _ = fs::create_dir_all(&start_menu);
-        write_shortcut(&exe, "--dashboard", icon.as_deref(), &start_menu.join("Cynote Dashboard.lnk"));
+        write_shortcut(&exe, "--dashboard", icon.as_deref(), &start_menu.join("Dashnotes.lnk"));
     }
 
     let _ = fs::write(marker, "");

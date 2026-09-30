@@ -11,7 +11,9 @@ import 'sync/cloud_sync_service.dart';
 import 'sync/bookkeeping_store.dart';
 import 'sync/merge.dart' show dropDuplicateCopies;
 import 'sync/peer_info.dart';
+import 'icons.dart';
 import 'theme.dart';
+import 'widgets/greenhouse.dart';
 import 'screens/sync_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/search_screen.dart';
@@ -151,31 +153,25 @@ class _CynoteRootState extends State<CynoteRoot> {
     _pairingDialogShowing = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => AlertDialog(
-          title: const Text('Sincronizar dispositivo'),
-          content: Text('Sincronizar com "${peer.deviceName}"?'),
+      void respond(BuildContext ctx, bool accept) {
+        service.respondToPairing(peer.deviceId, accept);
+        Navigator.of(ctx).pop();
+        _pairingDialogShowing = false;
+        _maybeShowPairingDialog();
+      }
+
+      final t = _colors;
+      showCyDialog(
+        context,
+        t,
+        (ctx) => CyDialog(
+          t: t,
+          icon: ComputerIcon(size: 22, color: t.gold),
+          title: 'Sincronizar dispositivo',
+          body: 'Sincronizar com “${peer.deviceName}”?',
           actions: [
-            TextButton(
-              onPressed: () {
-                service.respondToPairing(peer.deviceId, false);
-                Navigator.of(ctx).pop();
-                _pairingDialogShowing = false;
-                _maybeShowPairingDialog();
-              },
-              child: const Text('Recusar'),
-            ),
-            TextButton(
-              onPressed: () {
-                service.respondToPairing(peer.deviceId, true);
-                Navigator.of(ctx).pop();
-                _pairingDialogShowing = false;
-                _maybeShowPairingDialog();
-              },
-              child: const Text('Aceitar'),
-            ),
+            CyDialogAction('Recusar', () => respond(ctx, false)),
+            CyDialogAction('Aceitar', () => respond(ctx, true), primary: true),
           ],
         ),
       );
@@ -185,37 +181,33 @@ class _CynoteRootState extends State<CynoteRoot> {
   void _showUpdateDialog() {
     final update = _availableUpdate;
     if (update == null) return;
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: const Text('Atualização disponível'),
-          content: Text(
-            _downloadingUpdate
-                ? 'Baixando a versão ${update.version}. O instalador do Android vai abrir em instantes.'
-                : 'O Cynote ${update.version} está disponível. Atualizar agora?',
-          ),
+    final t = _colors;
+    showCyDialog(
+      context,
+      t,
+      (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => CyDialog(
+          t: t,
+          icon: UpdateIcon(color: t.gold),
+          title: 'Atualização disponível',
+          body: _downloadingUpdate
+              ? 'Baixando a versão ${update.version}… O instalador do Android vai abrir em instantes.'
+              : 'O Cynote ${update.version} está disponível. Atualizar agora?',
+          progress: _downloadingUpdate,
           actions: _downloadingUpdate
-              ? const [Padding(padding: EdgeInsets.all(8), child: CircularProgressIndicator())]
+              ? const []
               : [
-                  TextButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('Agora não'),
-                  ),
-                  TextButton(
-                    onPressed: () async {
-                      setDialogState(() => _downloadingUpdate = true);
-                      setState(() => _downloadingUpdate = true);
-                      try {
-                        await downloadAndInstallMobileUpdate(update);
-                      } finally {
-                        if (mounted) setState(() => _downloadingUpdate = false);
-                      }
-                      if (ctx.mounted) Navigator.of(ctx).pop();
-                    },
-                    child: const Text('Atualizar'),
-                  ),
+                  CyDialogAction('Agora não', () => Navigator.of(ctx).pop()),
+                  CyDialogAction('Atualizar', () async {
+                    setDialogState(() => _downloadingUpdate = true);
+                    setState(() => _downloadingUpdate = true);
+                    try {
+                      await downloadAndInstallMobileUpdate(update);
+                    } finally {
+                      if (mounted) setState(() => _downloadingUpdate = false);
+                    }
+                    if (ctx.mounted) Navigator.of(ctx).pop();
+                  }, primary: true),
                 ],
         ),
       ),
@@ -295,6 +287,18 @@ class _CynoteRootState extends State<CynoteRoot> {
     _scheduleSave();
   }
 
+  CyColors get _colors => _darkMode ? CyColors.dark : CyColors.light;
+
+  // Tapping the sync pill: write to disk now instead of waiting out the
+  // autosave delay.
+  Future<void> _saveNow() async {
+    _saveDebounce?.cancel();
+    setState(() => _syncStatus = SyncState.syncing);
+    await notes_store.saveNotes(_notes);
+    if (!mounted) return;
+    setState(() => _syncStatus = SyncState.synced);
+  }
+
   void _toggleDarkMode() => setState(() => _darkMode = !_darkMode);
 
   Future<String> _generateCloudCode() async {
@@ -313,7 +317,7 @@ class _CynoteRootState extends State<CynoteRoot> {
 
   @override
   Widget build(BuildContext context) {
-    final t = _darkMode ? CyColors.dark : CyColors.light;
+    final t = _colors;
 
     Widget content;
     switch (_screen) {
@@ -353,6 +357,7 @@ class _CynoteRootState extends State<CynoteRoot> {
           onBack: _closeEditor,
           onTitleChanged: _onTitleChanged,
           onBodyChanged: _onBodyChanged,
+          onRetrySync: _saveNow,
         );
         break;
       case CyScreen.settings:
@@ -376,10 +381,10 @@ class _CynoteRootState extends State<CynoteRoot> {
     final canSystemPop = _screen == CyScreen.home || _screen == CyScreen.sync;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // Status bar icons (clock, battery, notifications) need to stay light
-      // over the app's dark background - and switch to dark icons in light
-      // mode - or they blend in and become unreadable.
-      value: _darkMode ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark,
+      // The status bar sits on the iron header, dark green in both themes,
+      // so its icons stay light - except on the sync screen, which is plain
+      // paper all the way up.
+      value: _screen == CyScreen.sync && !_darkMode ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
       child: PopScope(
         canPop: canSystemPop,
         onPopInvokedWithResult: (didPop, result) {
@@ -391,6 +396,7 @@ class _CynoteRootState extends State<CynoteRoot> {
           }
         },
         child: Scaffold(
+          backgroundColor: t.paper,
           body: LayoutBuilder(
             builder: (context, constraints) {
               final isPhoneSized = constraints.maxWidth <= 430;
@@ -404,21 +410,15 @@ class _CynoteRootState extends State<CynoteRoot> {
               }
 
               return Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFEEF0F3), Color(0xFFDFE2E7), Color(0xFFEEF0F3)],
-                  ),
-                ),
+                color: _darkMode ? const Color(0xFF070F0C) : const Color(0xFFE4DECB),
                 child: Center(
                   child: Container(
                     width: 390,
                     height: 844,
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: t.border),
-                      boxShadow: t.shadow,
+                      border: Border.all(color: t.rule),
+                      boxShadow: [BoxShadow(color: t.shadow, blurRadius: 50, offset: const Offset(0, 24))],
                     ),
                     child: screenCard,
                   ),

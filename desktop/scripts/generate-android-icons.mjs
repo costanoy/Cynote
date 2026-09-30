@@ -1,13 +1,12 @@
 import sharp from "sharp";
 import { mkdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-// Same in-app mark as generate-icon.mjs (src/icons.tsx LogoIcon),
-// rasterized directly at each Android legacy launcher density.
-const svg = `
-<svg width="1024" height="1024" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-  <rect x="3" y="3" width="18" height="18" rx="5" fill="#ff8c3a"/>
-  <path d="M8 8h8M8 12h8M8 16h5" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>
-</svg>`;
+// Same mark as the desktop icon (icon-source/cynote-logo.png, see
+// generate-icon.mjs), resized to each Android legacy launcher density.
+const scriptsDir = dirname(fileURLToPath(import.meta.url));
+const sourcePath = join(scriptsDir, "..", "icon-source", "cynote-logo.png");
 
 const sizes = {
   mdpi: 48,
@@ -17,12 +16,12 @@ const sizes = {
   xxxhdpi: 192,
 };
 
-const outRoot = "../../mobile/android/app/src/main/res";
+const outRoot = join(scriptsDir, "..", "..", "mobile", "android", "app", "src", "main", "res");
 
 for (const [density, size] of Object.entries(sizes)) {
-  const dir = `${outRoot}/mipmap-${density}`;
+  const dir = join(outRoot, `mipmap-${density}`);
   mkdirSync(dir, { recursive: true });
-  const outPath = `${dir}/ic_launcher.png`;
-  await sharp(Buffer.from(svg)).resize(size, size).png().toFile(outPath);
+  const outPath = join(dir, "ic_launcher.png");
+  await sharp(sourcePath).resize(size, size).png().toFile(outPath);
   console.log("Wrote", outPath);
 }

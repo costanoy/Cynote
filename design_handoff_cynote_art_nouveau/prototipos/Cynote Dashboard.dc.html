@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Jost:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+body{margin:0;
+--wall:#E4DECB;--frame:#37604F;--frame-2:#274A3C;--frame-ink:#F3EBD3;--frame-ink-soft:#C3D3BC;--gold:#C9A04E;--gold-line:rgba(226,190,110,.55);--gold-soft:rgba(226,190,110,.22);--glow:rgba(240,200,110,.45);
+--paper:#FBF6E9;--paper-2:#F2EAD5;--rule:#DCCDA6;--ink:#2A2A22;--ink-soft:#645F4C;--ink-faint:#9C957C;
+--accent:#3D7A4C;--accent-ink:#FFFDF4;--petrol:#2E6470;--selection:rgba(214,170,76,.34);--match:rgba(143,184,120,.40);--match-cur:#EBC46C;--match-cur-ring:#B8893A;--extra-sel:rgba(46,100,112,.20);--cursor:#2A2A22;
+--danger:#A8483A;--alert:#F5B9A8;--lead:#1C3027;--shadow:rgba(38,52,32,.30);--scrim:rgba(28,44,34,.38);--field:#FFFDF6;--field-border:#CFBF97;--field-ink:#2A2A22;
+background:var(--wall);transition:background-color .5s ease;}
+body[data-theme="dark"]{
+--wall:#070F0C;--frame:#10211A;--frame-2:#0A1712;--frame-ink:#EADFC2;--frame-ink-soft:#91A58E;--gold:#E2B85C;--gold-line:rgba(226,184,92,.55);--gold-soft:rgba(226,184,92,.18);--glow:rgba(236,190,90,.55);
+--paper:#15251E;--paper-2:#1B2E26;--rule:#2F4A3D;--ink:#E9E2CC;--ink-soft:#AEB49E;--ink-faint:#6F7F6D;
+--accent:#86B96F;--accent-ink:#0E1C16;--petrol:#7FC2CA;--selection:rgba(226,184,92,.28);--match:rgba(134,185,111,.30);--match-cur:rgba(226,184,92,.72);--match-cur-ring:#E2B85C;--extra-sel:rgba(127,194,202,.24);--cursor:#F2E7C8;
+--danger:#E58A74;--alert:#F2A08C;--lead:#040A08;--shadow:rgba(0,0,0,.55);--scrim:rgba(2,8,6,.55);--field:#0E1D17;--field-border:#39584A;--field-ink:#E9E2CC;}
+textarea::selection{background:var(--selection);color:transparent}
+::-webkit-scrollbar{width:8px;height:6px}::-webkit-scrollbar-thumb{background:var(--gold-soft);border-radius:8px}::-webkit-scrollbar-track{background:transparent}
+a{color:var(--accent)}a:hover{color:var(--gold)}
+@keyframes cyBlink{0%,49%{opacity:1}50%,100%{opacity:0}}
+@keyframes cyBloom{0%{transform:scale(.15) rotate(-60deg);opacity:0}70%{transform:scale(1.12) rotate(6deg);opacity:1}100%{transform:scale(1) rotate(0);opacity:1}}
+@keyframes cyBud{0%,100%{transform:scale(.88);opacity:.75}50%{transform:scale(1.04);opacity:1}}
+@keyframes cyDroop{0%{transform:rotate(0)}100%{transform:rotate(38deg)}}
+@keyframes cyVine{from{stroke-dashoffset:420}to{stroke-dashoffset:0}}
+@keyframes cyRise{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@keyframes cyGrow{from{opacity:0;transform:scale(.94) translateY(8px)}to{opacity:1;transform:none}}
+@keyframes cyFade{from{opacity:0}to{opacity:1}}
+@keyframes cySway{0%,100%{transform:rotate(-3deg)}50%{transform:rotate(3deg)}}
+@keyframes cyProg{from{width:0}to{width:100%}}
+@keyframes cyLamp{0%,100%{box-shadow:0 0 6px var(--glow)}50%{box-shadow:0 0 14px var(--glow)}}
+</style>
+</helmet>
+<div ref="{{ rootRef }}" style="min-height:100vh; box-sizing:border-box; display:flex; flex-direction:column; align-items:center; gap:22px; padding:28px 20px 48px; background:var(--wall); transition:background-color .5s ease; font-family:Jost, sans-serif; color:var(--ink);">
+  <div style="display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:10px 18px; max-width:1040px;">
+    <a href="Cynote Desktop.dc.html" style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.06em; color:var(--ink-soft); text-decoration:none; transition:color .2s;" style-hover="color:var(--accent);">← Janela principal</a>
+    <sc-for list="{{ demo }}" as="g" hint-placeholder-count="2">
+      <div style="display:flex; align-items:center; gap:6px; flex:0 0 auto;">
+        <span style="font-size:11px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-soft);">{{ g.label }}</span>
+        <div style="display:flex; flex-wrap:nowrap; gap:2px; padding:2px; border:1px solid var(--field-border); border-radius:999px;">
+          <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="2">
+            <button onClick="{{ o.onClick }}" style="border:none; cursor:pointer; white-space:nowrap; font-family:Jost, sans-serif; font-size:12px; padding:4px 10px; border-radius:999px; background:{{ o.bg }}; color:{{ o.fg }}; transition:background .2s, box-shadow .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="box-shadow:0 0 0 1px var(--gold-line); transform:translateY(-1px);" style-active="transform:scale(.94);">{{ o.t }}</button>
+          </sc-for>
+        </div>
+      </div>
+    </sc-for>
+    <a href="Cynote Bandeja e Icones.dc.html" style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.06em; color:var(--accent); text-decoration:none; transition:color .2s;" style-hover="color:var(--gold);">Bandeja e ícones →</a>
+  </div>
+
+  <div data-screen-label="Dashboard" style="position:relative; width:880px; max-width:100%; height:600px; display:flex; flex-direction:column; filter:drop-shadow(0 18px 28px var(--shadow));">
+    <div style="position:relative; height:56px; flex:0 0 auto; cursor:grab;">
+      <svg viewBox="0 0 600 56" preserveAspectRatio="none" style="position:absolute; inset:0; width:100%; height:100%; overflow:visible;">
+        <path d="M0 56 V22 Q0 11 14 11 H190 C245 11 262 1 300 1 C338 1 355 11 410 11 H586 Q600 11 600 22 V56 Z" style="fill:var(--frame); transition:fill .5s;"></path>
+        <path d="M14 14.5 H190 C245 14.5 262 4.5 300 4.5 C338 4.5 355 14.5 410 14.5 H586" vector-effect="non-scaling-stroke" style="fill:none; stroke:var(--gold-line); stroke-width:1;"></path>
+      </svg>
+      <div style="position:absolute; left:50%; top:3px; width:7px; height:7px; margin-left:-3.5px; border-radius:50%; background:var(--gold); animation:cyLamp 4s ease-in-out infinite;"></div>
+      <div style="position:absolute; left:10px; right:8px; bottom:3px; height:30px; display:flex; align-items:center; gap:6px;">
+        <div style="display:flex; align-items:center; gap:8px; flex:0 0 auto;">
+          <div style="position:relative; width:24px; height:24px; border-radius:50%; border:1px solid var(--gold); display:grid; place-items:center; box-shadow:inset 0 0 0 2px var(--frame), inset 0 0 0 3px var(--gold-line);">
+            <span style="font-family:Marcellus, serif; font-size:14px; line-height:1; color:var(--gold); margin-left:-1px;">C</span>
+            <svg width="8" height="8" viewBox="-4 -4 8 8" style="position:absolute; right:3px; top:4px;"><path d="M0 -3.5 C2.6 -1.8 2.6 1.8 0 3.5 C-2.6 1.8 -2.6 -1.8 0 -3.5 Z" style="fill:var(--accent);" transform="rotate(35)"></path></svg>
+          </div>
+          <span style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.1em; color:var(--frame-ink); white-space:nowrap;">Dashnotes</span>
+        </div>
+        <div style="flex:1; align-self:stretch;"></div>
+        <button title="Minimizar" style="width:22px; height:22px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, box-shadow .25s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:scale(.88);">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8.5h8"></path></svg>
+        </button>
+        <button title="Maximizar" style="width:22px; height:22px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, box-shadow .25s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:scale(.88);">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 13.5V7.5a4 4 0 0 1 8 0v6z"></path></svg>
+        </button>
+        <button title="Fechar" style="width:22px; height:22px; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:pointer; background:transparent; color:var(--frame-ink); transition:background .2s, color .2s, box-shadow .25s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:#B4533F; color:#FFF6EE; border-color:#B4533F; transform:translateY(-1px);" style-active="transform:scale(.88);">
+          <svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"></path></svg>
+        </button>
+      </div>
+    </div>
+
+    <div style="position:relative; flex:1; min-height:0; display:flex; flex-direction:column; background:var(--frame); border-radius:0 0 16px 16px; transition:background .5s;">
+      <!-- Navegação -->
+      <div style="display:flex; align-items:center; gap:10px; height:44px; flex:0 0 auto; padding:0 12px 0 12px;">
+        <button title="Voltar" onClick="{{ goUp }}" disabled="{{ atRoot }}" style="width:30px; height:30px; flex:0 0 auto; border-radius:50%; display:grid; place-items:center; border:1px solid var(--gold-line); cursor:{{ backCursor }}; background:transparent; color:var(--frame-ink); opacity:{{ backOp }}; transition:background .2s, box-shadow .25s, opacity .2s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow);" style-active="transform:scale(.88);">
+          <svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8H3M7 4L3 8l4 4"></path></svg>
+        </button>
+        <nav style="flex:1; min-width:0; display:flex; align-items:center; gap:2px; overflow:hidden;">
+          <sc-for list="{{ crumbs }}" as="c" hint-placeholder-count="2">
+            <div style="display:flex; align-items:center; gap:2px; flex:0 0 auto;">
+              <sc-if value="{{ c.notFirst }}">
+                <svg width="14" height="10" viewBox="0 0 14 10" style="flex:0 0 auto;"><path d="M3 5 L7 1.8 L11 5 L7 8.2 Z" style="fill:var(--gold); opacity:.8;"></path></svg>
+              </sc-if>
+              <button onClick="{{ c.onClick }}" style="height:28px; padding:0 9px; border:none; border-radius:999px; cursor:{{ c.cursor }}; background:transparent; color:{{ c.fg }}; font-family:Jost, sans-serif; font-size:13px; font-weight:{{ c.fw }}; white-space:nowrap; transition:background .2s, color .2s, transform .18s;" style-hover="background:var(--gold-soft); color:var(--frame-ink);" style-active="transform:scale(.95);">{{ c.name }}</button>
+            </div>
+          </sc-for>
+        </nav>
+        <button onClick="{{ rescan }}" style="flex:0 0 auto; white-space:nowrap; display:flex; align-items:center; gap:6px; height:30px; padding:0 12px 0 10px; border:1px solid var(--gold-line); border-radius:999px; cursor:pointer; background:transparent; color:var(--frame-ink); font-family:Jost, sans-serif; font-size:12.5px; transition:background .2s, box-shadow .25s, transform .18s cubic-bezier(.3,.7,.2,1);" style-hover="background:var(--gold-soft); box-shadow:0 0 0 1px var(--gold), 0 0 12px var(--glow); transform:translateY(-1px);" style-active="transform:scale(.95);">
+          <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8a5 5 0 1 1-1.5-3.6"></path><path d="M13 2.5v2.8h-2.8"></path></svg>
+          Procurar de novo
+        </button>
+      </div>
+
+      <!-- Área -->
+      <div style="position:relative; flex:1; min-height:0; margin:0 7px; background:var(--paper); border-top:1px solid var(--gold-line); border-radius:2px 2px 8px 8px; overflow:hidden; transition:background .5s;">
+        <div style="position:absolute; inset:7px; border:1px solid var(--rule); border-radius:3px; pointer-events:none; z-index:1;"></div>
+        <svg width="22" height="22" viewBox="0 0 22 22" style="position:absolute; left:4px; top:4px; z-index:2; pointer-events:none;"><path d="M3 21 V11 C3 6.5 6.5 3 11 3 H21 M3 14 C6.5 14 8.5 11 7.5 8.8 C6.8 7.4 5 7.8 5.4 9.3" style="fill:none; stroke:var(--gold); stroke-width:1.1; stroke-linecap:round;"></path></svg>
+        <svg width="22" height="22" viewBox="0 0 22 22" style="position:absolute; right:4px; top:4px; transform:scaleX(-1); z-index:2; pointer-events:none;"><path d="M3 21 V11 C3 6.5 6.5 3 11 3 H21 M3 14 C6.5 14 8.5 11 7.5 8.8 C6.8 7.4 5 7.8 5.4 9.3" style="fill:none; stroke:var(--gold); stroke-width:1.1; stroke-linecap:round;"></path></svg>
+
+        <sc-if value="{{ loading }}" hint-placeholder-val="{{ false }}">
+          <div style="position:absolute; inset:0; overflow:hidden; padding:30px 34px; box-sizing:border-box; display:flex; flex-direction:column; gap:22px; animation:cyFade .3s ease;">
+            <div style="display:flex; align-items:center; justify-content:center; gap:10px; padding-top:6px; font-family:Literata, serif; font-style:italic; font-size:14.5px; color:var(--ink-soft);">
+              <svg width="16" height="18" viewBox="-8 -9 16 18" style="animation:cyBud 1.6s ease-in-out infinite;"><path d="M0 -7 C4 -3 4 3 0 5 C-4 3 -4 -3 0 -7 Z" style="fill:var(--gold);"></path><path d="M0 5 V9" style="stroke:var(--accent); stroke-width:1.3;"></path></svg>
+              Procurando notas…
+            </div>
+            <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(118px, 1fr)); gap:14px;">
+              <sc-for list="{{ ghosts }}" as="gh" hint-placeholder-count="4">
+                <div style="height:128px; border:1.5px solid var(--rule); border-radius:56px 56px 10px 10px; background:var(--paper-2); animation:cyBud 1.8s ease-in-out infinite; animation-delay:{{ gh.delay }};"></div>
+              </sc-for>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ loaded }}" hint-placeholder-val="{{ true }}">
+          <div style="position:absolute; inset:0; overflow-y:auto; padding:26px 34px 30px; box-sizing:border-box; display:flex; flex-direction:column; gap:14px;">
+            <sc-if value="{{ hasFolders }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.08em; color:var(--ink-soft);">Pastas</span>
+                <div style="flex:1; height:1px; background:var(--rule);"></div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(118px, 1fr)); gap:14px; margin-bottom:10px;">
+                <sc-for list="{{ folders }}" as="f" hint-placeholder-count="4">
+                  <div onClick="{{ f.onOpen }}" title="{{ f.name }}" style="position:relative; min-height:128px; display:flex; flex-direction:column; cursor:pointer; border:1.5px solid var(--lead); border-radius:56px 56px 10px 10px; overflow:hidden; background:{{ f.glass }}; animation:cyRise .35s cubic-bezier(.2,.8,.2,1) both; animation-delay:{{ f.delay }}; transition:transform .22s cubic-bezier(.3,.7,.2,1), box-shadow .3s, filter .2s;" style-hover="transform:translateY(-3px); box-shadow:0 0 22px var(--glow), 0 10px 20px var(--shadow); filter:brightness(1.07);" style-active="transform:scale(.97); filter:brightness(.95);">
+                    <div style="position:absolute; inset:0; background:linear-gradient(180deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 45%), radial-gradient(90% 60% at 50% 8%, rgba(255,244,205,.6), rgba(255,244,205,0) 70%); pointer-events:none;"></div>
+                    <div style="position:absolute; left:50%; top:0; height:74px; width:1.5px; margin-left:-.75px; background:var(--lead); opacity:.8;"></div>
+                    <div style="position:absolute; left:0; right:0; top:44px; height:1.5px; background:var(--lead); opacity:.8;"></div>
+                    <div style="position:absolute; left:50%; top:34px; width:22px; height:22px; margin-left:-11px; border-radius:50%; border:1.5px solid var(--lead); background:{{ f.bead }}; box-shadow:inset 0 1px 0 rgba(255,255,255,.5);"></div>
+                    <div style="position:relative; min-height:50px; box-sizing:border-box; padding:7px 10px 8px; margin-top:74px; background:var(--paper); border-top:1.5px solid var(--lead); display:flex; flex-direction:column; justify-content:center; gap:1px;">
+                      <span style="font-family:Marcellus, serif; font-size:14px; line-height:1.25; color:var(--ink); overflow-wrap:anywhere; text-wrap:balance;">{{ f.name }}</span>
+                      <span style="font-size:11px; color:var(--ink-faint);">{{ f.meta }}</span>
+                    </div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ hasNotes }}" hint-placeholder-val="{{ true }}">
+              <div style="display:flex; align-items:center; gap:10px;">
+                <span style="font-family:Marcellus, serif; font-size:15px; letter-spacing:.08em; color:var(--ink-soft);">Notas</span>
+                <div style="flex:1; height:1px; background:var(--rule);"></div>
+              </div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(190px, 1fr)); gap:14px;">
+                <sc-for list="{{ notes }}" as="n" hint-placeholder-count="3">
+                  <div onClick="{{ n.onOpen }}" style="position:relative; padding:14px 16px 14px; background:var(--paper-2); border:1px solid var(--rule); border-radius:4px 22px 4px 22px; cursor:pointer; display:flex; flex-direction:column; gap:6px; animation:cyRise .35s cubic-bezier(.2,.8,.2,1) both; animation-delay:{{ n.delay }}; transition:transform .22s cubic-bezier(.3,.7,.2,1), box-shadow .3s, border-color .2s;" style-hover="transform:translateY(-3px); box-shadow:0 10px 20px var(--shadow); border-color:var(--gold-line);" style-active="transform:scale(.97);">
+                    <div style="position:absolute; inset:4px; border:1px solid var(--gold-soft); border-radius:2px 19px 2px 19px; pointer-events:none;"></div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                      <svg width="14" height="14" viewBox="-7 -7 14 14" style="flex:0 0 auto;"><path d="M0 -6 C3.2 -3 3.2 3 0 6 C-3.2 3 -3.2 -3 0 -6 Z" transform="rotate(40)" style="fill:{{ n.leaf }};"></path></svg>
+                      <span style="padding:1px 7px; border:1px solid var(--gold-line); border-radius:999px; font-family:'JetBrains Mono', monospace; font-size:10.5px; color:var(--ink-soft);">{{ n.ext }}</span>
+                      <div style="flex:1;"></div>
+                      <span style="font-size:11.5px; color:var(--ink-faint);">{{ n.date }}</span>
+                    </div>
+                    <div style="font-family:Marcellus, serif; font-size:15.5px; line-height:1.25;">{{ n.name }}</div>
+                    <div style="font-family:Literata, serif; font-size:12.5px; line-height:1.5; color:var(--ink-soft); display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; overflow:hidden;">{{ n.preview }}</div>
+                  </div>
+                </sc-for>
+              </div>
+            </sc-if>
+            <sc-if value="{{ isEmpty }}">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; padding:60px 20px; text-align:center; animation:cyFade .4s ease;">
+                <svg width="44" height="44" viewBox="0 0 40 40" style="transform-origin:50% 90%; animation:cySway 6s ease-in-out infinite;"><path d="M20 35 C20 28 20 22 20 15" style="fill:none; stroke:var(--accent); stroke-width:1.4; stroke-linecap:round;"></path><path d="M20 23 C13 23 8.5 18 8.5 13 C14.5 13 20 17 20 23 Z M20 18.5 C26 18.5 31.5 13.5 31.5 8.5 C25 8.5 20 12.5 20 18.5 Z" style="fill:var(--accent); opacity:.75;"></path><path d="M9 35.5 C15 33 25 33 31 35.5" style="fill:none; stroke:var(--gold); stroke-width:1.2; stroke-linecap:round;"></path></svg>
+                <div style="font-family:Marcellus, serif; font-size:18px; color:var(--ink-soft);">Pasta vazia</div>
+                <div style="font-family:Literata, serif; font-style:italic; font-size:13.5px; color:var(--ink-faint);">Notas salvas aqui aparecem sozinhas.</div>
+              </div>
+            </sc-if>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{ hasToast }}">
+          <div style="position:absolute; left:50%; bottom:16px; transform:translateX(-50%); z-index:40; padding:7px 15px; border-radius:999px; background:var(--frame); color:var(--frame-ink); border:1px solid var(--gold-line); font-size:12.5px; white-space:nowrap; box-shadow:0 6px 16px var(--shadow); animation:cyRise .25s ease;">{{ toast }}</div>
+        </sc-if>
+      </div>
+
+      <div style="display:flex; align-items:center; gap:14px; height:30px; flex:0 0 auto; padding:0 16px 1px; font-size:11.5px; color:var(--frame-ink-soft);">
+        <span style="flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-family:'JetBrains Mono', monospace; font-size:11px;">{{ path }}</span>
+        <span style="white-space:nowrap;">{{ countLabel }}</span>
+      </div>
+    </div>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const THEMES = { light: {"--wall":"#E4DECB","--frame":"#37604F","--frame-2":"#274A3C","--frame-ink":"#F3EBD3","--frame-ink-soft":"#C3D3BC","--gold":"#C9A04E","--gold-line":"rgba(226,190,110,.55)","--gold-soft":"rgba(226,190,110,.22)","--glow":"rgba(240,200,110,.45)","--paper":"#FBF6E9","--paper-2":"#F2EAD5","--rule":"#DCCDA6","--ink":"#2A2A22","--ink-soft":"#645F4C","--ink-faint":"#9C957C","--accent":"#3D7A4C","--accent-ink":"#FFFDF4","--petrol":"#2E6470","--selection":"rgba(214,170,76,.34)","--match":"rgba(143,184,120,.40)","--match-cur":"#EBC46C","--match-cur-ring":"#B8893A","--extra-sel":"rgba(46,100,112,.20)","--cursor":"#2A2A22","--danger":"#A8483A","--alert":"#F5B9A8","--lead":"#1C3027","--shadow":"rgba(38,52,32,.30)","--scrim":"rgba(28,44,34,.38)","--field":"#FFFDF6","--field-border":"#CFBF97","--field-ink":"#2A2A22"}, dark: {"--wall":"#070F0C","--frame":"#10211A","--frame-2":"#0A1712","--frame-ink":"#EADFC2","--frame-ink-soft":"#91A58E","--gold":"#E2B85C","--gold-line":"rgba(226,184,92,.55)","--gold-soft":"rgba(226,184,92,.18)","--glow":"rgba(236,190,90,.55)","--paper":"#15251E","--paper-2":"#1B2E26","--rule":"#2F4A3D","--ink":"#E9E2CC","--ink-soft":"#AEB49E","--ink-faint":"#6F7F6D","--accent":"#86B96F","--accent-ink":"#0E1C16","--petrol":"#7FC2CA","--selection":"rgba(226,184,92,.28)","--match":"rgba(134,185,111,.30)","--match-cur":"rgba(226,184,92,.72)","--match-cur-ring":"#E2B85C","--extra-sel":"rgba(127,194,202,.24)","--cursor":"#F2E7C8","--danger":"#E58A74","--alert":"#F2A08C","--lead":"#040A08","--shadow":"rgba(0,0,0,.55)","--scrim":"rgba(2,8,6,.55)","--field":"#0E1D17","--field-border":"#39584A","--field-ink":"#E9E2CC"} };
+
+const GL = ['#A9CB8F', '#E3B45A', '#7FB2B8', '#9AAAD0'];
+const GD = ['#8CC474', '#E5A945', '#62A7B0', '#8397C9'];
+const N = (name, ext, preview, date) => ({ type: 'note', name, ext: '.' + ext, preview, date });
+const F = (name, hue, children) => ({ type: 'folder', name, hue, children });
+const TREE = F('Cynote', 0, [
+  F('Estufa', 0, [
+    F('Mudas', 2, [N('Calendário de plantio', 'md', 'Setembro: manjericão, rúcula e alface. Outubro: tomate-cereja e girassol, na janela leste.', '22 set'), N('Trocas com vizinhos', 'txt', 'Clara — duas mudas de capuchinha por um vaso de hortelã. Seu Jorge — estacas de alecrim.', '19 set')]),
+    N('Fim de semana', 'cyte', 'Regar as samambaias antes das 9h. Trocar o vaso da costela-de-adão. Comprar sementes.', 'Hoje'),
+    N('Adubo caseiro', 'md', 'Borra de café, casca de ovo triturada e folhas secas. Revirar a composteira a cada 3 dias.', '18 set'),
+  ]),
+  F('Cozinha', 1, [N('Pão de fermentação natural', 'cyte', '500 g de farinha, 350 ml de água morna, 100 g de levain ativo, 10 g de sal.', 'Ontem'), N('Compras', 'txt', 'Farinha integral, azeite, limões, grão-de-bico, café.', '20 set')]),
+  F('Leituras', 3, [N('Leituras 2026', 'md', 'A casa de vidro (em andamento). O jardim secreto. Ecotopia.', 'Seg')]),
+  F('Arquivo', 2, []),
+  N('Lista rápida', 'txt', 'Pilhas AA, lâmpada da varanda, fita isolante, cola de madeira.', 'Ontem'),
+  N('Ideias soltas', 'cyte', 'Um relógio de sol na varanda. Calha que leva a chuva direto para o barril.', '15 set'),
+  N('Painéis solares', 'md', 'Três orçamentos até sexta. Medir a área do telhado da garagem.', '3 set'),
+]);
+
+class Component extends DCLogic {
+  rootRef = React.createRef();
+  state = { theme: 'light', path: [], loading: true, toast: null };
+  mountOnce() { if (this._m) return; this._m = true; this.applyTheme(); this._lt = setTimeout(() => this.setState({ loading: false }), 1400); }
+  applyTheme() { const v = THEMES[this.state.theme]; [document.body, this.rootRef.current].forEach(el => { if (el) for (const k in v) el.style.setProperty(k, v[k]); }); }
+  toastMsg(t) { clearTimeout(this._tt); this.setState({ toast: t }); this._tt = setTimeout(() => this.setState({ toast: null }), 1800); }
+  node(path) { let n = TREE; for (const name of path) n = n.children.find(c => c.name === name); return n; }
+  rescan = () => { clearTimeout(this._lt); this.setState({ loading: true }); this._lt = setTimeout(() => this.setState({ loading: false }), 1400); };
+  renderVals() {
+    const s = this.state;
+    if (!this._m) setTimeout(() => this.mountOnce(), 0);
+    if (this._pt !== s.theme) { this._pt = s.theme; setTimeout(() => this.applyTheme(), 0); }
+    const dark = s.theme === 'dark'; const glass = dark ? GD : GL;
+    const here = this.node(s.path);
+    const opt = (t, on, fn) => ({ t, onClick: fn, bg: on ? 'var(--frame)' : 'transparent', fg: on ? 'var(--frame-ink)' : 'var(--ink-soft)' });
+    const demo = [
+      { label: 'Tema', opts: [opt('Dia', !dark, () => this.setState({ theme: 'light' })), opt('Noite', dark, () => this.setState({ theme: 'dark' }))] },
+      { label: 'Estado', opts: [opt('Carregado', !s.loading, () => { clearTimeout(this._lt); this.setState({ loading: false }); }), opt('Procurando', s.loading, () => { clearTimeout(this._lt); this.setState({ loading: true }); }), opt('Pasta vazia', !s.loading && s.path.join('/') === 'Arquivo', () => { clearTimeout(this._lt); this.setState({ loading: false, path: ['Arquivo'] }); })] },
+    ];
+    const all = ['Cynote', ...s.path];
+    const crumbs = all.map((name, i) => { const last = i === all.length - 1; return { name, notFirst: i > 0, fg: last ? 'var(--frame-ink)' : 'var(--frame-ink-soft)', fw: last ? 500 : 400, cursor: last ? 'default' : 'pointer', onClick: () => { if (!last) this.setState({ path: s.path.slice(0, i) }); } }; });
+    const kids = here.children || [];
+    const folders = kids.filter(c => c.type === 'folder').map((f, i) => {
+      const nn = f.children.filter(c => c.type === 'note').length, nf = f.children.filter(c => c.type === 'folder').length;
+      const meta = [nn ? `${nn} ${nn > 1 ? 'notas' : 'nota'}` : '', nf ? `${nf} ${nf > 1 ? 'pastas' : 'pasta'}` : ''].filter(Boolean).join(' · ') || 'Vazia';
+      const g = glass[f.hue % 4];
+      return { ...f, meta, delay: i * 50 + 'ms', glass: `color-mix(in oklab, ${g} 88%, var(--paper))`, bead: glass[(f.hue + 1) % 4], onOpen: () => this.setState({ path: [...s.path, f.name] }) };
+    });
+    const notes = kids.filter(c => c.type === 'note').map((n, i) => ({ ...n, delay: (folders.length * 50 + i * 45) + 'ms', leaf: n.ext === '.cyte' ? 'var(--accent)' : n.ext === '.md' ? 'var(--petrol)' : 'var(--gold)', onOpen: () => this.toastMsg(`Abrindo “${n.name}” no Cynote`) }));
+    const total = kids.length;
+    return {
+      rootRef: this.rootRef, demo, crumbs, folders, notes, loading: s.loading, loaded: !s.loading,
+      ghosts: [0, 1, 2, 3, 4].map(i => ({ delay: i * 160 + 'ms' })),
+      hasFolders: folders.length > 0, hasNotes: notes.length > 0, isEmpty: !total,
+      atRoot: !s.path.length, backOp: s.path.length ? 1 : 0.4, backCursor: s.path.length ? 'pointer' : 'default',
+      goUp: () => { if (s.path.length) this.setState({ path: s.path.slice(0, -1) }); }, rescan: this.rescan,
+      path: 'C:\\Users\\Vini\\Documents\\' + all.join('\\'), countLabel: s.loading ? 'Procurando…' : `${total} ${total === 1 ? 'item' : 'itens'}`,
+      hasToast: !!s.toast, toast: s.toast,
+    };
+  }
+}
+</script>
+</body>
+</html>

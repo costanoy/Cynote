@@ -6,8 +6,10 @@ import { Header } from "./components/Header";
 import { TabBar } from "./components/TabBar";
 import { SettingsView } from "./components/SettingsView";
 import { ContentArea } from "./components/ContentArea";
-import { DrawingOverlay } from "./components/DrawingOverlay";
+import { DrawingOverlay, DRAW_COLORS } from "./components/DrawingOverlay";
 import { StatusBar } from "./components/StatusBar";
+import { Dialog } from "./components/Dialog";
+import { CornerVignette, Sprout } from "./icons";
 import {
   hideAppWindow,
   minimizeAppWindow,
@@ -66,7 +68,18 @@ function basenameNoExt(path: string): string {
 }
 
 const AUTOSAVE_DELAY_MS = 1500;
+const TOAST_MS = 1800;
 const SPELLCHECK_KEY = "cynote-spellcheck-enabled";
+// Shared with the Dashnotes window, which follows the main window's theme.
+const THEME_KEY = "cynote-theme";
+
+function loadDarkModePref(): boolean {
+  try {
+    return localStorage.getItem(THEME_KEY) !== "light";
+  } catch {
+    return true;
+  }
+}
 
 function loadSpellCheckPref(): boolean {
   try {
@@ -85,7 +98,7 @@ function App() {
   const [drawingOpen, setDrawingOpen] = useState(false);
   const [editingSketchId, setEditingSketchId] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState(false);
-  const [darkMode, setDarkMode] = useState(true);
+  const [darkMode, setDarkMode] = useState(loadDarkModePref);
   const [tabsMenuOpen, setTabsMenuOpen] = useState(false);
   // Caret position for the status bar's Ln/Col readout - reported by
   // ContentArea, which is the only place that can see the live selection.
@@ -94,7 +107,7 @@ function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
   const [zoom, setZoom] = useState(100);
-  const zoomBy = (delta: number) => setZoom((z) => Math.min(200, Math.max(50, z + delta)));
+  const zoomBy = (delta: number) => setZoom((z) => Math.min(200, Math.max(60, z + delta)));
 
   // Ctrl+wheel zooms the note, like Notepad and VS Code (passive: false, or
   // preventDefault is ignored and the page itself would try to zoom).
@@ -107,7 +120,14 @@ function App() {
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => window.removeEventListener("wheel", onWheel);
   }, []);
-  const [drawColor, setDrawColor] = useState("#ff8c3a");
+  const [drawColor, setDrawColor] = useState(DRAW_COLORS[0].hex);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = (message: string) => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast(message);
+    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
+  };
   const [pinned, setPinned] = useState(false);
   const [loaded, setLoaded] = useState(false);
   const [pairingRequests, setPairingRequests] = useState<PeerInfo[]>([]);
@@ -140,6 +160,11 @@ function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
+    try {
+      localStorage.setItem(THEME_KEY, darkMode ? "dark" : "light");
+    } catch {
+      // best-effort
+    }
   }, [darkMode]);
 
   useEffect(() => {
@@ -289,6 +314,10 @@ function App() {
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // What Esc should close next, for the long-lived keydown handler below.
+  const openLayersRef = useRef({ menus: false, drawing: false });
+  openLayersRef.current = { menus: formatMenuOpen || tabsMenuOpen, drawing: drawingOpen };
+
   // Called after a Save/Save As picks a real file - like Notepad, the tab
   // title locks to that filename from now on (no longer auto-suggested).
   // Also marks the tab clean: this IS the save that made the file match it.
@@ -388,6 +417,17 @@ function App() {
       } else if ((e.ctrlKey || e.metaKey) && !e.altKey && e.key === "0") {
         e.preventDefault();
         setZoom(100);
+      } else if (e.key === "Escape" && !e.defaultPrevented) {
+        // Menus first, then the drawing canvas; the editor handles its own
+        // find bar and extra cursors.
+        if (openLayersRef.current.menus) {
+          e.preventDefault();
+          setFormatMenuOpen(false);
+          setTabsMenuOpen(false);
+        } else if (openLayersRef.current.drawing) {
+          e.preventDefault();
+          closeDrawing();
+        }
       }
     };
     window.addEventListener("keydown", onKeyDown);
@@ -726,12 +766,13 @@ function App() {
     if (path) setTabSavedPath(i, path);
   };
 
-  const SKETCH_MAX_WIDTH = 220;
+  const SKETCH_MAX_WIDTH = 260;
 
   // Opens a blank canvas for a brand-new sketch - any in-progress edit of an
   // existing one is dropped so re-opening never lands back in edit mode.
   const toggleDrawing = () => {
     setEditingSketchId(null);
+    setShowSettings(false);
     setDrawingOpen((v) => !v);
   };
 
@@ -758,11 +799,16 @@ function App() {
     });
   };
 
-  const insertSketch = (canvas: HTMLCanvasElement) => {
+  // `canvas` is already cropped to the drawing; `drawnWidth` is how wide that
+  // crop was on screen, so the sketch lands in the note at the size it was drawn.
+  const insertSketch = (canvas: HTMLCanvasElement, drawnWidth: number) => {
     // Capture the image now, synchronously - the setTabs updater below may
     // run after the caller clears the canvas, which would otherwise insert
     // a blank image.
     const dataUrl = canvas.toDataURL("image/png");
+    const aspect = canvas.height / canvas.width;
+    const width = Math.min(SKETCH_MAX_WIDTH, drawnWidth);
+    const height = Math.round(width * aspect);
 
     if (editingSketchId) {
       const id = editingSketchId;
@@ -771,15 +817,14 @@ function App() {
         const tab = next[activeTab];
         next[activeTab] = {
           ...tab,
-          sketches: tab.sketches.map((s) => (s.id === id ? { ...s, dataUrl } : s)),
+          sketches: tab.sketches.map((s) => (s.id === id ? { ...s, dataUrl, width, height } : s)),
           updatedAt: Date.now(),
         };
         return next;
       });
     } else {
-      const aspect = canvas.height / canvas.width;
-      const width = Math.min(SKETCH_MAX_WIDTH, canvas.width);
-      const height = Math.round(width * aspect);
+      // Drop it into view, wherever the note is scrolled to.
+      const scrollTop = document.querySelector(".content-wrap")?.scrollTop ?? 0;
       setTabs((prev) => {
         const next = prev.slice();
         const tab = next[activeTab];
@@ -787,8 +832,8 @@ function App() {
         const sketch: NoteSketch = {
           id: "sk" + Date.now(),
           dataUrl,
-          x: 16 + cascade,
-          y: 16 + cascade,
+          x: 70 + cascade,
+          y: scrollTop + 40 + cascade,
           width,
           height,
         };
@@ -830,14 +875,16 @@ function App() {
   };
 
   if (!loaded || tabs.length === 0) {
-    return <div className="cy-panel" />;
+    return <div className="cy-window" />;
   }
 
   const charCount = tabs[activeTab].body.length;
+  const editingSketch = editingSketchId ? tabs[activeTab].sketches.find((s) => s.id === editingSketchId) : undefined;
+  const isBlankPage = charCount === 0 && tabs[activeTab].sketches.length === 0;
   const dirtyCount = tabs.filter((t) => isTabDirty(t) && tabHasContent(t)).length;
 
   return (
-    <div className="cy-panel">
+    <div className="cy-window">
       <Header
         formatMenuOpen={formatMenuOpen}
         onToggleFormatMenu={() => setFormatMenuOpen((v) => !v)}
@@ -845,16 +892,23 @@ function App() {
         drawingOpen={drawingOpen}
         onToggleDrawing={toggleDrawing}
         settingsOpen={showSettings}
-        onToggleSettings={() => setShowSettings((v) => !v)}
+        onToggleSettings={() => {
+          closeDrawing();
+          setShowSettings((v) => !v);
+        }}
         onSaveAs={exportActiveNoteTxt}
         onExportTxt={() => exportNoteAsTxt(tabsRef.current[activeTabRef.current])}
         pinned={pinned}
-        onTogglePin={() => setPinned((v) => !v)}
+        onTogglePin={() => {
+          showToast(pinned ? "Janela solta" : "Fixada por cima das outras janelas");
+          setPinned((v) => !v);
+        }}
         onMinimize={minimizeAppWindow}
         onToggleMaximize={toggleMaximizeAppWindow}
         onClose={hideAppWindow}
       />
 
+      <div className="cy-body">
       <TabBar
         tabs={tabs}
         activeTab={activeTab}
@@ -869,6 +923,12 @@ function App() {
         isDirty={isTabDirty}
       />
 
+      <div className="cy-page">
+      <div className="cy-page-rule" />
+      <CornerVignette corner="tl" />
+      <CornerVignette corner="tr" />
+      <CornerVignette corner="bl" />
+      <CornerVignette corner="br" />
       {showSettings ? (
         <SettingsView
           darkMode={darkMode}
@@ -884,9 +944,8 @@ function App() {
           <div
             className={"content-wrap" + (readingMode ? " reading" : "")}
             style={{
-              fontSize: (readingMode ? 15 : 14.5) * (zoom / 100) + "px",
-              lineHeight: readingMode ? 1.85 : 1.65,
-              letterSpacing: readingMode ? "0.01em" : "0.02em",
+              fontSize: Math.round((readingMode ? 18 : 15) * zoom) / 100 + "px",
+              lineHeight: readingMode ? 1.95 : 1.65,
             }}
           >
             <ContentArea
@@ -899,6 +958,7 @@ function App() {
               onCaretChange={(line, col) =>
                 setCaret((prev) => (prev.line === line && prev.col === col ? prev : { line, col }))
               }
+              onToast={showToast}
               onMoveSketch={moveSketch}
               onResizeSketch={resizeSketch}
               onEditSketch={editSketch}
@@ -906,19 +966,31 @@ function App() {
             />
           </div>
 
+          {isBlankPage && (
+            <div className="cy-empty blank-page">
+              <Sprout />
+              <div className="cy-empty-title">Página em branco</div>
+              <div className="cy-empty-hint">Plante a primeira linha — o resto cresce.</div>
+            </div>
+          )}
+
           <DrawingOverlay
             open={drawingOpen}
-            darkMode={darkMode}
             drawColor={drawColor}
             onSetColor={setDrawColor}
             onCancel={closeDrawing}
             onInsert={insertSketch}
-            initialImage={
-              editingSketchId ? tabs[activeTab].sketches.find((s) => s.id === editingSketchId)?.dataUrl : undefined
-            }
+            initialImage={editingSketch?.dataUrl}
+            initialWidth={editingSketch?.width}
           />
         </div>
       )}
+      {toast && (
+        <div className="cy-toast" key={toast}>
+          <span>{toast}</span>
+        </div>
+      )}
+      </div>
 
       <StatusBar
         line={caret.line}
@@ -932,98 +1004,76 @@ function App() {
         syncStatus={syncStatus}
         onSaveNow={saveNow}
       />
+      </div>
 
       {pairingRequests.length > 0 && (
-        <div className="pairing-modal-backdrop">
-          <div className="pairing-modal">
-            <div className="pairing-modal-title heading-font">Sincronizar dispositivo</div>
-            <div className="pairing-modal-text">
-              Sincronizar com "{pairingRequests[0].deviceName}"?
-            </div>
-            <div className="pairing-modal-actions">
-              <button className="cancel-btn" onClick={() => respondPairing(pairingRequests[0].deviceId, false)}>
-                Recusar
-              </button>
-              <button className="insert-btn" onClick={() => respondPairing(pairingRequests[0].deviceId, true)}>
-                Aceitar
-              </button>
-            </div>
-          </div>
-        </div>
+        <Dialog
+          icon="pair"
+          title="Sincronizar dispositivo"
+          buttons={[
+            { label: "Recusar", onClick: () => respondPairing(pairingRequests[0].deviceId, false) },
+            { label: "Aceitar", kind: "primary", onClick: () => respondPairing(pairingRequests[0].deviceId, true) },
+          ]}
+        >
+          Sincronizar com “{pairingRequests[0].deviceName}”?
+        </Dialog>
       )}
 
       {closeConfirmTab && (
-        <div className="pairing-modal-backdrop">
-          <div className="pairing-modal" style={{ width: 300 }}>
-            <div className="pairing-modal-title heading-font">Alterações não salvas</div>
-            <div className="pairing-modal-text">
-              "{closeConfirmTab.title}" tem alterações não salvas. Deseja salvar antes de fechar?
-            </div>
-            <div className="pairing-modal-actions">
-              <button className="cancel-btn" onClick={cancelCloseConfirm}>
-                Cancelar
-              </button>
-              <button className="danger-btn" onClick={discardAndCloseConfirmed}>
-                Não salvar
-              </button>
-              <button className="insert-btn" onClick={saveAndCloseConfirmed}>
-                Salvar
-              </button>
-            </div>
-          </div>
-        </div>
+        <Dialog
+          icon="unsaved"
+          title="Alterações não salvas"
+          buttons={[
+            { label: "Cancelar", onClick: cancelCloseConfirm },
+            { label: "Não salvar", kind: "danger", onClick: discardAndCloseConfirmed },
+            { label: "Salvar", kind: "primary", onClick: saveAndCloseConfirmed },
+          ]}
+        >
+          “{closeConfirmTab.title}” tem alterações que ainda não foram salvas. Deseja salvar antes de fechar?
+        </Dialog>
       )}
 
       {pendingExitAction && (
-        <div className="pairing-modal-backdrop">
-          <div className="pairing-modal" style={{ width: 300 }}>
-            <div className="pairing-modal-title heading-font">Alterações não salvas</div>
-            <div className="pairing-modal-text">
-              Você tem {dirtyCount} nota{dirtyCount === 1 ? "" : "s"} com alterações não salvas.{" "}
-              {pendingExitAction === "quit" ? "Sair mesmo assim?" : "Atualizar mesmo assim?"}
-            </div>
-            <div className="pairing-modal-actions">
-              <button className="cancel-btn" onClick={cancelPendingExit}>
-                Cancelar
-              </button>
-              <button className="danger-btn" onClick={discardAndProceed}>
-                {pendingExitAction === "quit" ? "Sair sem salvar" : "Atualizar sem salvar"}
-              </button>
-              <button className="insert-btn" onClick={saveAllAndProceed}>
-                {pendingExitAction === "quit" ? "Salvar e sair" : "Salvar e atualizar"}
-              </button>
-            </div>
-          </div>
-        </div>
+        <Dialog
+          icon="unsaved"
+          title="Alterações não salvas"
+          buttons={[
+            { label: "Cancelar", onClick: cancelPendingExit },
+            {
+              label: pendingExitAction === "quit" ? "Sair sem salvar" : "Atualizar sem salvar",
+              kind: "danger",
+              onClick: discardAndProceed,
+            },
+            {
+              label: pendingExitAction === "quit" ? "Salvar e sair" : "Salvar e atualizar",
+              kind: "primary",
+              onClick: saveAllAndProceed,
+            },
+          ]}
+        >
+          Você tem {dirtyCount} nota{dirtyCount === 1 ? "" : "s"} com alterações não salvas.{" "}
+          {pendingExitAction === "quit" ? "Sair mesmo assim?" : "Atualizar mesmo assim?"}
+        </Dialog>
       )}
 
       {updatePromptOpen && availableUpdate && (
-        <div className="pairing-modal-backdrop">
-          <div className="pairing-modal" style={{ width: 300 }}>
-            <div className="pairing-modal-title heading-font">Atualização disponível</div>
-            <div className="pairing-modal-text">
-              O Cynote {availableUpdate.version} está disponível (você tem a {availableUpdate.currentVersion}).
-              Atualizar agora? O app vai reiniciar sozinho.
-            </div>
-            <div className="pairing-modal-actions">
-              <button className="cancel-btn" onClick={cancelUpdatePrompt}>
-                Agora não
-              </button>
-              <button className="insert-btn" onClick={startUpdate}>
-                Atualizar
-              </button>
-            </div>
-          </div>
-        </div>
+        <Dialog
+          icon="update"
+          title="Atualização disponível"
+          buttons={[
+            { label: "Agora não", onClick: cancelUpdatePrompt },
+            { label: "Atualizar", kind: "primary", onClick: startUpdate },
+          ]}
+        >
+          O Cynote {availableUpdate.version} está disponível (você tem a {availableUpdate.currentVersion}). Atualizar
+          agora? O app vai reiniciar sozinho.
+        </Dialog>
       )}
 
       {installingUpdate && (
-        <div className="pairing-modal-backdrop">
-          <div className="pairing-modal" style={{ width: 260 }}>
-            <div className="pairing-modal-title heading-font">Atualizando…</div>
-            <div className="pairing-modal-text">Baixando a nova versão. O Cynote vai reiniciar em instantes.</div>
-          </div>
-        </div>
+        <Dialog icon="update" title="Atualização disponível" progress>
+          Instalando o Cynote {availableUpdate?.version ?? ""}… O app vai reiniciar em instantes.
+        </Dialog>
       )}
     </div>
   );

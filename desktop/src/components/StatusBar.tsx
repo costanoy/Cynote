@@ -1,5 +1,5 @@
 import type { SyncStatus } from "../types";
-import { ReadingIcon } from "../icons";
+import { ReadingIcon, SyncFlower } from "../icons";
 
 type Props = {
   line: number;
@@ -12,12 +12,6 @@ type Props = {
   onToggleReadingMode: () => void;
   syncStatus: SyncStatus;
   onSaveNow: () => void;
-};
-
-const SYNC_COLOR: Record<SyncStatus, string> = {
-  synced: "var(--sync-synced)",
-  syncing: "var(--sync-syncing)",
-  error: "var(--sync-error)",
 };
 
 const SYNC_LABEL: Record<SyncStatus, string> = {
@@ -43,19 +37,17 @@ export function StatusBar({
       <span>
         Ln {line}, Col {col}
       </span>
-      <span className="status-dot" />
-      <span>{charCount} caracteres</span>
-      <span className="status-dot" />
-      <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-        <button className="zoom-btn" onClick={onZoomOut}>
+      <span className="status-chars">{charCount} caracteres</span>
+      <div className="cy-spacer" />
+      <div className="status-zoom">
+        <button className="zoom-btn" onClick={onZoomOut} title="Diminuir zoom">
           −
         </button>
-        <span style={{ minWidth: 34, textAlign: "center" }}>{zoom}%</span>
-        <button className="zoom-btn" onClick={onZoomIn}>
+        <span className="zoom-value">{zoom}%</span>
+        <button className="zoom-btn" onClick={onZoomIn} title="Aumentar zoom">
           +
         </button>
       </div>
-      <div style={{ flex: 1 }} />
       <button
         className={"reading-btn" + (readingMode ? " active" : "")}
         onClick={onToggleReadingMode}
@@ -64,11 +56,16 @@ export function StatusBar({
         <ReadingIcon />
       </button>
       <button
-        className="sync-dot-btn"
+        className={"sync-btn" + (syncStatus === "error" ? " error" : "")}
         onClick={onSaveNow}
-        title={`${SYNC_LABEL[syncStatus]} — clique para salvar agora (Ctrl+S)`}
+        title={
+          syncStatus === "error"
+            ? "Erro de sincronização — clique para tentar de novo"
+            : `${SYNC_LABEL[syncStatus]} — clique para salvar agora (Ctrl+S)`
+        }
       >
-        <span className="sync-dot" style={{ background: SYNC_COLOR[syncStatus] }} />
+        <SyncFlower status={syncStatus} />
+        <span className="sync-label">{SYNC_LABEL[syncStatus]}</span>
       </button>
     </div>
   );

@@ -1,563 +1,656 @@
-* {
-  box-sizing: border-box;
-  font-family: "Manrope", sans-serif;
-}
+/* Main window. Tokens, the arched header, medallions and the page frame live
+   in theme.css (shared with Dashnotes). */
 
-.heading-font {
-  font-family: "Bricolage Grotesque", sans-serif;
-}
-
-/* The app has its own hover/active states for every interactive element;
-   the browser's default focus ring (often rendered in the OS accent color)
-   just reads as a stray, distracting circle on top of that. */
-button:focus,
-button:focus-visible,
 [contenteditable]:focus,
 [contenteditable]:focus-visible {
   outline: none;
 }
 
-.cy-panel {
-  position: relative;
-  width: 100%;
-  height: 100%;
-  border-radius: 12px;
-  background: var(--panel-bg);
-  border: 1px solid var(--panel-border);
-  box-shadow: var(--shadow), 0 1px 0 rgba(255, 255, 255, 0.06) inset;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  transition: background 0.2s ease, border-color 0.2s ease;
-  color: var(--text);
+/* ---------------------------------------------------------------- pills */
+
+.pill {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 28px;
+  padding: 0 12px;
+  border: 1px solid var(--field-border);
+  border-radius: 999px;
+  cursor: pointer;
+  background: transparent;
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  white-space: nowrap;
+  transition: var(--t-base);
+}
+.pill:hover {
+  background: var(--paper-2);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);
+}
+.pill:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: 0 1px 2px var(--shadow);
+  filter: brightness(0.94);
+}
+.pill.ghost {
+  border-color: transparent;
+  color: var(--ink-soft);
+}
+.pill.primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 500;
+  padding: 0 14px;
+}
+.pill.primary:hover {
+  background: var(--accent);
+  filter: brightness(1.08);
+}
+.pill.primary:active {
+  filter: brightness(0.94);
+}
+.pill.small {
+  height: 26px;
+  padding: 0 12px;
+}
+.pill:disabled {
+  opacity: 0.45;
+  cursor: default;
+  pointer-events: none;
 }
 
-/* Header */
-.header {
+/* ---------------------------------------------------------------- menus */
+
+.menu-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+}
+.main-menu,
+.tabs-menu {
+  position: absolute;
+  z-index: 50;
+  padding: 6px;
+  background: var(--paper);
+  border: 1px solid var(--gold-line);
+  box-shadow: 0 14px 30px var(--shadow);
+  animation: cyGrow 0.25s var(--ease-grow);
+}
+/* The square corner is the one the menu grows from. */
+.main-menu {
+  left: 38px;
+  top: 54px;
+  width: 236px;
+  padding-left: 18px;
+  border-radius: 6px 14px 14px 14px;
+  transform-origin: 0 0;
+}
+.main-menu-vine {
+  position: absolute;
+  left: 4px;
+  top: 8px;
+  height: calc(100% - 16px);
+}
+.main-menu-vine path {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 1.2;
+  stroke-linecap: round;
+  stroke-dasharray: 420;
+  animation: cyVine 0.55s var(--ease-grow) both;
+}
+.menu-item {
+  all: unset;
+  box-sizing: border-box;
+  width: 100%;
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 12px 10px 16px;
-  flex: none;
-  border-bottom: 1px solid var(--header-border);
-}
-
-.icon-btn {
-  all: unset;
-  cursor: pointer;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  color: var(--muted-text);
-}
-.icon-btn:hover {
-  background: var(--hover-bg);
-}
-.icon-btn.active {
-  color: var(--accent-dark);
-  background: var(--accent-tint);
-  box-shadow: inset 0 0 0 1px var(--accent-border);
-}
-.icon-btn.active:hover {
-  background: var(--accent-border);
-}
-
-.draw-btn {
-  all: unset;
-  cursor: pointer;
-  width: 30px;
-  height: 26px;
-  border-radius: 999px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid transparent;
-}
-.draw-btn.active {
-  color: #fff;
-  background: linear-gradient(135deg, #ffab5c, #ff8c3a);
-  box-shadow: 0 6px 14px rgba(255, 140, 58, 0.3);
-}
-.draw-btn:not(.active) {
-  color: var(--muted-text);
-}
-.draw-btn:not(.active):hover {
-  color: var(--accent-dark);
-  background: var(--hover-bg);
-}
-
-.format-menu-wrap {
-  position: relative;
-}
-.format-menu {
-  position: absolute;
-  top: 30px;
-  left: 0;
-  min-width: 170px;
-  background: var(--menu-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 4px;
-  z-index: 20;
-}
-.format-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
   padding: 7px 10px;
-  border-radius: 6px;
+  border-radius: 8px;
   cursor: pointer;
-  font-size: 12.5px;
-  color: var(--text);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  animation: cyRise 0.25s var(--ease-rise) both;
+  transition: var(--t-base);
 }
-.format-item:hover {
-  background: var(--hover-bg);
+.menu-item:hover {
+  background: var(--paper-2);
+  transform: translateX(3px);
+  box-shadow: inset 2px 0 0 var(--gold);
 }
-.format-key {
-  margin-left: auto;
+.menu-item:active {
+  transform: translateX(3px) scale(0.98);
+  background: var(--gold-soft);
+}
+.menu-item-label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.menu-item-key {
+  font-family: var(--font-mono);
   font-size: 10.5px;
-  color: var(--subtle-text);
-}
-.format-divider {
-  height: 1px;
-  margin: 4px 6px;
-  background: var(--panel-border);
+  color: var(--ink-faint);
 }
 
-/* Tab bar */
+/* -------------------------------------------------------------- tab bar */
+
 .tab-bar {
+  position: relative;
   display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: 8px 8px 8px 12px;
+  align-items: flex-end;
+  gap: 6px;
+  height: 36px;
+  padding: 0 8px 0 10px;
   flex: none;
-  border-bottom: 1px solid var(--header-border);
 }
 .tab-row {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
   display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-end;
+  gap: 5px;
   overflow-x: auto;
   overflow-y: hidden;
-  flex: 0 1 auto;
-  min-width: 0;
   scrollbar-width: none;
-  cursor: grab;
-  user-select: none;
   padding-top: 6px;
-  margin-top: -6px;
-  /* Mirrors the pair above, but for .tab-move's bottom:-6px corner - without
-     this the drag handle got clipped by overflow-y:hidden below, leaving
-     only a sliver of it visible (and clickable). */
-  padding-bottom: 6px;
-  margin-bottom: -6px;
 }
 .tab-row::-webkit-scrollbar {
   display: none;
 }
+.tab-bar-actions {
+  display: flex;
+  gap: 4px;
+  padding-bottom: 5px;
+}
+
+/* A pane of stained glass: lead came around tinted glass, lit when active. */
 .tab {
+  position: relative;
+  flex: none;
   display: flex;
   align-items: center;
   gap: 5px;
-  flex: none;
+  height: 26px;
+  min-width: 84px;
+  max-width: 168px;
+  /* Fixed left padding: the title never shifts when the handle shows up. */
+  padding: 0 10px 0 15px;
+  border: 1.5px solid var(--lead);
+  border-bottom: none;
+  border-radius: 9px 9px 0 0;
+  background: color-mix(in oklab, var(--glass) 34%, transparent);
+  color: var(--frame-ink);
   cursor: pointer;
-  position: relative;
-  padding: 6px 6px 6px 10px;
-  border-radius: 999px;
-  max-width: 108px;
-  /* Below this, the close button (top-right) and drag handle (bottom-left)
-     corners start overlapping - see .tab-close / .tab-move offsets. */
-  min-width: 34px;
-  background: transparent;
-  border: 1px solid transparent;
+  transition:
+    height 0.22s var(--ease-grow),
+    box-shadow 0.35s,
+    background 0.35s,
+    color 0.35s,
+    filter 0.2s,
+    transform 0.15s;
+}
+.tab:hover {
+  background: color-mix(in oklab, var(--glass) 52%, transparent);
+  filter: brightness(1.08);
+}
+.tab:active {
+  filter: brightness(0.92);
+  transform: translateY(1px);
 }
 .tab.active {
-  background: var(--hover-bg);
-  border: 1px solid var(--panel-border);
+  height: 30px;
+  margin-bottom: -1px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0) 52%),
+    radial-gradient(120% 90% at 50% 0%, rgba(255, 244, 205, 0.55), rgba(255, 244, 205, 0) 60%),
+    var(--glass);
+  color: #1b261f;
+  box-shadow: 0 0 16px var(--glow), inset 0 1px 0 rgba(255, 255, 255, 0.55);
 }
 .tab.dragging {
-  opacity: 0.55;
+  opacity: 0.5;
+}
+.tab-came {
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 3px;
+  height: 62%;
+  border: 1px solid rgba(20, 40, 30, 0.22);
+  border-bottom: none;
+  border-radius: 6px 6px 0 0;
+  pointer-events: none;
+}
+.tab-bloom {
+  position: absolute;
+  left: 50%;
+  top: -5px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 1px solid var(--lead);
+  box-shadow: 0 0 8px var(--glow);
+  animation: cyBloom 0.45s var(--ease-grow);
 }
 .tab-label {
-  font-size: 12px;
-  font-weight: 500;
-  user-select: none;
-  color: var(--muted-text);
-  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
-  min-width: 0;
+  white-space: nowrap;
+  font-size: 12.5px;
+  letter-spacing: 0.01em;
 }
 .tab.active .tab-label {
-  font-weight: 700;
-  color: var(--text);
+  font-weight: 500;
 }
 .tab-dirty-dot {
   flex: none;
-  width: 6px;
-  height: 6px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--accent-dark);
+  background: var(--gold);
+  border: 1px solid var(--lead);
 }
-/* Inside a tab pill, pin the dot to the same corner the close button
-   occupies on hover, and swap between them there instead of leaving the
-   dot in normal flow - previously the two could end up rendered right on
-   top of each other when the title filled the pill (see tab-close below). */
-.tab .tab-dirty-dot {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-}
-/* display:none (not opacity) so the swap is atomic - an opacity crossfade
-   left a brief frame where both the dot and the close button were partly
-   visible at once, which is exactly the overlap this was meant to fix. */
+/* Hovering swaps the unsaved dot for the close button - display (not
+   opacity) so the two are never on screen together. */
 .tab:hover .tab-dirty-dot {
   display: none;
 }
-.tab-rename-input {
-  all: unset;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--accent-dark);
-  width: 76px;
-  min-width: 0;
-}
-.tab-close {
-  position: absolute;
-  top: -6px;
-  right: -6px;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  background: var(--accent-dark);
-  border: 1.5px solid var(--panel-bg);
-  cursor: pointer;
-  z-index: 2;
-  opacity: 0;
-  transition: opacity 0.12s ease;
-}
-.tab:hover .tab-close {
-  opacity: 1;
-}
 .tab-move {
   position: absolute;
-  left: -2px;
-  bottom: -6px;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted-text);
-  background: var(--menu-bg);
-  border: 1px solid var(--panel-border);
-  opacity: 0;
-  transition: opacity 0.12s ease;
+  left: 6px;
+  top: 50%;
+  margin-top: -6px;
+  display: none;
+  opacity: 0.6;
   cursor: grab;
+  line-height: 0;
+  animation: cyFade 0.2s ease;
 }
-.tab:hover .tab-move {
-  opacity: 1;
-}
-.chevron-btn {
+.tab-close {
   all: unset;
-  cursor: pointer;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  color: var(--muted-text);
+  box-sizing: border-box;
   flex: none;
-}
-.chevron-btn:hover {
-  background: var(--hover-bg);
-}
-.tabs-menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 19;
-}
-.tabs-menu {
-  position: absolute;
-  top: 30px;
-  right: 0;
-  min-width: 190px;
-  max-height: 220px;
-  overflow-y: auto;
-  background: var(--menu-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 6px;
-  z-index: 20;
-}
-.tabs-menu-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  cursor: pointer;
-  border-radius: 6px;
-  font-size: 12.5px;
-  color: var(--text);
-}
-.tabs-menu-row:hover {
-  background: var(--hover-bg);
-}
-.tabs-menu-row.active {
-  color: var(--accent-dark);
-  background: var(--accent-tint);
-}
-.tabs-menu-dot {
-  width: 5px;
-  height: 5px;
+  width: 16px;
+  height: 16px;
+  margin-right: -4px;
   border-radius: 50%;
-  flex: none;
-  background: var(--subtle-text);
-}
-.tabs-menu-dot.favorite {
-  background: var(--accent);
-}
-.plus-btn {
-  all: unset;
+  display: none;
+  place-items: center;
   cursor: pointer;
-  flex: none;
-  width: 26px;
-  height: 26px;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--subtle-text);
-  font-size: 16px;
+  color: inherit;
+  transition: var(--t-base);
 }
-.plus-btn:hover {
-  background: var(--hover-bg);
+.tab-close:hover {
+  background: rgba(20, 40, 30, 0.18);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 12px var(--glow);
+  transform: translateY(-1px);
+}
+.tab-close:active {
+  transform: translateY(0) scale(0.88);
+  filter: brightness(0.92);
+}
+.tab:hover:not(.renaming) .tab-move {
+  display: block;
+}
+.tab:hover:not(.renaming) .tab-close {
+  display: grid;
+}
+.tab-rename-input {
+  width: 112px;
+  min-width: 0;
+  height: 20px;
+  margin-left: -4px;
+  padding: 0 7px;
+  border: 1px solid var(--gold);
+  border-radius: 6px;
+  outline: none;
+  background: var(--paper);
+  color: var(--ink);
+  caret-color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+  box-shadow: 0 0 0 3px var(--gold-soft), inset 0 1px 2px var(--shadow);
+  animation: cyGrow 0.2s var(--ease-grow);
 }
 
-/* Settings view */
+.tabs-menu {
+  right: 12px;
+  top: 34px;
+  width: 220px;
+  max-height: min(320px, calc(100vh - 130px));
+  overflow-y: auto;
+  border-radius: 14px 6px 14px 14px;
+  transform-origin: 100% 0;
+}
+.tabs-menu-heading {
+  padding: 4px 10px 6px;
+  font-size: 10.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-faint);
+}
+.tabs-menu .menu-item {
+  gap: 9px;
+  animation-duration: 0.22s;
+  animation-timing-function: ease;
+}
+.tabs-menu .menu-item.current {
+  background: var(--paper-2);
+  font-weight: 500;
+}
+.tabs-menu-bead {
+  flex: none;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  border: 1.2px solid var(--lead);
+}
+.tabs-menu .menu-item.current .tabs-menu-bead {
+  box-shadow: 0 0 8px var(--glow);
+}
+
+/* ------------------------------------------------------------- settings */
+
 .settings-wrap {
-  flex: 1;
-  overflow: auto;
-  padding: 18px 18px 24px;
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  padding: 18px 30px 26px;
+  z-index: 2;
+  animation: cyFade 0.3s ease;
+}
+.settings-col {
   display: flex;
   flex-direction: column;
-  gap: 18px;
-  color: var(--text);
+  gap: 16px;
+  max-width: 520px;
+  margin: 0 auto;
 }
-.settings-back {
+.settings-head {
   display: flex;
   align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  color: var(--muted-text);
-  width: fit-content;
+  gap: 12px;
 }
-.settings-back-label {
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--muted-text);
+.settings-head .pill {
+  padding: 0 11px 0 8px;
+}
+.settings-title-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
 }
 .settings-title {
-  font-weight: 700;
-  font-size: 16px;
-  color: var(--text);
+  font-family: var(--font-display);
+  font-size: 22px;
+  letter-spacing: 0.03em;
+  line-height: 1.1;
+}
+.settings-title-vine path {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+  stroke-dasharray: 160;
+  animation: cyVine 0.9s var(--ease-grow) both;
 }
 .settings-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 16px;
-  padding: 12px 0;
-  border-top: 1px solid var(--header-border);
+  animation: cyRise 0.3s ease both;
+}
+.settings-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .settings-row-label {
-  font-size: 13px;
-  font-weight: 600;
-  color: var(--text);
+  font-size: 14px;
+  font-weight: 500;
 }
 .settings-row-hint {
-  font-size: 11.5px;
-  color: var(--muted-text);
-  margin-top: 2px;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--ink-soft);
+  text-wrap: pretty;
 }
 .switch-track {
   all: unset;
-  cursor: pointer;
-  width: 38px;
-  height: 22px;
-  border-radius: 999px;
+  box-sizing: border-box;
   position: relative;
   flex: none;
-  background: rgba(0, 0, 0, 0.15);
-  transition: background 0.18s ease;
+  width: 40px;
+  height: 22px;
+  border-radius: 11px;
+  border: 1px solid var(--field-border);
+  background: var(--paper-2);
+  cursor: pointer;
+  transition: var(--t-base);
 }
 .switch-track.on {
+  border-color: var(--accent);
   background: var(--accent);
+}
+.switch-track:hover {
+  box-shadow: 0 0 0 3px var(--gold-soft);
+}
+.switch-track:active {
+  transform: scale(0.94);
 }
 .switch-thumb {
   position: absolute;
   top: 2px;
   left: 2px;
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
-  background: #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
-  transition: left 0.18s ease;
+  background: var(--paper);
+  border: 1px solid var(--gold);
+  box-shadow: 0 1px 2px var(--shadow);
+  transition: left 0.3s var(--ease-grow);
 }
-.switch-thumb.on {
-  left: 18px;
+.switch-track.on .switch-thumb {
+  left: 20px;
+}
+.settings-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 4px;
+}
+.settings-divider span {
+  flex: 1;
+  height: 1px;
+  background: var(--rule);
+}
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings-section-title {
+  font-family: var(--font-display);
+  font-size: 15.5px;
+  letter-spacing: 0.03em;
 }
 
 .device-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 10px;
-  padding: 9px 10px;
-  border-radius: 8px;
-  background: var(--hover-bg);
-  font-size: 12.5px;
+  border-radius: 12px;
+  animation: cyRise 0.3s ease;
+}
+.device-row svg {
+  flex: none;
+}
+.device-row.synced {
+  padding: 9px 12px;
+  border: 1px solid var(--rule);
+  background: var(--paper-2);
+}
+.device-row.found {
+  padding: 8px 8px 8px 12px;
+  border: 1px dashed var(--field-border);
 }
 .device-row-name {
-  color: var(--text);
-  font-weight: 600;
+  flex: 1;
+  min-width: 0;
+  font-size: 13.5px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 .device-row-status {
   flex: none;
-  color: var(--subtle-text);
-  font-size: 11px;
-}
-.device-connect-btn {
-  all: unset;
-  cursor: pointer;
-  flex: none;
-  color: var(--accent-dark);
-  font-weight: 700;
   font-size: 12px;
-  padding: 3px 8px;
-  border-radius: 6px;
+  font-weight: 500;
+  color: var(--accent);
 }
-.device-connect-btn:hover {
-  background: var(--accent-tint);
+.device-row .pill:disabled {
+  opacity: 1;
+  background: var(--paper-2);
+  color: var(--ink-soft);
 }
-.device-connect-btn:disabled {
-  cursor: default;
-  opacity: 0.6;
+.device-searching {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 2px 12px;
+  font-size: 12.5px;
+  color: var(--ink-faint);
+}
+.device-searching-bud {
+  display: flex;
+  animation: cyBud 1.6s ease-in-out infinite;
 }
 
+.cloud-off {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  animation: cyFade 0.3s ease;
+}
+.cloud-off .pill.primary {
+  height: 30px;
+  padding: 0 16px;
+  font-size: 13px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+}
+.cloud-on {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  animation: cyGrow 0.35s var(--ease-grow);
+}
 .sync-code-box {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: 8px;
-  background: var(--hover-bg);
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  border: 1px solid var(--gold-line);
+  border-radius: 12px;
+  background: var(--paper-2);
 }
 .sync-code-text {
-  font-family: monospace;
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.03em;
-  color: var(--text);
+  flex: 1;
+  min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.sync-code-copy-btn {
-  all: unset;
-  cursor: pointer;
-  flex: none;
-  color: var(--accent-dark);
-  font-weight: 700;
-  font-size: 12px;
-  padding: 3px 8px;
-  border-radius: 6px;
-}
-.sync-code-copy-btn:hover {
-  background: var(--accent-tint);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  user-select: text;
 }
 .sync-code-input-row {
   display: flex;
-  gap: 8px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sync-code-input-row .pill {
+  height: 30px;
+  padding: 0 14px;
+  font-size: 13px;
 }
 .sync-code-input {
   flex: 1;
-  min-width: 0;
-  font-family: monospace;
+  min-width: 150px;
+  height: 30px;
+  padding: 0 10px;
+  border: 1px solid var(--field-border);
+  border-radius: 9px;
+  background: var(--field);
+  color: var(--field-ink);
+  font-family: var(--font-mono);
   font-size: 12.5px;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--panel-border);
-  background: var(--panel-bg);
-  color: var(--text);
-}
-.sync-code-input:focus {
   outline: none;
-  border-color: var(--accent-border);
+  transition: border-color 0.2s, box-shadow 0.25s;
 }
-.sync-code-join-btn {
-  all: unset;
-  cursor: pointer;
-  flex: none;
-  color: var(--accent-dark);
-  font-weight: 700;
-  font-size: 12px;
-  padding: 8px 12px;
-  border-radius: 8px;
-  background: var(--accent-tint);
+.sync-code-input::placeholder,
+.find-input::placeholder {
+  color: var(--ink-faint);
 }
-.sync-code-join-btn:hover {
-  background: var(--accent-border);
-}
-.sync-code-join-btn:disabled {
-  cursor: default;
-  opacity: 0.6;
+.sync-code-input:focus,
+.find-input:focus {
+  border-color: var(--gold);
+  box-shadow: 0 0 0 3px var(--gold-soft);
 }
 .sync-clear-link {
   all: unset;
+  align-self: flex-start;
   cursor: pointer;
-  font-size: 11.5px;
-  color: var(--muted-text);
-  text-decoration: underline;
+  font-size: 12.5px;
+  color: var(--danger);
+  text-decoration: underline transparent;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 0.2s, opacity 0.2s;
 }
 .sync-clear-link:hover {
-  color: var(--text);
+  text-decoration-color: currentColor;
+}
+.sync-clear-link:active {
+  opacity: 0.7;
 }
 
-/* Content area */
+/* --------------------------------------------------------------- editor */
+
 .content-shell {
-  position: relative;
-  flex: 1;
-  overflow: hidden;
+  position: absolute;
+  inset: 0;
 }
 .content-wrap {
   position: absolute;
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 16px 18px 18px 6px;
-  color: var(--content-text);
-  transition: all 0.25s ease;
-}
-.content-wrap.reading {
-  color: var(--text);
-  background: var(--reading-bg);
+  scrollbar-gutter: stable;
+  /* The clickable margin takes the left side: 8 + 34 + 4 = the 46px text inset. */
+  padding: 24px 30px 28px 8px;
+  font-family: var(--font-body);
+  font-optical-sizing: auto;
+  color: var(--ink);
 }
 .note-body-row {
   position: relative;
@@ -565,463 +658,662 @@ button:focus-visible,
   align-items: stretch;
   min-height: 100%;
 }
+/* Reading mode: larger type in a centered column of about 640px. */
+.content-wrap.reading {
+  padding-left: 18px;
+  padding-right: 40px;
+}
+.content-wrap.reading .note-body-row {
+  max-width: 678px;
+  margin: 0 auto;
+}
 /* Margin strip left of the text - click a line's height to select and copy
    the whole line at once, same idea as clicking in a word processor's
-   left margin. The cursor swaps to a little arrow pointing at the text to
+   left margin. The cursor swaps to a gold arrow pointing at the text to
    hint at that, instead of the normal text I-beam. */
 .line-gutter {
+  position: relative;
   flex: none;
-  width: 18px;
-  border-radius: 6px 0 0 6px;
-  transition: background 0.12s ease;
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 20 20'%3E%3Cpath d='M3 4 L17 10 L3 16 L6 10 Z' fill='white' stroke='black' stroke-width='1.3' stroke-linejoin='round'/%3E%3C/svg%3E")
-      2 10,
-    pointer;
+  width: 34px;
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20'%3E%3Cpath d='M17 10 L4 3.5 L7 10 L4 16.5 Z' fill='%23C9A04E' stroke='%231C3027' stroke-width='1.2' stroke-linejoin='round'/%3E%3C/svg%3E")
+      17 10,
+    e-resize;
 }
-.line-gutter:hover {
-  background: var(--hover-bg);
+.line-gutter-leaf {
+  position: absolute;
+  right: 6px;
+  line-height: 0;
+  opacity: 0.8;
+  pointer-events: none;
+  transition: top 0.12s ease;
 }
 .note-body {
   flex: 1;
   min-width: 0;
+  padding-left: 4px;
   outline: none;
   tab-size: 4;
   white-space: pre-wrap;
+  overflow-wrap: break-word;
   word-break: break-word;
-  color: var(--content-text-body);
-}
-/* Multiple cursors: Chromium has a single real selection/caret, so every
-   cursor but the primary is painted - selections through the CSS Custom
-   Highlight API (no DOM changes), carets as overlay bars. */
-::highlight(cy-multi) {
-  background-color: #ff8c3a33;
-}
-.fake-caret {
-  position: absolute;
-  width: 1.5px;
-  margin-left: -0.75px;
-  background: var(--content-text-body);
-  pointer-events: none;
-  animation: cy-caret-blink 1.06s steps(1) infinite;
-}
-.note-body:not(:focus) ~ .fake-caret {
-  display: none;
-}
-@keyframes cy-caret-blink {
-  50% {
-    opacity: 0;
-  }
-}
-::highlight(cy-find) {
-  background-color: rgba(255, 196, 0, 0.25);
-}
-::highlight(cy-find-current) {
-  background-color: rgba(255, 140, 58, 0.6);
-  color: #fff;
-}
-
-/* Find / replace / go-to-line bar, pinned to the top-right of the note. */
-.find-anchor {
-  position: sticky;
-  top: 8px;
-  height: 0;
-  z-index: 6;
-}
-.find-bar {
-  position: absolute;
-  right: 0;
-  top: -8px;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-  padding: 6px;
-  border-radius: 10px;
-  background: var(--menu-bg);
-  border: 1px solid var(--panel-border);
-  box-shadow: var(--shadow);
-  font-size: 12px;
-  line-height: 1.2;
-  letter-spacing: normal;
-  max-width: calc(100% - 8px);
-}
-.find-row {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.find-input {
-  width: 190px;
-  min-width: 60px;
-  flex: 1 1 auto;
-  font: inherit;
-  font-size: 12px;
-  padding: 5px 8px;
-  border-radius: 6px;
-  border: 1px solid var(--panel-border);
-  background: var(--panel-bg);
-  color: var(--text);
-}
-.find-input:focus {
-  outline: none;
-  border-color: var(--accent-border);
-}
-.find-btn {
-  all: unset;
-  cursor: pointer;
-  flex: none;
-  min-width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  color: var(--muted-text);
-  font-size: 11px;
-  font-weight: 700;
-}
-.find-btn:hover:not(:disabled) {
-  background: var(--hover-bg);
-  color: var(--text);
-}
-.find-btn:disabled {
-  cursor: default;
-  opacity: 0.35;
-}
-.find-btn.active {
-  color: var(--accent-dark);
-  background: var(--accent-tint);
-  box-shadow: inset 0 0 0 1px var(--accent-border);
-}
-.find-indent {
-  flex: none;
-  width: 22px;
-}
-.find-status {
-  flex: none;
-  min-width: 64px;
-  text-align: center;
-  color: var(--muted-text);
-  font-size: 11px;
-  white-space: nowrap;
-}
-.find-status.none {
-  color: #e0432c;
-}
-.find-text-btn {
-  all: unset;
-  cursor: pointer;
-  flex: none;
-  padding: 4px 8px;
-  border-radius: 6px;
-  font-size: 11.5px;
-  font-weight: 700;
-  color: var(--accent-dark);
-  background: var(--accent-tint);
-}
-.find-text-btn:hover:not(:disabled) {
-  background: var(--accent-border);
-}
-.find-text-btn:disabled {
-  cursor: default;
-  opacity: 0.4;
+  color: var(--ink);
+  caret-color: var(--cursor);
+  user-select: text;
 }
 /* The `!important` guards against Chromium inserting a fresh <div> with its
    own inline font styling when you press Enter in a contentEditable - without
    it, the new line silently falls back to the browser's default font. */
 .note-body,
 .note-body * {
-  font-family: "Source Serif 4", Georgia, Cambria, "Times New Roman", Times, serif !important;
+  font-family: var(--font-body) !important;
   font-weight: 400 !important;
 }
+/* Multiple cursors: Chromium has a single real selection/caret, so every
+   cursor but the primary is painted - selections through the CSS Custom
+   Highlight API (no DOM changes), carets as overlay bars. */
+::highlight(cy-multi) {
+  background-color: var(--extra-sel);
+}
+.fake-caret {
+  position: absolute;
+  width: 2px;
+  margin-left: -1px;
+  border-radius: 1px;
+  background: var(--petrol);
+  pointer-events: none;
+  animation: cyBlink 1.06s steps(1) infinite;
+}
+.note-body:not(:focus) ~ .fake-caret {
+  display: none;
+}
+::highlight(cy-find) {
+  background-color: var(--match);
+}
+::highlight(cy-find-current) {
+  background-color: var(--match-cur);
+}
+.match-ring {
+  position: absolute;
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px var(--match-cur-ring);
+  pointer-events: none;
+}
+.blank-page {
+  position: absolute;
+  inset: 0;
+}
+
+/* Find / replace / go-to-line bar, pinned to the top-right of the note. */
+.find-anchor {
+  position: sticky;
+  top: 14px;
+  height: 0;
+  margin: -10px 0 10px;
+  z-index: 20;
+}
+.find-bar {
+  position: absolute;
+  right: -10px;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 6px 6px 6px 5px;
+  max-width: calc(100% + 10px);
+  background: var(--frame);
+  border: 1px solid var(--gold-line);
+  border-radius: 14px 14px 10px 10px;
+  box-shadow: 0 10px 24px var(--shadow);
+  color: var(--frame-ink);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.2;
+  animation: cyRise 0.28s var(--ease-rise);
+}
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.find-row.replace {
+  gap: 4px;
+  padding-left: 23px;
+  animation: cyRise 0.22s ease;
+}
+.find-row.goto {
+  gap: 4px;
+  padding-left: 4px;
+}
+.find-input {
+  width: 150px;
+  min-width: 60px;
+  height: 26px;
+  padding: 0 9px;
+  border: 1px solid var(--field-border);
+  border-radius: 8px;
+  background: var(--field);
+  color: var(--field-ink);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.25s;
+}
+.find-input.goto {
+  width: 170px;
+}
+.find-btn {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--frame-ink);
+  transition: var(--t-base);
+}
+.find-btn:hover,
+.find-case:hover,
+.reading-btn:hover,
+.sketch-tool-btn:hover {
+  background: var(--gold-soft);
+  box-shadow: 0 0 0 1px var(--gold-line);
+  transform: translateY(-1px);
+}
+.find-btn:active,
+.find-case:active,
+.reading-btn:active,
+.sketch-tool-btn:active {
+  transform: scale(0.9);
+  filter: brightness(0.92);
+}
+.find-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+  pointer-events: none;
+}
+.find-toggle-replace {
+  width: 20px;
+  height: 26px;
+  border-radius: 6px;
+}
+.find-toggle-replace svg {
+  transition: transform 0.25s ease;
+}
+.find-toggle-replace.open svg {
+  transform: rotate(90deg);
+}
+.find-case {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--gold-line);
+  border-radius: 7px;
+  cursor: pointer;
+  color: var(--frame-ink);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 22px;
+  transition: var(--t-base);
+}
+.find-case.active {
+  background: var(--gold);
+  border-color: var(--gold);
+  color: var(--frame-2);
+}
+.find-status {
+  flex: none;
+  min-width: 70px;
+  padding: 0 4px;
+  text-align: center;
+  color: var(--frame-ink-soft);
+  font-size: 12px;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.find-status.none {
+  color: var(--alert);
+}
+.find-text-btn {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  height: 24px;
+  padding: 0 9px;
+  border: 1px solid var(--gold-line);
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--frame-ink);
+  font-size: 12px;
+  line-height: 22px;
+  transition: var(--t-base);
+}
+.find-text-btn:hover {
+  background: var(--gold-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);
+}
+.find-text-btn:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: 0 1px 2px var(--shadow);
+  filter: brightness(0.94);
+}
+.find-text-btn:disabled {
+  cursor: default;
+  opacity: 0.45;
+  pointer-events: none;
+}
+
+/* Pasted drawings float over the text. */
 .note-sketch-wrap {
   position: absolute;
+  z-index: 3;
 }
 .note-sketch {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 8px;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.25);
-  cursor: grab;
+  border-radius: 6px;
+  outline: 1px dashed transparent;
+  outline-offset: 3px;
+  cursor: move;
   user-select: none;
   -webkit-user-drag: none;
-  background: var(--canvas-bg);
+  transition: outline-color 0.2s;
 }
-.note-sketch:active {
-  cursor: grabbing;
+.note-sketch-wrap:hover .note-sketch {
+  outline-color: var(--gold);
 }
 .sketch-toolbar {
   position: absolute;
-  top: -10px;
-  right: -10px;
-  display: flex;
-  gap: 4px;
-  opacity: 0;
-  transform: translateY(-2px);
-  transition: opacity 0.15s ease, transform 0.15s ease;
-  pointer-events: none;
+  right: -2px;
+  top: -30px;
+  display: none;
+  gap: 2px;
+  padding: 3px;
+  background: var(--frame);
+  border: 1px solid var(--gold-line);
+  border-radius: 9px;
+  animation: cyRise 0.18s ease;
 }
-.note-sketch-wrap:hover .sketch-toolbar {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
-}
-.sketch-tool-btn {
-  all: unset;
-  cursor: pointer;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--panel-bg);
-  border: 1px solid var(--accent-border);
-  color: var(--muted-text);
-  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.25);
-}
-.sketch-tool-btn:hover {
-  color: var(--accent-dark);
-  background: var(--hover-bg);
-}
-.sketch-tool-btn.delete:hover {
-  color: #e05252;
-  border-color: #e05252;
-}
-.sketch-resize-handle {
-  position: absolute;
-  right: -5px;
-  bottom: -5px;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--panel-bg);
-  border: 1px solid var(--accent-border);
-  cursor: nwse-resize;
-  opacity: 0;
-  transition: opacity 0.15s ease;
-}
-.note-sketch-wrap:hover .sketch-resize-handle {
-  opacity: 1;
-}
-
-/* Drawing overlay */
-.overlay {
+/* Bridges the gap up to the toolbar so the hover survives the trip. */
+.sketch-toolbar::after {
+  content: "";
   position: absolute;
   left: 0;
   right: 0;
-  bottom: 0;
-  background: var(--panel-bg);
-  border-top: 1px solid var(--accent-border);
-  transform: translateY(100%);
-  transition: transform 0.28s ease;
-  box-shadow: 0 -12px 30px rgba(0, 0, 0, 0.15);
+  top: 100%;
+  height: 8px;
+}
+.note-sketch-wrap:hover .sketch-toolbar {
+  display: flex;
+}
+.sketch-tool-btn {
+  all: unset;
+  box-sizing: border-box;
+  width: 22px;
+  height: 20px;
+  border-radius: 6px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  color: var(--frame-ink);
+  transition: var(--t-base);
+}
+.sketch-tool-btn.delete:hover {
+  background: rgba(180, 83, 63, 0.55);
+}
+.sketch-resize-handle {
+  position: absolute;
+  right: -7px;
+  bottom: -7px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--gold);
+  border: 1.5px solid var(--lead);
+  cursor: nwse-resize;
+  display: none;
+  transition: transform 0.18s, box-shadow 0.25s;
+}
+.note-sketch-wrap:hover .sketch-resize-handle {
+  display: block;
+}
+.sketch-resize-handle:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 8px var(--glow);
+}
+
+/* --------------------------------------------------------- Note Styling */
+
+/* Always mounted (the canvas keeps its size in sync), only shown when open. */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--paper-2);
+  background-image: radial-gradient(var(--rule) 0.8px, transparent 0.8px);
+  background-size: 16px 16px;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.3s ease, visibility 0s 0.3s;
 }
 .overlay.open {
-  transform: translateY(0%);
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transition: opacity 0.3s ease;
 }
 .overlay-header {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   gap: 8px;
-  padding: 10px 12px;
-  border-bottom: 1px solid var(--header-border);
+  padding: 12px 18px 0;
 }
 .overlay-title {
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.04em;
+}
+.overlay-subtitle {
+  font-family: var(--font-body);
+  font-style: italic;
   font-size: 12.5px;
-  color: var(--text);
-}
-.swatch {
-  all: unset;
-  cursor: pointer;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  box-shadow: none;
-}
-.swatch.selected {
-  box-shadow: 0 0 0 2px var(--muted-text);
-}
-.clear-btn {
-  all: unset;
-  cursor: pointer;
-  font-size: 11.5px;
-  color: var(--muted-text);
-  padding: 4px 8px;
-}
-.clear-btn:hover {
-  color: var(--text);
+  color: var(--ink-faint);
 }
 .draw-canvas {
   display: block;
+  flex: 1;
+  min-height: 0;
   width: 100%;
-  height: 200px;
   touch-action: none;
   cursor: crosshair;
 }
 .overlay-footer {
   display: flex;
+  align-items: center;
   gap: 8px;
-  padding: 10px 12px;
-  border-top: 1px solid var(--header-border);
+  flex-wrap: wrap;
+  padding: 10px 14px 12px;
+  border-top: 1px solid var(--rule);
+  background: var(--paper);
 }
-.cancel-btn {
+.swatches {
+  display: flex;
+  gap: 7px;
+  padding-right: 6px;
+}
+.swatch {
   all: unset;
   box-sizing: border-box;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1.5px solid var(--lead);
   cursor: pointer;
-  flex: 1;
-  text-align: center;
-  padding: 8px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: var(--muted-text);
-  border: 1px solid var(--panel-border);
-  background: var(--panel-bg);
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease,
-    color 0.12s ease;
+  transition: var(--t-base);
 }
-.cancel-btn:hover {
-  background: var(--hover-bg);
-  border-color: var(--accent-border);
-  color: var(--text);
+.swatch.selected {
+  transform: scale(1.12);
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--gold);
 }
-.danger-btn {
-  all: unset;
-  box-sizing: border-box;
-  cursor: pointer;
-  flex: 1;
-  text-align: center;
-  padding: 8px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 600;
-  color: #e05252;
-  border: 1px solid rgba(224, 82, 82, 0.35);
-  background: rgba(224, 82, 82, 0.07);
-  transition:
-    background 0.12s ease,
-    border-color 0.12s ease;
+.swatch:hover {
+  transform: scale(1.18) rotate(-8deg);
+  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--gold-line);
 }
-.danger-btn:hover {
-  background: rgba(224, 82, 82, 0.18);
-  border-color: #e05252;
-}
-.insert-btn {
-  all: unset;
-  cursor: pointer;
-  flex: 1;
-  text-align: center;
-  padding: 8px;
-  border-radius: 8px;
-  font-size: 12.5px;
-  font-weight: 700;
-  color: #fff;
-  background: linear-gradient(135deg, #ffab5c, #ff8c3a);
-  box-shadow: 0 6px 14px rgba(255, 140, 58, 0.3);
+.swatch:active {
+  transform: scale(0.9);
 }
 
-/* Status bar */
+/* ----------------------------------------------------------- status bar */
+
 .status-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 7px 14px;
+  gap: 14px;
+  height: 30px;
   flex: none;
-  border-top: 1px solid var(--header-border);
-  font-size: 11px;
-  color: var(--muted-text);
+  padding: 0 14px 1px 16px;
+  font-size: 11.5px;
+  color: var(--frame-ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
-.status-dot {
-  width: 3px;
-  height: 3px;
-  border-radius: 50%;
-  background: var(--subtle-text);
-  flex: none;
+.status-zoom {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.zoom-value {
+  min-width: 34px;
+  text-align: center;
 }
 .zoom-btn {
   all: unset;
+  box-sizing: border-box;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
   cursor: pointer;
-  width: 16px;
-  height: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  color: var(--muted-text);
+  color: var(--frame-ink);
   font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+  transition: var(--t-base);
 }
 .zoom-btn:hover {
-  background: var(--hover-bg);
+  background: var(--gold-soft);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 12px var(--glow);
+  transform: translateY(-1px);
+}
+.zoom-btn:active {
+  transform: translateY(0) scale(0.88);
+  filter: brightness(0.92);
 }
 .reading-btn {
   all: unset;
+  box-sizing: border-box;
+  width: 24px;
+  height: 22px;
+  border-radius: 7px;
+  display: grid;
+  place-items: center;
   cursor: pointer;
-  width: 22px;
-  height: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 5px;
-  color: var(--muted-text);
+  color: var(--frame-ink);
+  transition: var(--t-base);
 }
 .reading-btn.active {
-  color: var(--accent-dark);
-  background: var(--accent-tint);
+  background: var(--gold);
+  color: var(--frame-2);
 }
-.sync-dot-btn {
+.sync-btn {
   all: unset;
-  cursor: pointer;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
+  gap: 6px;
+  height: 22px;
+  padding: 0 6px 0 4px;
+  border-radius: 999px;
+  cursor: pointer;
+  color: var(--frame-ink-soft);
+  transition: var(--t-base);
 }
-.sync-dot-btn:hover {
-  background: var(--hover-bg);
+.sync-btn.error {
+  color: var(--alert);
 }
-.sync-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  display: inline-block;
+.sync-btn:hover {
+  background: var(--gold-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);
+}
+.sync-btn:active {
+  transform: translateY(0) scale(0.95);
+  box-shadow: 0 1px 2px var(--shadow);
+  filter: brightness(0.94);
+}
+.sync-bloom {
+  transform-origin: 0 0;
+  animation: cyBloom 0.6s var(--ease-grow);
+}
+.sync-bud {
+  transform-origin: 0 6px;
+  animation: cyBud 1.2s ease-in-out infinite;
+}
+.sync-droop {
+  transform-origin: 0 9px;
+  animation: cyDroop 0.7s var(--ease-grow) forwards;
 }
 
-/* Pairing modal */
-.pairing-modal-backdrop {
+/* -------------------------------------------------------------- dialogs */
+
+.dialog-scrim {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 30;
+  z-index: 60;
+  display: grid;
+  place-items: center;
+  padding-top: 20px;
+  background: var(--scrim);
+  border-radius: 18px 18px 16px 16px;
+  animation: cyFade 0.25s ease;
 }
-.pairing-modal {
-  width: 260px;
-  background: var(--menu-bg);
-  border: 1px solid var(--panel-border);
-  border-radius: 12px;
-  box-shadow: var(--shadow);
-  padding: 16px;
+.dialog {
+  position: relative;
+  width: 340px;
+  max-width: calc(100% - 32px);
+  padding: 40px 22px 18px;
+  background: var(--paper);
+  border: 1px solid var(--gold-line);
+  border-radius: 22px 22px 16px 16px;
+  box-shadow: 0 20px 44px var(--shadow);
+  text-align: center;
+  animation: cyGrow 0.32s var(--ease-grow);
 }
-.pairing-modal-title {
-  font-weight: 700;
+.dialog-halo {
+  position: absolute;
+  left: 50%;
+  top: -30px;
+  margin-left: -31px;
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 1px solid var(--gold);
+  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--gold-line);
+  display: grid;
+  place-items: center;
+  background: var(--paper);
+}
+.dialog-halo-disc {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: var(--frame);
+  border: 1px solid var(--gold);
+  display: grid;
+  place-items: center;
+  color: var(--gold);
+  box-shadow: 0 0 14px var(--glow);
+}
+.dialog-title {
+  font-family: var(--font-display);
+  font-size: 19px;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+.dialog-body {
+  font-family: var(--font-body);
   font-size: 14px;
-  color: var(--text);
-  margin-bottom: 6px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  text-wrap: pretty;
+  margin-bottom: 18px;
+  overflow-wrap: anywhere;
 }
-.pairing-modal-text {
-  font-size: 12.5px;
-  color: var(--muted-text);
-  margin-bottom: 14px;
+.dialog-progress {
+  height: 3px;
+  margin: -6px 10px 18px;
+  border-radius: 3px;
+  background: var(--rule);
+  overflow: hidden;
 }
-.pairing-modal-actions {
+/* The real download has no progress to report, so the bar grows to almost
+   full and waits there until the app restarts. */
+.dialog-progress div {
+  height: 100%;
+  width: 92%;
+  background: var(--accent);
+  transform-origin: 0 50%;
+  animation: dialogProgress 2.4s cubic-bezier(0.4, 0.1, 0.3, 1) both;
+}
+@keyframes dialogProgress {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+.dialog-actions {
   display: flex;
+  justify-content: center;
   gap: 8px;
+  flex-wrap: wrap;
+}
+.dialog-btn {
+  height: 32px;
+  padding: 0 16px;
+  font-size: 13px;
+}
+.dialog-btn:hover {
+  filter: brightness(1.06);
+}
+.dialog-btn.danger {
+  color: var(--danger);
+}
+
+/* ---------------------------------------------------- the small window */
+
+/* Near the 420x320 minimum the ornaments step back instead of squeezing:
+   less detail, not cramped detail. */
+@media (max-width: 520px), (max-height: 400px) {
+  .cy-brand-name,
+  .cy-arch-vines,
+  .cy-vignette,
+  .status-chars,
+  .sync-label {
+    display: none;
+  }
+  .tab {
+    min-width: 64px;
+  }
+  .status-bar {
+    gap: 8px;
+  }
+  .content-wrap {
+    padding: 18px 20px 28px 8px;
+  }
+  .line-gutter {
+    width: 24px;
+  }
+  .find-input {
+    width: 104px;
+  }
+  .find-status {
+    min-width: 52px;
+  }
+  .settings-wrap {
+    padding-left: 18px;
+    padding-right: 18px;
+  }
+  .dialog {
+    width: 300px;
+  }
 }

@@ -10,74 +10,526 @@ body {
   height: 100vh;
 }
 
+/* Day in the greenhouse. */
+:root,
+[data-theme="light"] {
+  --frame: #37604f;
+  --frame-2: #274a3c;
+  --frame-ink: #f3ebd3;
+  --frame-ink-soft: #c3d3bc;
+  --gold: #c9a04e;
+  --gold-line: rgba(226, 190, 110, 0.55);
+  --gold-soft: rgba(226, 190, 110, 0.22);
+  --glow: rgba(240, 200, 110, 0.45);
+  --paper: #fbf6e9;
+  --paper-2: #f2ead5;
+  --rule: #dccda6;
+  --ink: #2a2a22;
+  --ink-soft: #645f4c;
+  --ink-faint: #9c957c;
+  --accent: #3d7a4c;
+  --accent-ink: #fffdf4;
+  --petrol: #2e6470;
+  --selection: rgba(214, 170, 76, 0.34);
+  --extra-sel: rgba(46, 100, 112, 0.2);
+  --match: rgba(143, 184, 120, 0.4);
+  --match-cur: #ebc46c;
+  --match-cur-ring: #b8893a;
+  --cursor: #2a2a22;
+  --danger: #a8483a;
+  --alert: #f5b9a8;
+  --lead: #1c3027;
+  --shadow: rgba(38, 52, 32, 0.3);
+  --scrim: rgba(28, 44, 34, 0.38);
+  --field: #fffdf6;
+  --field-border: #cfbf97;
+  --field-ink: #2a2a22;
+
+  /* Stained glass, one pane per tab / folder (hue % 4). */
+  --glass-0: #a9cb8f;
+  --glass-1: #e3b45a;
+  --glass-2: #7fb2b8;
+  --glass-3: #9aaad0;
+}
+
+/* The same greenhouse at night. */
+[data-theme="dark"] {
+  --frame: #10211a;
+  --frame-2: #0a1712;
+  --frame-ink: #eadfc2;
+  --frame-ink-soft: #91a58e;
+  --gold: #e2b85c;
+  --gold-line: rgba(226, 184, 92, 0.55);
+  --gold-soft: rgba(226, 184, 92, 0.18);
+  --glow: rgba(236, 190, 90, 0.55);
+  --paper: #15251e;
+  --paper-2: #1b2e26;
+  --rule: #2f4a3d;
+  --ink: #e9e2cc;
+  --ink-soft: #aeb49e;
+  --ink-faint: #6f7f6d;
+  --accent: #86b96f;
+  --accent-ink: #0e1c16;
+  --petrol: #7fc2ca;
+  --selection: rgba(226, 184, 92, 0.28);
+  --extra-sel: rgba(127, 194, 202, 0.24);
+  --match: rgba(134, 185, 111, 0.3);
+  --match-cur: rgba(226, 184, 92, 0.72);
+  --match-cur-ring: #e2b85c;
+  --cursor: #f2e7c8;
+  --danger: #e58a74;
+  --alert: #f2a08c;
+  --lead: #040a08;
+  --shadow: rgba(0, 0, 0, 0.55);
+  --scrim: rgba(2, 8, 6, 0.55);
+  --field: #0e1d17;
+  --field-border: #39584a;
+  --field-ink: #e9e2cc;
+
+  --glass-0: #8cc474;
+  --glass-1: #e5a945;
+  --glass-2: #62a7b0;
+  --glass-3: #8397c9;
+}
+
+:root {
+  --font-display: "Marcellus", Georgia, serif;
+  --font-body: "Literata Variable", "Literata", Georgia, serif;
+  --font-ui: "Jost", "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, monospace;
+  --ease-grow: cubic-bezier(0.3, 0.7, 0.2, 1);
+  --ease-rise: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-base:
+    background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.25s, filter 0.2s, opacity 0.2s,
+    transform 0.18s var(--ease-grow);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-ui);
+  color: var(--ink);
+}
+
+button,
+input {
+  font-family: inherit;
+}
+
 ::selection {
-  background: #ff8c3a33;
+  background: var(--selection);
 }
 
 ::-webkit-scrollbar {
-  width: 9px;
-  height: 9px;
+  width: 8px;
+  height: 6px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background-color: var(--subtle-text);
-  background-clip: padding-box;
-  border: 2px solid transparent;
-  border-radius: 999px;
+  background: var(--gold-soft);
+  border-radius: 8px;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background-color: var(--muted-text);
+  background: var(--gold-line);
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-[data-theme="dark"] {
-  --panel-bg: #1e1b22;
-  --panel-border: #332e3a;
-  --header-border: #332e3a;
-  --text: #f5eee6;
-  --muted-text: rgba(245, 238, 230, 0.55);
-  --subtle-text: rgba(245, 238, 230, 0.35);
-  --hover-bg: rgba(255, 255, 255, 0.08);
-  --content-text: rgba(245, 238, 230, 0.85);
-  --content-text-body: rgba(245, 238, 230, 0.72);
-  --accent: #ff8c3a;
-  --accent-dark: #ffb066;
-  --accent-tint: rgba(255, 140, 58, 0.18);
-  --accent-border: rgba(255, 140, 58, 0.4);
-  --canvas-bg: #242029;
-  --canvas-line: rgba(255, 255, 255, 0.06);
-  --menu-bg: #262230;
-  --shadow: 0 24px 48px rgba(0, 0, 0, 0.45);
-  --reading-bg: #28221c;
+/* Keyboard focus: the same gold ring as the fields. Mouse clicks don't get
+   one - every clickable thing already has its own hover/active state. */
+button:focus {
+  outline: none;
+}
+button:focus-visible {
+  box-shadow: 0 0 0 3px var(--gold-soft), 0 0 0 1px var(--gold);
 }
 
-[data-theme="light"] {
-  --panel-bg: #fffaf5;
-  --panel-border: #ecdfd0;
-  --header-border: #f2e7d9;
-  --text: #2a1a10;
-  --muted-text: rgba(40, 28, 20, 0.55);
-  --subtle-text: rgba(40, 28, 20, 0.35);
-  --hover-bg: rgba(0, 0, 0, 0.06);
-  --content-text: #3a2c22;
-  --content-text-body: rgba(58, 44, 34, 0.78);
-  --accent: #ff8c3a;
-  --accent-dark: #c1530a;
-  --accent-tint: rgba(255, 140, 58, 0.14);
-  --accent-border: rgba(255, 140, 58, 0.3);
-  --canvas-bg: #fffdf9;
-  --canvas-line: rgba(0, 0, 0, 0.045);
-  --menu-bg: #ffffff;
-  --shadow: 0 24px 48px rgba(30, 18, 8, 0.14);
-  --reading-bg: #fef6ec;
+@keyframes cyBlink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes cyBloom {
+  0% {
+    transform: scale(0.15) rotate(-60deg);
+    opacity: 0;
+  }
+  70% {
+    transform: scale(1.12) rotate(6deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1) rotate(0);
+    opacity: 1;
+  }
+}
+@keyframes cyBud {
+  0%,
+  100% {
+    transform: scale(0.88);
+    opacity: 0.75;
+  }
+  50% {
+    transform: scale(1.04);
+    opacity: 1;
+  }
+}
+@keyframes cyDroop {
+  0% {
+    transform: rotate(0);
+  }
+  100% {
+    transform: rotate(38deg);
+  }
+}
+@keyframes cyVine {
+  from {
+    stroke-dashoffset: 420;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+@keyframes cyRise {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cyGrow {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cyFade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes cySway {
+  0%,
+  100% {
+    transform: rotate(-3deg);
+  }
+  50% {
+    transform: rotate(3deg);
+  }
+}
+@keyframes cyLamp {
+  0%,
+  100% {
+    box-shadow: 0 0 6px var(--glow);
+  }
+  50% {
+    box-shadow: 0 0 14px var(--glow);
+  }
 }
 
-:root {
-  --sync-synced: #2fae5a;
-  --sync-syncing: #ff8c3a;
-  --sync-error: #e0432c;
+/* ------------------------------------------------------------------
+   Pieces shared by the main window and Dashnotes.
+   ------------------------------------------------------------------ */
+
+.cy-window {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-ui);
+  color: var(--ink);
+  user-select: none;
+}
+
+/* Guimard arch: the iron header, rising 10px at the center. */
+.cy-arch {
+  position: relative;
+  height: 56px;
+  flex: none;
+}
+.cy-arch-shape {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+.cy-arch-shape .iron {
+  fill: var(--frame);
+  transition: fill 0.5s ease;
+}
+.cy-arch-shape .fillet {
+  fill: none;
+  stroke: var(--gold-line);
+  stroke-width: 1;
+}
+.cy-arch-vines {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
+  overflow: visible;
+  pointer-events: none;
+}
+.cy-lamp {
+  position: absolute;
+  left: 50%;
+  top: 3px;
+  width: 7px;
+  height: 7px;
+  margin-left: -3.5px;
+  border-radius: 50%;
+  background: var(--gold);
+  animation: cyLamp 4s ease-in-out infinite;
+  pointer-events: none;
+}
+.cy-arch-strip {
+  position: absolute;
+  left: 10px;
+  right: 8px;
+  bottom: 3px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cy-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-right: 4px;
+  pointer-events: none;
+}
+.cy-logo {
+  position: relative;
+  width: 24px;
+  height: 24px;
+  flex: none;
+  border-radius: 50%;
+  border: 1px solid var(--gold);
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 0 0 2px var(--frame), inset 0 0 0 3px var(--gold-line);
+}
+.cy-logo span {
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1;
+  color: var(--gold);
+  margin-left: -1px;
+}
+.cy-logo svg {
+  position: absolute;
+  right: 3px;
+  top: 4px;
+}
+.cy-brand-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--frame-ink);
+  white-space: nowrap;
+}
+.cy-spacer {
+  flex: 1;
+  align-self: stretch;
+}
+.cy-arch-divider {
+  width: 1px;
+  height: 18px;
+  margin: 0 3px;
+  background: var(--gold-line);
+}
+
+/* Medallions: the round iron buttons. */
+.medallion {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--gold-line);
+  cursor: pointer;
+  background: transparent;
+  color: var(--frame-ink);
+  transition: var(--t-base);
+}
+.medallion:hover {
+  background: var(--gold-soft);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 12px var(--glow);
+  transform: translateY(-1px);
+}
+.medallion:active {
+  transform: translateY(0) scale(0.88);
+  box-shadow: 0 0 0 1px var(--gold), 0 0 4px var(--glow);
+  filter: brightness(0.92);
+}
+.medallion.active {
+  background: var(--gold);
+  color: var(--frame-2);
+  box-shadow: 0 0 12px var(--glow);
+}
+.medallion.win {
+  width: 22px;
+  height: 22px;
+}
+.medallion.small {
+  width: 24px;
+  height: 24px;
+}
+.medallion.close:hover {
+  background: #b4533f;
+  color: #fff6ee;
+  border-color: #b4533f;
+}
+.medallion:disabled {
+  opacity: 0.4;
+  cursor: default;
+  pointer-events: none;
+}
+
+/* Iron body under the arch, holding the page. */
+.cy-body {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--frame);
+  border-radius: 0 0 16px 16px;
+  transition: background 0.5s ease;
+}
+.cy-page {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 0 7px;
+  background: var(--paper);
+  border-top: 1px solid var(--gold-line);
+  border-radius: 2px 2px 8px 8px;
+  overflow: hidden;
+  transition: background 0.5s ease;
+}
+.cy-page-rule {
+  position: absolute;
+  inset: 7px;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  pointer-events: none;
+  z-index: 1;
+}
+.cy-vignette {
+  position: absolute;
+  z-index: 2;
+  pointer-events: none;
+}
+.cy-vignette path {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 1.1;
+  stroke-linecap: round;
+}
+.cy-vignette.tl {
+  left: 4px;
+  top: 4px;
+}
+.cy-vignette.tr {
+  right: 4px;
+  top: 4px;
+  transform: scaleX(-1);
+}
+.cy-vignette.bl {
+  left: 4px;
+  bottom: 4px;
+  transform: scaleY(-1);
+}
+.cy-vignette.br {
+  right: 4px;
+  bottom: 4px;
+  transform: scale(-1, -1);
+}
+
+.cy-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 14px;
+  transform: translateX(-50%);
+  z-index: 40;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--frame);
+  color: var(--frame-ink);
+  border: 1px solid var(--gold-line);
+  font-size: 12.5px;
+  white-space: nowrap;
+  box-shadow: 0 6px 16px var(--shadow);
+  pointer-events: none;
+}
+.cy-toast > span {
+  display: block;
+  animation: cyRise 0.25s ease;
+}
+
+/* Empty states: a swaying sprout over a title and an italic line. */
+.cy-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  text-align: center;
+  pointer-events: none;
+  animation: cyFade 0.6s ease;
+}
+.cy-empty svg {
+  transform-origin: 50% 90%;
+  animation: cySway 6s ease-in-out infinite;
+}
+.cy-empty-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--ink-soft);
+  letter-spacing: 0.03em;
+}
+.cy-empty-hint {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13.5px;
+  color: var(--ink-faint);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-name: cyFade !important;
+    animation-iteration-count: 1 !important;
+    transition-property: background, color, border-color, opacity, fill !important;
+  }
 }

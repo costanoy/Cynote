@@ -12,14 +12,27 @@ void main() {
         Note(id: 't3', title: 'Roteiro: Vídeo IA', time: 'Seg, 09:15', body: 'Conteudo de teste 3'),
       ];
 
-  Future<void> goToHome(WidgetTester tester) async {
+  // The interface has ambient animations that never end (breathing lamp,
+  // swaying sprout); with reduced motion on they hold still, so
+  // pumpAndSettle can settle.
+  Future<void> pumpApp(WidgetTester tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    // A phone-sized screen, like the one the layout is designed for.
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await tester.pumpWidget(CynoteApp(initialNotes: testNotes()));
+  }
+
+  Future<void> goToHome(WidgetTester tester) async {
+    await pumpApp(tester);
     await tester.tap(find.text('Continuar sem sincronizar'));
     await tester.pumpAndSettle();
   }
 
   testWidgets('Sync screen shows sync prompt and can be skipped to home', (tester) async {
-    await tester.pumpWidget(CynoteApp(initialNotes: testNotes()));
+    await pumpApp(tester);
 
     expect(find.text('Sincronize com seu computador'), findsOneWidget);
     expect(find.text('Cynote'), findsNothing);
@@ -42,8 +55,9 @@ void main() {
     await tester.enterText(find.byType(TextField), 'Roteiro');
     await tester.pumpAndSettle();
 
-    expect(find.text('Roteiro: Vídeo IA'), findsOneWidget);
-    expect(find.text('Bloquinho'), findsNothing);
+    // Search results highlight the match, so the title is rich text.
+    expect(find.text('Roteiro: Vídeo IA', findRichText: true), findsOneWidget);
+    expect(find.text('Bloquinho', findRichText: true), findsNothing);
 
     await tester.enterText(find.byType(TextField), 'xyz-not-found');
     await tester.pumpAndSettle();
