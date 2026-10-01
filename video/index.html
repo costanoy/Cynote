@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<title>Cynote — vídeo</title>
+<link rel="stylesheet" href="/desktop/node_modules/@fontsource/marcellus/400.css">
+<link rel="stylesheet" href="/desktop/node_modules/@fontsource-variable/literata/opsz.css">
+<link rel="stylesheet" href="/desktop/node_modules/@fontsource-variable/literata/opsz-italic.css">
+<link rel="stylesheet" href="/desktop/node_modules/@fontsource/jost/400.css">
+<link rel="stylesheet" href="/desktop/node_modules/@fontsource/jost/500.css">
+<link rel="stylesheet" href="/desktop/node_modules/@fontsource/jetbrains-mono/400.css">
+<style>
+  /* A 1920x1080 stage. Every frame is drawn by render(t) below: nothing runs
+     on its own clock, so rendering frame N always gives the same picture. */
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; }
+  body { background: var(--wall); }
+  * { box-sizing: border-box; }
+  .serif { font-family: "Marcellus", serif; }
+  .body { font-family: "Literata Variable", serif; }
+  .ui { font-family: "Jost", sans-serif; }
+  #stage { position: relative; width: 1920px; height: 1080px; overflow: hidden;
+    background: radial-gradient(1200px 700px at 50% 38%, var(--glow-wall), transparent 70%), var(--wall); }
+  .abs { position: absolute; left: 0; top: 0; transform-origin: 50% 50%; will-change: transform, opacity; }
+
+  /* Opening arch */
+  #arch { width: 1500px; height: 140px; }
+  #arch path { fill: none; vector-effect: none; stroke: var(--gold); stroke-linecap: round; }
+  #lamp { width: 22px; height: 22px; border-radius: 50%; background: var(--gold); }
+
+  /* The medallion */
+  .medal { position: relative; border-radius: 50%; background: var(--frame); border: 3px solid var(--gold);
+    display: grid; place-items: center; }
+  .medal::before { content: ""; position: absolute; inset: 9%; border-radius: 50%; border: 2px solid var(--gold-line); }
+  .medal span { font-family: "Marcellus", serif; color: var(--gold); line-height: 1; margin-left: -3%; }
+  .medal svg { position: absolute; }
+
+  /* Captions */
+  .cap-title { font-family: "Marcellus", serif; color: var(--ink); letter-spacing: .02em; line-height: 1.12; }
+  .cap-sub { font-family: "Literata Variable", serif; font-style: italic; color: var(--ink-soft); }
+  .vine-u path { fill: none; stroke: var(--gold); stroke-width: 2.4; stroke-linecap: round; }
+
+  /* Keycaps */
+  .keys { display: flex; align-items: center; justify-content: center; gap: 26px; }
+  .key { min-width: 150px; height: 120px; padding: 0 34px; border-radius: 22px; background: var(--frame);
+    border: 2px solid var(--gold-line); color: var(--frame-ink); font: 500 40px "Jost", sans-serif;
+    display: grid; place-items: center; box-shadow: 0 10px 0 var(--frame-2), 0 18px 30px var(--shadow); }
+  .plus { font: 400 48px "Jost", sans-serif; color: var(--gold); }
+
+  /* ---------- the Cynote window (drawn at app size, scaled up) ---------- */
+  #win { width: 680px; height: 560px; display: flex; flex-direction: column; filter: drop-shadow(0 30px 40px var(--shadow)); }
+  .arch { position: relative; height: 56px; flex: none; }
+  .arch svg.shape { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; }
+  .arch .iron { fill: var(--frame); } .arch .fillet { fill: none; stroke: var(--gold-line); stroke-width: 1; }
+  .lampdot { position: absolute; left: 50%; top: 3px; width: 7px; height: 7px; margin-left: -3.5px; border-radius: 50%; background: var(--gold); box-shadow: 0 0 10px var(--glow); }
+  .strip { position: absolute; left: 10px; right: 8px; bottom: 3px; height: 30px; display: flex; align-items: center; gap: 6px; }
+  .med { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--gold-line); display: grid; place-items: center; color: var(--frame-ink); flex: none; }
+  .med.win { width: 22px; height: 22px; }
+  .brand { font-family: "Marcellus", serif; font-size: 15px; letter-spacing: .1em; color: var(--frame-ink); margin: 0 4px 0 2px; }
+  .body-iron { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--frame); border-radius: 0 0 16px 16px; }
+  .tabs { display: flex; align-items: flex-end; gap: 5px; height: 36px; padding: 0 10px; }
+  .tab { position: relative; height: 26px; padding: 0 14px; display: flex; align-items: center; border: 1.5px solid var(--lead); border-bottom: none;
+    border-radius: 9px 9px 0 0; font: 400 12.5px "Jost", sans-serif; color: var(--frame-ink); white-space: nowrap; }
+  .tab.on { height: 30px; margin-bottom: -1px; color: #1B261F; font-weight: 500; }
+  .page { position: relative; flex: 1; min-height: 0; margin: 0 7px; background: var(--paper); border-top: 1px solid var(--gold-line); border-radius: 2px 2px 8px 8px; overflow: hidden; }
+  .rule { position: absolute; inset: 7px; border: 1px solid var(--rule); border-radius: 3px; }
+  .text { position: absolute; left: 46px; right: 30px; top: 24px; font: 15px/1.65 "Literata Variable", serif; color: var(--ink); white-space: pre-wrap; }
+  .caret { display: inline-block; width: 2px; height: 1.2em; margin: 0 -1px; vertical-align: -0.2em; border-radius: 1px; }
+  .hl { background: var(--match); border-radius: 3px; }
+  .hl.cur { background: var(--match-cur); box-shadow: 0 0 0 1px var(--match-cur-ring); }
+  .find { position: absolute; top: 14px; right: 20px; display: flex; align-items: center; gap: 5px; padding: 6px; background: var(--frame);
+    border: 1px solid var(--gold-line); border-radius: 14px 14px 10px 10px; box-shadow: 0 10px 24px var(--shadow); font: 12px "Jost", sans-serif; color: var(--frame-ink-soft); }
+  .find .field { width: 130px; height: 26px; padding: 0 9px; border: 1px solid var(--gold); border-radius: 8px; background: var(--field); color: var(--ink);
+    font: 13px/24px "Jost", sans-serif; box-shadow: 0 0 0 3px var(--gold-soft); }
+  .sketch { position: absolute; inset: 0; background-color: var(--paper-2); background-image: radial-gradient(var(--rule) 0.8px, transparent 0.8px); background-size: 16px 16px; }
+  .sketch .head { position: absolute; left: 18px; top: 12px; font: 16px "Marcellus", serif; color: var(--ink); }
+  .sketch .head i { font: italic 12.5px "Literata Variable", serif; color: var(--ink-faint); margin-left: 8px; }
+  .sketch .foot { position: absolute; left: 0; right: 0; bottom: 0; height: 48px; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: var(--paper); border-top: 1px solid var(--rule); }
+  .sw { width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--lead); }
+  .pill { height: 28px; padding: 0 14px; border-radius: 999px; font: 12.5px/28px "Jost", sans-serif; }
+  .status { height: 30px; display: flex; align-items: center; gap: 14px; padding: 0 14px 1px 16px; font: 11.5px "Jost", sans-serif; color: var(--frame-ink-soft); }
+
+  /* ---------- the phone ---------- */
+  #phone { width: 390px; height: 844px; border: 10px solid #121714; border-radius: 50px; overflow: hidden; background: var(--paper-2);
+    background-image: radial-gradient(var(--rule) .8px, transparent .8px); background-size: 18px 18px; box-shadow: 0 0 0 1px #2c3530, 0 30px 50px var(--shadow); }
+  .ph-head { background: var(--frame); padding-top: 34px; }
+  .ph-row { height: 60px; display: flex; align-items: center; gap: 10px; padding: 0 12px 0 18px; }
+  .ph-row .t { flex: 1; font: 22px "Marcellus", serif; letter-spacing: .1em; color: var(--frame-ink); }
+  .ph-med { width: 44px; height: 44px; border-radius: 50%; border: 1px solid var(--gold-line); display: grid; place-items: center; }
+  .ph-arc { display: block; width: 100%; height: 22px; margin-top: -1px; }
+  .card { margin: 0 16px 12px; padding: 16px 18px 16px 20px; background: var(--paper); border: 1px solid var(--rule); border-radius: 6px 18px 6px 18px; }
+  .card .row { display: flex; align-items: center; gap: 10px; }
+  .card .bead { width: 11px; height: 11px; border-radius: 50%; border: 1.2px solid var(--lead); flex: none; }
+  .card .tt { flex: 1; font: 17px "Marcellus", serif; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .card .tm { font: 12px "Jost", sans-serif; color: var(--ink-faint); }
+  .card .pv { margin-top: 6px; padding-left: 21px; font: 13.5px/1.5 "Literata Variable", serif; color: var(--ink-soft); }
+  .ph-foot { position: absolute; left: 0; right: 0; bottom: 0; height: 70px; background: var(--frame); display: flex; align-items: center; padding: 0 20px 14px; gap: 8px; }
+  .syncpill { display: flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px 0 8px; border: 1px solid var(--gold-line); border-radius: 999px; font: 13px "Jost", sans-serif; color: var(--frame-ink-soft); }
+
+  /* ---------- Dashnotes wall ---------- */
+  .pane { position: absolute; width: 210px; height: 236px; border: 2.5px solid var(--lead); border-radius: 105px 105px 14px 14px; overflow: hidden; }
+  .pane .shine { position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,.45), rgba(255,255,255,0) 45%), radial-gradient(90% 60% at 50% 8%, rgba(255,244,205,.6), rgba(255,244,205,0) 70%); }
+  .pane .mv { position: absolute; left: 50%; top: 0; width: 2.5px; height: 140px; margin-left: -1.25px; background: var(--lead); }
+  .pane .mh { position: absolute; left: 0; right: 0; top: 84px; height: 2.5px; background: var(--lead); }
+  .pane .bead { position: absolute; left: 50%; top: 64px; width: 42px; height: 42px; margin-left: -21px; border-radius: 50%; border: 2.5px solid var(--lead); }
+  .pane .plate { position: absolute; left: 0; right: 0; bottom: 0; height: 96px; padding: 14px 18px; background: var(--paper); border-top: 2.5px solid var(--lead); }
+  .pane .plate b { display: block; font: 400 25px "Marcellus", serif; color: var(--ink); }
+  .pane .plate small { font: 18px "Jost", sans-serif; color: var(--ink-faint); }
+</style>
+</head>
+<body>
+<div id="stage">
+  <!-- opening arch -->
+  <svg id="arch" class="abs" viewBox="0 0 600 56">
+    <!-- Drawn from both ends toward the lamp: two halves of the arch. -->
+    <path id="archPath" d="M14 50 V22 Q14 14.5 24 14.5 H190 C245 14.5 262 4.5 300 4.5" style="stroke-width:1.2"/>
+    <path id="archPath2" d="M586 50 V22 Q586 14.5 576 14.5 H410 C355 14.5 338 4.5 300 4.5" style="stroke-width:1.2"/>
+    <path id="archVines" d="M262 9 C250 2 236 17 222 10 C214 6 210 13 215 15 M338 9 C350 2 364 17 378 10 C386 6 390 13 385 15" style="stroke-width:.8"/>
+  </svg>
+  <div id="lamp" class="abs"></div>
+  <div id="medal" class="abs medal"><span></span><svg viewBox="-4 -4 8 8"><path d="M0 -3.5 C2.6 -1.8 2.6 1.8 0 3.5 C-2.6 1.8 -2.6 -1.8 0 -3.5 Z" fill="var(--accent)" transform="rotate(35)"/></svg></div>
+  <div id="brand" class="abs serif" style="text-align:center;width:900px;font-size:92px;letter-spacing:.12em;color:var(--ink);white-space:nowrap">Cynote</div>
+  <div id="tagline" class="abs body" style="text-align:center;width:900px;font-size:40px;font-style:italic;color:var(--ink-soft);white-space:nowrap">notas que crescem.</div>
+  <div id="platforms" class="abs ui" style="text-align:center;width:900px;font-size:26px;letter-spacing:.22em;text-transform:uppercase;color:var(--gold);white-space:nowrap">Windows e Android · grátis</div>
+
+  <!-- "an idea" + shortcut -->
+  <div id="idea" class="abs cap-title" style="text-align:center;width:900px;font-size:84px;white-space:nowrap">Uma ideia aparece.</div>
+  <div id="keys" class="abs keys" style="width:1050px"><div class="key">Ctrl</div><div class="plus">+</div><div class="key">Shift</div><div class="plus">+</div><div class="key" style="min-width:330px">Space</div></div>
+  <div id="keysHint" class="abs cap-sub" style="text-align:center;width:700px;font-size:34px;white-space:nowrap">e o Cynote está ali, na hora.</div>
+
+  <!-- captions -->
+  <div id="cap" class="abs" style="width:560px">
+    <div id="capTitle" class="cap-title" style="font-size:64px"></div>
+    <svg class="vine-u" width="230" height="16" viewBox="0 0 130 8" style="margin:14px 0 18px"><path id="capVine" d="M1 5 C30 -1 52 9 84 4 C100 1.5 112 2.5 128 5" pathLength="1" stroke-dasharray="1 1"/></svg>
+    <div id="capSub" class="cap-sub" style="font-size:32px;line-height:1.45"></div>
+  </div>
+
+  <!-- the window -->
+  <div id="win" class="abs">
+    <div class="arch">
+      <svg class="shape" viewBox="0 0 600 56" preserveAspectRatio="none">
+        <path class="iron" d="M0 56 V22 Q0 11 14 11 H190 C245 11 262 1 300 1 C338 1 355 11 410 11 H586 Q600 11 600 22 V56 Z"/>
+        <path class="fillet" d="M14 14.5 H190 C245 14.5 262 4.5 300 4.5 C338 4.5 355 14.5 410 14.5 H586" vector-effect="non-scaling-stroke"/>
+      </svg>
+      <div class="lampdot"></div>
+      <div class="strip">
+        <div class="medal" style="width:24px;height:24px;border-width:1px"><span style="font-size:14px">C</span></div>
+        <span class="brand">Cynote</span>
+        <div class="med"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 5h10M3 8h10M3 11h6"/></svg></div>
+        <div style="flex:1"></div>
+        <div class="med" id="quill"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M13.5 2.5C8 2.5 4.5 6.5 3 13.5"/><path d="M13.5 2.5C13.5 7 10.5 10 6 10.5"/></svg></div>
+        <div class="med"><svg width="15" height="15" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h6.2M11.8 4H14M2 8h1.2M6.8 8H14M2 12h7.2M12.8 12H14"/><circle cx="10" cy="4" r="1.8"/><circle cx="5" cy="8" r="1.8"/><circle cx="11" cy="12" r="1.8"/></svg></div>
+        <div class="med"><svg width="14" height="14" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6 2h4l-.8 4 2.8 3H4l2.8-3z"/><path d="M8 9v5"/></svg></div>
+        <div style="width:1px;height:18px;margin:0 3px;background:var(--gold-line)"></div>
+        <div class="med win"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 8.5h8"/></svg></div><div class="med win"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M4 13.5V7.5a4 4 0 0 1 8 0v6z"/></svg></div><div class="med win"><svg width="10" height="10" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4.5 4.5l7 7M11.5 4.5l-7 7"/></svg></div>
+      </div>
+    </div>
+    <div class="body-iron">
+      <div class="tabs" id="tabs"></div>
+      <div class="page">
+        <div class="rule"></div>
+        <div class="text" id="text"></div>
+        <div class="find" id="find"><div class="field" id="findField"></div><b style="font-weight:600;color:var(--frame-ink);padding:0 4px">Aa</b><span id="findCount" style="min-width:56px;text-align:center"></span></div>
+        <div class="sketch" id="sketch">
+          <div class="head">Note Styling<i>caderno de botânica</i></div>
+          <svg width="666" height="400" viewBox="0 0 666 400" style="position:absolute;left:0;top:40px">
+            <path id="drawStem" d="M250 330 C268 270 300 220 330 120" fill="none" stroke="#4E8A4A" stroke-width="3.2" stroke-linecap="round" pathLength="1"/>
+            <path id="drawLeafA" d="M292 236 C250 230 214 200 206 158 C252 160 286 192 292 236" fill="none" stroke="#4E8A4A" stroke-width="3" stroke-linecap="round" pathLength="1"/>
+            <path id="drawLeafB" d="M312 180 C352 170 382 136 384 96 C342 104 316 138 312 180" fill="none" stroke="#2E6F7C" stroke-width="3" stroke-linecap="round" pathLength="1"/>
+            <path id="drawSun" d="M470 120 m-34 0 a34 34 0 1 0 68 0 a34 34 0 1 0 -68 0" fill="none" stroke="#C98A2E" stroke-width="3" stroke-linecap="round" pathLength="1"/>
+          </svg>
+          <div class="foot"><div class="sw" style="background:#4E8A4A;box-shadow:0 0 0 2px var(--paper),0 0 0 3.5px var(--gold)"></div><div class="sw" style="background:#2E6F7C"></div><div class="sw" style="background:#A65A3A"></div><div class="sw" style="background:#C98A2E"></div><div style="flex:1"></div><div class="pill" style="border:1px solid var(--field-border);color:var(--ink)">Cancelar</div><div class="pill" id="insertBtn" style="background:var(--accent);color:var(--accent-ink);font-weight:500">Inserir no texto</div></div>
+        </div>
+      </div>
+      <div class="status"><span id="lncol">Ln 1, Col 1</span><span id="chars">0 caracteres</span><div style="flex:1"></div><span>− 100% +</span><span id="winFlower"></span><span>Sincronizado</span></div>
+    </div>
+  </div>
+
+  <!-- the phone -->
+  <div id="phone" class="abs">
+    <div class="ph-head"><div class="ph-row"><div class="medal" style="width:32px;height:32px;border-width:1px"><span style="font-size:18px">C</span></div><span class="t">Cynote</span><div class="ph-med"><svg width="18" height="18" viewBox="0 0 16 16" fill="none" stroke="var(--frame-ink)" stroke-width="1.5" stroke-linecap="round"><circle cx="7" cy="7" r="4.5"/><path d="M10.4 10.4L14 14"/></svg></div><div class="ph-med"><svg width="19" height="19" viewBox="0 0 16 16" fill="none" stroke="var(--frame-ink)" stroke-width="1.4" stroke-linecap="round"><path d="M2 4h6.2M11.8 4H14M2 8h1.2M6.8 8H14M2 12h7.2M12.8 12H14"/><circle cx="10" cy="4" r="1.8"/><circle cx="5" cy="8" r="1.8"/><circle cx="11" cy="12" r="1.8"/></svg></div></div></div>
+    <svg class="ph-arc" viewBox="0 0 370 22" preserveAspectRatio="none"><path d="M0 0 H370 V6 C286 6 238 20 185 20 C132 20 84 6 0 6 Z" fill="var(--frame)"/><path d="M0 2.5 C84 2.5 132 16.5 185 16.5 C238 16.5 286 2.5 370 2.5" fill="none" stroke="var(--gold-line)" vector-effect="non-scaling-stroke"/></svg>
+    <div style="height:14px"></div>
+    <div id="cards"></div>
+    <div class="ph-foot"><div class="syncpill"><span id="phFlower"></span><span>Sincronizado</span></div></div>
+  </div>
+
+  <!-- the vine between computer and phone -->
+  <svg id="link" class="abs" width="1920" height="1080" viewBox="0 0 1920 1080" style="transform:none">
+    <path id="linkPath" d="M1112 640 C1160 780 1230 780 1282 640" fill="none" stroke="var(--gold)" stroke-width="5" stroke-linecap="round" pathLength="1" stroke-dasharray="1 1"/>
+    <circle id="linkSpark" r="9" fill="var(--gold)"/>
+  </svg>
+
+  <!-- Dashnotes wall -->
+  <div id="wall" class="abs" style="width:1920px;height:1080px;transform:none"></div>
+</div>
+
+<script>
+// ------------------------------------------------------------- colors
+const LIGHT = { wall:'#E4DECB', 'glow-wall':'rgba(255,240,200,.55)', frame:'#37604F', 'frame-2':'#274A3C', 'frame-ink':'#F3EBD3', 'frame-ink-soft':'#C3D3BC', gold:'#C9A04E', 'gold-line':'rgba(226,190,110,.55)', 'gold-soft':'rgba(226,190,110,.22)', glow:'rgba(240,200,110,.45)', paper:'#FBF6E9', 'paper-2':'#F2EAD5', rule:'#DCCDA6', ink:'#2A2A22', 'ink-soft':'#645F4C', 'ink-faint':'#9C957C', accent:'#3D7A4C', 'accent-ink':'#FFFDF4', petrol:'#2E6470', match:'rgba(143,184,120,.40)', 'match-cur':'#EBC46C', 'match-cur-ring':'#B8893A', lead:'#1C3027', shadow:'rgba(38,52,32,.30)', field:'#FFFDF6', 'field-border':'#CFBF97', g0:'#A9CB8F', g1:'#E3B45A', g2:'#7FB2B8', g3:'#9AAAD0' };
+const DARK = { wall:'#070F0C', 'glow-wall':'rgba(226,184,92,.10)', frame:'#10211A', 'frame-2':'#0A1712', 'frame-ink':'#EADFC2', 'frame-ink-soft':'#91A58E', gold:'#E2B85C', 'gold-line':'rgba(226,184,92,.55)', 'gold-soft':'rgba(226,184,92,.18)', glow:'rgba(236,190,90,.55)', paper:'#15251E', 'paper-2':'#1B2E26', rule:'#2F4A3D', ink:'#E9E2CC', 'ink-soft':'#AEB49E', 'ink-faint':'#6F7F6D', accent:'#86B96F', 'accent-ink':'#0E1C16', petrol:'#7FC2CA', match:'rgba(134,185,111,.30)', 'match-cur':'rgba(226,184,92,.72)', 'match-cur-ring':'#E2B85C', lead:'#040A08', shadow:'rgba(0,0,0,.55)', field:'#0E1D17', 'field-border':'#39584A', g0:'#8CC474', g1:'#E5A945', g2:'#62A7B0', g3:'#8397C9' };
+function parse(c) {
+  if (c[0] === '#') return [parseInt(c.slice(1,3),16), parseInt(c.slice(3,5),16), parseInt(c.slice(5,7),16), 1];
+  const m = c.match(/[\d.]+/g).map(Number); return [m[0], m[1], m[2], m[3] ?? 1];
+}
+const PL = {}, PD = {};
+for (const k in LIGHT) { PL[k] = parse(LIGHT[k]); PD[k] = parse(DARK[k]); }
+function setTheme(n) { // 0 = day, 1 = night
+  const root = document.documentElement.style;
+  for (const k in PL) {
+    const a = PL[k], b = PD[k], m = i => a[i] + (b[i] - a[i]) * n;
+    root.setProperty('--' + k, `rgba(${m(0)|0},${m(1)|0},${m(2)|0},${m(3).toFixed(3)})`);
+  }
+}
+
+// ------------------------------------------------------------- timing helpers
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const outCubic = x => 1 - Math.pow(1 - x, 3);
+const inOut = x => x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2;
+const outBack = x => { const c1 = 1.4, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+// Fades in over [a,b] and out over [c,d].
+const fade = (t, a, b, c, d) => Math.min(seg(t, a, b), 1 - seg(t, c, d));
+const lerp = (a, b, x) => a + (b - a) * x;
+const $ = id => document.getElementById(id);
+
+function place(el, cx, cy, w, h, s = 1, o = 1, rot = 0) {
+  el.style.transform = `translate(${cx - w / 2}px, ${cy - h / 2}px) scale(${s}) rotate(${rot}deg)`;
+  el.style.opacity = o;
+  el.style.visibility = o <= 0.001 ? 'hidden' : 'visible';
+}
+
+// ------------------------------------------------------------- content
+const NOTE = 'Estufa — ideias para o fim de semana\n\nRegar as samambaias antes das 9h.\nTrocar o vaso da costela-de-adão.\nComprar sementes: manjericão, capuchinha, girassol.\n\nLigar para a Clara sobre a feira de mudas.';
+const TABS = [['Estufa', 'g0'], ['Receitas', 'g1'], ['Leituras', 'g2'], ['Projetos', 'g3']];
+const CARDS = [['Estufa — fim de semana', '09:12', 'g0', 'Regar as samambaias antes das 9h · Trocar o vaso da costela-de-adão'],
+  ['Pão de fermentação natural', 'Ontem', 'g1', '500 g de farinha · 350 ml de água morna · 100 g de levain'],
+  ['Leituras 2026', 'Seg', 'g2', '— A casa de vidro · — O jardim secreto · — Ecotopia'],
+  ['Painéis solares', '3 set', 'g3', 'Três orçamentos até sexta · Medir a área do telhado'],
+  ['Oficina de bicicleta', '12 set', 'g0', 'Trocar a corrente e regular o câmbio traseiro']];
+const FOLDERS = [['Estufa', '6 notas', 'g0'], ['Cozinha', '4 notas', 'g1'], ['Leituras', '3 notas', 'g2'], ['Projetos', '8 notas', 'g3'], ['Viagens', '2 notas', 'g1'], ['Arquivo', '12 notas', 'g2']];
+
+$('cards').innerHTML = CARDS.map(([t, tm, g, pv]) => `<div class="card"><div class="row"><span class="bead" style="background:var(--${g})"></span><span class="tt">${t}</span><span class="tm">${tm}</span></div><div class="pv">${pv}</div></div>`).join('');
+$('wall').innerHTML = FOLDERS.map(([n, m, g], i) => `<div class="pane" id="pane${i}" style="background:color-mix(in oklab, var(--${g}) 88%, var(--paper))"><div class="shine"></div><div class="mv"></div><div class="mh"></div><div class="bead" style="background:var(--g${(i + 1) % 4})"></div><div class="plate"><b>${n}</b><small>${m}</small></div></div>`).join('');
+
+const OPEN = 'M0 4 C-1.5 -1.5 -6 -4 -9.5 -3 C-8 2 -4 4.5 0 4 Z M0 4 C1.5 -1.5 6 -4 9.5 -3 C8 2 4 4.5 0 4 Z M0 4 C-2 -1 -1.4 -6 0 -9 C1.4 -6 2 -1 0 4 Z';
+const BUD = 'M0 -8 C4.5 -3.5 4.5 2.5 0 5 C-4.5 2.5 -4.5 -3.5 0 -8 Z';
+// The sync flower: a pulsing bud until `bloomAt`, then the three leaves open.
+function flower(t, bloomAt, size) {
+  if (t < bloomAt) {
+    const p = (Math.sin(t * Math.PI * 2 / 1.2) + 1) / 2;
+    return `<svg width="${size}" height="${size}" viewBox="-10 -10 20 20" style="overflow:visible;vertical-align:middle"><g transform="scale(${.88 + .16 * p})" opacity="${.75 + .25 * p}"><path d="${BUD}" fill="var(--gold)"/></g></svg>`;
+  }
+  const e = outBack(seg(t, bloomAt, bloomAt + .6));
+  return `<svg width="${size}" height="${size}" viewBox="-10 -10 20 20" style="overflow:visible;vertical-align:middle"><g transform="rotate(${-60 * (1 - e)}) scale(${.15 + .85 * e})"><path d="${OPEN}" fill="var(--gold)"/><path d="M0 4 V9.5" stroke="var(--gold)" stroke-width="1.3" stroke-linecap="round"/></g></svg>`;
+}
+
+const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+
+// Draws the note text with optional extra carets, search highlights and the main caret.
+function drawText(text, { carets = [], marks = [], cur = -1, caretOn = true, mainCaret = null } = {}) {
+  const points = new Set([0, text.length, ...carets, ...marks.flatMap(m => m)]);
+  if (mainCaret !== null) points.add(mainCaret);
+  const pts = [...points].sort((a, b) => a - b);
+  let html = '';
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    if (carets.includes(p) && caretOn) html += '<span class="caret" style="background:var(--petrol)"></span>';
+    if (mainCaret === p && caretOn) html += '<span class="caret" style="background:var(--ink)"></span>';
+    if (i < pts.length - 1) {
+      const q = pts[i + 1], chunk = esc(text.slice(p, q));
+      const mi = marks.findIndex(([a, b]) => a <= p && b >= q);
+      html += mi >= 0 ? `<span class="hl${mi === cur ? ' cur' : ''}">${chunk}</span>` : chunk;
+    }
+  }
+  $('text').innerHTML = html;
+}
+
+// ------------------------------------------------------------- the timeline
+function render(t) {
+  // Day for most of the film; the greenhouse turns to night at 34.5-36.5 s.
+  setTheme(inOut(seg(t, 34.5, 36.5)));
+
+  // 0-5 s: the arch draws itself, the lamp lights, the medallion blooms.
+  const outOpen = seg(t, 4.6, 5.3);
+  const archDraw = outCubic(seg(t, 0.2, 2.6));
+  ['archPath', 'archPath2'].forEach(id => {
+    $(id).setAttribute('pathLength', '1'); $(id).setAttribute('stroke-dasharray', '1');
+    $(id).setAttribute('stroke-dashoffset', 1 - archDraw);
+  });
+  $('archVines').setAttribute('pathLength', '1'); $('archVines').setAttribute('stroke-dasharray', '1');
+  $('archVines').setAttribute('stroke-dashoffset', 1 - outCubic(seg(t, 1.8, 3.2)));
+  place($('arch'), 960, 300, 1500, 140, 1, 1 - outOpen);
+  const lampOn = seg(t, 3.0, 3.5);
+  place($('lamp'), 960, 240, 22, 22, .3 + .7 * outBack(lampOn), lampOn * (1 - outOpen));
+  $('lamp').style.boxShadow = `0 0 ${30 + 20 * Math.sin(t * 1.6)}px 6px var(--glow)`;
+
+  // The medallion: opening (3.4 s) and closing (40.3 s) appearances.
+  const mIn = outBack(seg(t, 3.4, 4.3)), mEnd = outBack(seg(t, 40.3, 41.3));
+  const medalSize = 260;
+  const medal = $('medal');
+  medal.style.width = medal.style.height = medalSize + 'px';
+  medal.querySelector('span').textContent = 'C';
+  medal.querySelector('span').style.fontSize = medalSize * .56 + 'px';
+  Object.assign(medal.querySelector('svg').style, { width: medalSize * .28 + 'px', height: medalSize * .28 + 'px', right: medalSize * .16 + 'px', top: medalSize * .19 + 'px' });
+  medal.style.boxShadow = `0 0 ${40 + 18 * Math.sin(t * 1.6)}px var(--glow)`;
+  if (t < 20) place(medal, 960, 560, medalSize, medalSize, .2 + .8 * mIn, seg(t, 3.4, 3.8) * (1 - outOpen), -60 * (1 - mIn));
+  else place(medal, 960, 430, medalSize, medalSize, .2 + .8 * mEnd, seg(t, 40.3, 40.7), -60 * (1 - mEnd));
+
+  // Wordmark: opening (4.0 s, briefly) and the end card (41 s).
+  const brandO = t < 20 ? fade(t, 3.9, 4.4, 4.6, 5.3) : seg(t, 41.0, 41.8);
+  place($('brand'), 960, t < 20 ? 780 : 680, 900, 110, 1, brandO);
+  place($('tagline'), 960, 770, 900, 60, 1, seg(t, 41.6, 42.4));
+  place($('platforms'), 960, 850, 900, 40, 1, seg(t, 42.2, 43.0));
+
+  // 5-9.5 s: "Uma ideia aparece." then the shortcut on brass keys.
+  const ideaO = fade(t, 5.3, 6.0, 9.2, 9.7);
+  place($('idea'), 960, lerp(560, 400, outCubic(seg(t, 6.6, 7.4))), 900, 100, 1, ideaO);
+  const keysO = fade(t, 6.8, 7.4, 9.2, 9.7);
+  const press = fade(t, 7.85, 7.95, 8.2, 8.4);
+  place($('keys'), 960, 610, 1050, 140, outBack(seg(t, 6.8, 7.5)) * (1 - .06 * press), keysO);
+  document.querySelectorAll('.key').forEach(k => { k.style.boxShadow = `0 ${10 - 7 * press}px 0 var(--frame-2), 0 18px 30px var(--shadow), 0 0 ${50 * press}px var(--glow)`; k.style.borderColor = press > .5 ? 'var(--gold)' : 'var(--gold-line)'; });
+  place($('keysHint'), 960, 760, 700, 50, 1, fade(t, 8.3, 8.9, 9.2, 9.7));
+
+  // Captions, one per scene.
+  const CAPS = [
+    [9.8, 14.4, 'Sempre à mão', 'Fica na bandeja do Windows e aparece com um atalho. Pode ficar fixado por cima de tudo.', 'left'],
+    [15.0, 18.0, 'Vários cursores', 'Escreva em várias linhas de uma vez, como num editor de código.', 'left'],
+    [18.0, 21.0, 'Localizar e substituir', 'Encontre qualquer palavra em todas as suas notas abertas.', 'left'],
+    [21.0, 24.4, 'Desenhe na nota', 'Um caderno de botânica para rabiscar e colar o desenho no texto.', 'left'],
+    [25.0, 34.0, 'Sincroniza com o celular', 'Pela rede Wi-Fi, sem conta, ou pela internet com um código.', 'top'],
+    [34.4, 37.3, 'De dia e de noite', 'A estufa de manhã ou à noite, com os ornamentos acesos.', 'top'],
+    [37.6, 40.0, 'Dashnotes', 'Todas as notas salvas no computador, como uma parede de vitrais.', 'top'],
+  ];
+  const cap = CAPS.find(c => t >= c[0] - .05 && t < c[1] + .45);
+  if (cap) {
+    const [a, b, title, sub, pos] = cap;
+    $('capTitle').textContent = title; $('capSub').textContent = sub;
+    const o = fade(t, a, a + .45, b, b + .4);
+    const rise = 24 * (1 - outCubic(seg(t, a, a + .6)));
+    $('capVine').setAttribute('stroke-dashoffset', 1 - outCubic(seg(t, a + .2, a + 1.1)));
+    if (pos === 'left') { $('cap').style.width = '560px'; $('cap').style.textAlign = 'left'; $('capSub').style.margin = '0'; place($('cap'), 410, 540 + rise, 560, 300, 1, o); }
+    else { $('cap').style.width = '1400px'; $('cap').style.textAlign = 'center'; $('capSub').style.margin = '0 auto'; place($('cap'), 960, 140 + rise, 1400, 220, 1, o); }
+    $('cap').querySelector('svg').style.display = 'block';
+    $('cap').querySelector('svg').style.margin = pos === 'left' ? '14px 0 18px' : '12px auto 14px';
+  } else place($('cap'), 0, 0, 0, 0, 1, 0);
+
+  // ---- the window: grows in at 9.6 s, slides left for the phone, leaves at 37 s.
+  const wIn = outBack(seg(t, 9.6, 10.6)), wMove = inOut(seg(t, 24.5, 25.8)), wOut = seg(t, 37.0, 37.7);
+  place($('win'), lerp(1230, 660, wMove), lerp(560, 600, wMove), 680, 560, lerp(.6, 1.45, wIn) * lerp(1, .9, wMove) * (1 - .1 * wOut), seg(t, 9.6, 10.0) * (1 - wOut));
+  // Tabs light up one by one, the first ends up active.
+  $('tabs').innerHTML = TABS.map(([name, g], i) => {
+    const lit = seg(t, 11.0 + i * .22, 11.3 + i * .22);
+    const on = i === 0 && t > 11.9;
+    const bg = on ? `linear-gradient(180deg, rgba(255,255,255,.42), rgba(255,255,255,0) 52%), var(--${g})` : `color-mix(in oklab, var(--${g}) ${34 + 50 * fade(t, 11.0 + i * .22, 11.3 + i * .22, 11.5 + i * .22, 11.9 + i * .22)}%, transparent)`;
+    return `<div class="tab${on ? ' on' : ''}" style="background:${bg};opacity:${.35 + .65 * lit};${on ? 'box-shadow:0 0 16px var(--glow)' : ''}">${name}</div>`;
+  }).join('');
+
+  // Text: typed at 12-15 s, then the multicursor edit, search, drawing.
+  const blink = Math.floor(t / 0.53) % 2 === 0;
+  let text = NOTE;
+  const typed = Math.floor(NOTE.length * seg(t, 12.0, 14.8));
+  const lineStart = n => NOTE.split('\n').slice(0, n).join('\n').length + (n > 0 ? 1 : 0);
+  const multi = [lineStart(2), lineStart(3), lineStart(4)];
+  // Multicursor: "— " appears at the start of three lines at once.
+  const dashChars = t < 16.0 ? 0 : t < 16.35 ? 1 : 2;
+  if (t >= 15.0) text = multi.reduceRight((s, p) => s.slice(0, p) + '— '.slice(0, dashChars) + s.slice(p), NOTE);
+  const shifted = multi.map((p, i) => p + dashChars * (i + 1));
+  const findOn = t >= 18.2 && t < 21.0;
+  $('find').style.display = findOn ? 'flex' : 'none';
+  $('find').style.opacity = seg(t, 18.2, 18.5);
+  if (t < 15.0) drawText(NOTE.slice(0, typed), { mainCaret: typed, caretOn: blink || t < 14.8 });
+  else if (t < 18.2) drawText(text, { carets: shifted.slice(0, 2), mainCaret: shifted[2], caretOn: blink || t < 16.6 });
+  else if (findOn) {
+    const q = 'ar'.slice(0, t < 18.6 ? 0 : t < 18.85 ? 1 : 2);
+    const marks = []; if (q) { const low = text.toLowerCase(); let i = 0; while ((i = low.indexOf(q, i)) !== -1) { marks.push([i, i + q.length]); i += q.length; } }
+    const cur = marks.length ? Math.min(marks.length - 1, Math.floor(seg(t, 19.2, 20.8) * 4)) : -1;
+    drawText(text, { marks, cur });
+    $('findField').textContent = q; $('findCount').textContent = marks.length ? `${cur + 1} de ${marks.length}` : '';
+  } else drawText(text, {});
+  const lines = (t < 15 ? NOTE.slice(0, typed) : text).split('\n');
+  $('lncol').textContent = `Ln ${lines.length}, Col ${lines[lines.length - 1].length + 1}`;
+  $('chars').textContent = `${t < 15 ? typed : text.length} caracteres`;
+
+  // Note Styling: the drawing canvas covers the page at 21 s and a sprig is drawn.
+  const skO = fade(t, 21.0, 21.35, 24.0, 24.4);
+  $('sketch').style.opacity = skO; $('sketch').style.display = skO > 0 ? 'block' : 'none';
+  $('quill').style.background = skO > .5 ? 'var(--gold)' : 'transparent';
+  $('quill').style.color = skO > .5 ? 'var(--frame-2)' : 'var(--frame-ink)';
+  [['drawStem', 21.5, 22.3], ['drawLeafA', 22.2, 22.9], ['drawLeafB', 22.8, 23.5], ['drawSun', 23.3, 23.9]].forEach(([id, a, b]) => {
+    const el = $(id); el.setAttribute('stroke-dasharray', '1'); el.setAttribute('stroke-dashoffset', 1 - inOut(seg(t, a, b)));
+  });
+  $('insertBtn').style.filter = `brightness(${1 + .15 * fade(t, 23.9, 24.0, 24.1, 24.3)})`;
+
+  // ---- the phone: slides in at 25 s, a vine links it to the computer, both flowers bloom at 28 s.
+  const pIn = outCubic(seg(t, 25.0, 26.2)), pOut = seg(t, 37.0, 37.7);
+  place($('phone'), lerp(2350, 1440, pIn), 600, 390, 844, .86, (t > 24.9 ? 1 : 0) * (1 - pOut));
+  const linkDraw = inOut(seg(t, 26.3, 27.8));
+  $('linkPath').setAttribute('stroke-dashoffset', 1 - linkDraw);
+  const lp = $('linkPath'), L = lp.getTotalLength();
+  const sp = lp.getPointAtLength(L * linkDraw);
+  $('linkSpark').setAttribute('cx', sp.x); $('linkSpark').setAttribute('cy', sp.y);
+  $('linkSpark').setAttribute('opacity', linkDraw > 0 && linkDraw < 1 ? 1 : 0);
+  $('link').style.opacity = fade(t, 26.3, 26.5, 33.5, 34.2);
+  $('winFlower').innerHTML = flower(t, t < 20 ? 0 : 28.0, 18);
+  $('phFlower').innerHTML = flower(t, 28.0, 20);
+
+  // ---- Dashnotes: a wall of stained-glass folders rising in cascade.
+  FOLDERS.forEach((_, i) => {
+    const a = 37.6 + i * .12, e = outBack(seg(t, a, a + .6));
+    const col = i % 6, x = 960 + (col - 2.5) * 260;
+    place($('pane' + i), x, 640 + 40 * (1 - e), 210, 236, .9 + .1 * e, seg(t, a, a + .3) * (1 - seg(t, 39.8, 40.3)));
+  });
+}
+window.render = render;
+render(0);
+</script>
+</body>
+</html>

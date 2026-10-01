@@ -98,6 +98,15 @@ Fontes (Google Fonts, OFL): **Marcellus** (títulos/logo) · **Literata** (corpo
 - `prototipos/icons/icone-do-app.png` e `logo/` — logo final (gerada pelo cliente no Canva). **A logo não entra dentro do app**; dentro da interface usa-se o medalhão "C" descrito acima.
 - Ornamentos (arco do cabeçalho, vinhetas dos cantos, vinhas, broto, flor da sincronização) são SVG inline nos protótipos — copiar os `path` de lá.
 
+## Site de apresentação: `site/`
+**Diferente dos protótipos, o site já é código final.** HTML, CSS e JS puro, sem framework, pronto para o GitHub Pages. Não recriar: só publicar.
+- Publicar: copiar o conteúdo de `site/` para a pasta `docs/` do repositório (ou para a branch `gh-pages`) e ativar o GitHub Pages em Settings → Pages.
+- Tema: começa pelo do sistema, lembra a escolha manual em `localStorage` (`cynote-tema`).
+- Antes de publicar, conferir:
+  1. Domínio: `cynote.cyberhat.com.br` (arquivo `CNAME` já incluso). No DNS, criar um registro CNAME `cynote` → `costanoy.github.io` e marcar "Enforce HTTPS" no GitHub Pages.
+  2. Botões do Android apontam para `releases/latest`; se o nome do APK for fixo, apontar direto para `releases/latest/download/<nome>.apk`.
+  3. Perguntas frequentes: conferidas com o PORTFOLIO.md (mDNS + HTTP local, peer-to-peer, pareamento com confirmação mútua, merge sem perda).
+
 ## Arquivos
 - `README.md` — este documento
 - `TOKENS-E-ESPECIFICACAO.md` — tokens, estados, movimento, specs por tela (fonte da verdade)
@@ -108,3 +117,4 @@ Fontes (Google Fonts, OFL): **Marcellus** (títulos/logo) · **Literata** (corpo
 - `prototipos/Cynote Bandeja e Icones.dc.html` — bandeja, ícone do app, folha de ícones
 - `prototipos/support.js` — runtime dos protótipos (necessário só para abri-los)
 - `prototipos/icons/`, `logo/` — assets
+- `site/` — site de apresentação e download (código final, pronto para publicar)

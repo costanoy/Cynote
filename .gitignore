@@ -1,1 +1,6 @@
 Cynote-beta-debug.apk
+portfolio-preview/
+video/node_modules/
+video/frames/
+video/out/
+.claude/settings.local.json
