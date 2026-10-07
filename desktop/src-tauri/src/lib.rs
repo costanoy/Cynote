@@ -469,6 +469,7 @@ pub fn run() {
             dashboard::scan_txt_notes,
             dashboard::note_previews,
             dashboard::read_txt_file,
+            dashboard::file_exists,
             dashboard::open_note_in_main,
             identity::get_device_identity,
             sync::list_discovered_devices,

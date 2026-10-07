@@ -20,7 +20,8 @@ import {
 } from "./tauriWindow";
 import { isAutoStartEnabled, setAutoStartEnabled } from "./autostart";
 import { exportNoteAsTxt, saveNoteAsCynote, writeCynoteFile } from "./export";
-import { onOpenNoteFile, readNoteFileRaw, takeStartupFile } from "./dashboardApi";
+import { fileExists, onOpenNoteFile, readNoteFileRaw, takeStartupFile } from "./dashboardApi";
+import { planOpen, samePath } from "./noteFiles";
 import { parseNoteFile } from "./cynoteFormat";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
@@ -479,50 +480,61 @@ function App() {
   // Reached from the Dashboard window: focus the tab if this file is already
   // open, otherwise read it fresh and open it linked (Ctrl+S keeps saving here).
   const openNoteFile = async (path: string) => {
-    const existingIndex = tabsRef.current.findIndex((t) => t.filePath === path);
-    if (existingIndex !== -1) {
-      setActiveTab(existingIndex);
+    const alreadyOpen = tabsRef.current.findIndex((t) => samePath(t.filePath, path));
+    if (alreadyOpen !== -1) {
+      setActiveTab(alreadyOpen);
       return;
     }
     if (!deviceId) return;
     const raw = await readNoteFileRaw(path);
     const { title, body, meta } = parseNoteFile(raw, basenameNoExt(path));
-    // A .cyte file carries its own stable id - reusing it (instead of
-    // minting a fresh one) is what lets the Dashboard and sync recognize
-    // "this file IS that note" across reopens and devices. If it's already
-    // open under a different path (e.g. moved on disk), just focus that tab.
-    if (meta) {
-      const byId = tabsRef.current.findIndex((t) => t.id === meta.id);
-      if (byId !== -1) {
-        const existing = tabsRef.current[byId];
-        if (!existing.filePath) {
-          // A copy of this note that arrived through sync, which never carries
-          // the file link - just focusing it would show whatever that copy
-          // holds (possibly far older than the file) as if it were the file.
-          // Link it, and keep whichever version was edited last; the dirty
-          // marker then shows whether the tab differs from the file on disk.
-          const fromFile: TabData = {
-            ...existing,
-            title,
-            body,
-            favorite: meta.favorite ?? existing.favorite,
-            sketches: meta.sketches ?? existing.sketches,
-            updatedAt: meta.updatedAt ?? existing.updatedAt,
-            filePath: path,
-            titleIsCustom: meta.titleIsCustom ?? true,
-          };
-          const fileIsNewer = (meta.updatedAt ?? 0) >= existing.updatedAt;
-          const linked = fileIsNewer ? fromFile : { ...existing, filePath: path, titleIsCustom: true };
-          savedSnapshots.current.set(linked.id, snapshotOf(fromFile));
-          setTabs((prev) => prev.map((t) => (t.id === linked.id ? linked : t)));
-        }
-        setActiveTab(byId);
-        return;
-      }
-      forgetDeletedNote(meta.id);
+    // A .cyte file carries its own stable id - reusing it is what lets sync
+    // recognize "this file IS that note" across reopens and devices. When
+    // that id is already in use, planOpen tells a renamed/moved file apart
+    // from a second file that merely shares the id (see noteFiles.ts).
+    const snapshot = tabsRef.current;
+    const plan = await planOpen(snapshot, path, meta?.id ?? null, fileExists, () => "n" + Date.now());
+    const indexNow = (index: number) => tabsRef.current.findIndex((t) => t.id === snapshot[index].id);
+
+    if (plan.action === "focus") {
+      setActiveTab(indexNow(plan.index));
+      return;
     }
+    if (plan.action === "relink") {
+      const id = snapshot[plan.index].id;
+      setTabs((prev) => prev.map((t) => (t.id === id ? { ...t, filePath: path } : t)));
+      setActiveTab(indexNow(plan.index));
+      return;
+    }
+    if (plan.action === "link" && meta) {
+      // A copy of this note that arrived through sync, which never carries
+      // the file link - just focusing it would show whatever that copy
+      // holds (possibly far older than the file) as if it were the file.
+      // Link it, and keep whichever version was edited last; the dirty
+      // marker then shows whether the tab differs from the file on disk.
+      const existing = snapshot[plan.index];
+      const fromFile: TabData = {
+        ...existing,
+        title,
+        body,
+        favorite: meta.favorite ?? existing.favorite,
+        sketches: meta.sketches ?? existing.sketches,
+        updatedAt: meta.updatedAt ?? existing.updatedAt,
+        filePath: path,
+        titleIsCustom: meta.titleIsCustom ?? true,
+      };
+      const fileIsNewer = (meta.updatedAt ?? 0) >= existing.updatedAt;
+      const linked = fileIsNewer ? fromFile : { ...existing, filePath: path, titleIsCustom: true };
+      savedSnapshots.current.set(linked.id, snapshotOf(fromFile));
+      setTabs((prev) => prev.map((t) => (t.id === linked.id ? linked : t)));
+      setActiveTab(indexNow(plan.index));
+      return;
+    }
+
+    const id = plan.action === "open" ? plan.id : "n" + Date.now();
+    forgetDeletedNote(id);
     const note: TabData = {
-      id: meta?.id ?? "n" + Date.now(),
+      id,
       title,
       body,
       favorite: meta?.favorite ?? false,

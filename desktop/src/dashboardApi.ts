@@ -36,6 +36,18 @@ export async function readNoteFileRaw(path: string): Promise<string> {
   return invoke<string>("read_txt_file", { path });
 }
 
+/** Whether a file is still on disk. If the check itself fails, answer "yes":
+ * the caller then opens a note in its own tab rather than folding it into
+ * another one, which is the harmless way to be wrong. */
+export async function fileExists(path: string): Promise<boolean> {
+  if (!isTauri()) return true;
+  try {
+    return await invoke<boolean>("file_exists", { path });
+  } catch {
+    return true;
+  }
+}
+
 /** A file path passed on the command line at launch (Explorer "Open with" /
  * double-click via the .cyte file association), if there was one. Only
  * returns it once - call this exactly once, on startup. */

@@ -156,6 +156,13 @@ pub fn read_txt_file(path: String) -> Result<String, String> {
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
+/// Lets the frontend tell a note file that was renamed/moved (old path gone)
+/// apart from a second, separate file that happens to carry the same note id.
+#[tauri::command]
+pub fn file_exists(path: String) -> bool {
+    std::path::Path::new(&path).is_file()
+}
+
 /// Brings the main window to front and hands it the note to open; the
 /// frontend does the actual read via read_txt_file and creates/activates a tab.
 #[tauri::command]
