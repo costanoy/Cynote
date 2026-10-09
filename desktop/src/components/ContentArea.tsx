@@ -167,6 +167,89 @@ function setHighlight(name: string, ranges: Range[]) {
   else CSS.highlights.set(name, new Highlight(...ranges));
 }
 
+// ------------------------------------------------- column selection
+//
+// Dragging with the mouse wheel pressed (or Shift+Alt+drag) selects a
+// rectangle, as in VS Code: one cursor or selection per visual row it crosses.
+// The note's font is proportional - there's no character grid to snap to - so
+// the rectangle is in pixels, and each row finds its own nearest characters.
+
+interface VisualRow {
+  top: number;
+  bottom: number;
+  /** Horizontal extent of the row's text. */
+  left: number;
+  right: number;
+}
+
+function nodeBox(node: Node): DOMRect {
+  if (node.nodeType === Node.ELEMENT_NODE) return (node as Element).getBoundingClientRect();
+  const r = document.createRange();
+  r.selectNodeContents(node);
+  return r.getBoundingClientRect();
+}
+
+/** The rows one line wraps into, top to bottom. */
+function visualRows(line: Node): VisualRow[] {
+  const range = document.createRange();
+  range.selectNodeContents(line);
+  const rows: VisualRow[] = [];
+  for (const r of Array.from(range.getClientRects())) {
+    if (r.height === 0) continue;
+    const row = rows.find((x) => Math.abs(x.top - r.top) < r.height / 2);
+    if (row) {
+      row.left = Math.min(row.left, r.left);
+      row.right = Math.max(row.right, r.right);
+      row.bottom = Math.max(row.bottom, r.bottom);
+    } else {
+      rows.push({ top: r.top, bottom: r.bottom, left: r.left, right: r.right });
+    }
+  }
+  if (rows.length === 0) {
+    const b = nodeBox(line);
+    rows.push({ top: b.top, bottom: b.bottom, left: b.left, right: b.left });
+  }
+  return rows.sort((a, b) => a.top - b.top);
+}
+
+function pointInLine(line: Node, k: number): { node: Node; offset: number } {
+  return line.nodeType === Node.TEXT_NODE ? { node: line, offset: k } : pointAtLocalOffset(line, k);
+}
+
+/** Center of the k-th character of a line, on screen. */
+function charCenter(line: Node, k: number): { x: number; y: number } {
+  const a = pointInLine(line, k);
+  const b = pointInLine(line, k + 1);
+  const range = document.createRange();
+  range.setStart(a.node, a.offset);
+  range.setEnd(b.node, b.offset);
+  const r = range.getClientRects()[0];
+  return r ? { x: (r.left + r.right) / 2, y: (r.top + r.bottom) / 2 } : { x: -Infinity, y: -Infinity };
+}
+
+/** First k in [lo, hi) where `pred` turns true (it must go false -> true once); hi if never. */
+function firstTrue(lo: number, hi: number, pred: (k: number) => boolean): number {
+  while (lo < hi) {
+    const mid = (lo + hi) >> 1;
+    if (pred(mid)) hi = mid;
+    else lo = mid + 1;
+  }
+  return lo;
+}
+
+/** Caret offset within `line`, on its `rowIndex`-th visual row, nearest to screen x. */
+function offsetOnRow(line: Node, rows: VisualRow[], rowIndex: number, x: number): number {
+  const text = line.textContent ?? "";
+  const row = rows[rowIndex];
+  const start = rows.length === 1 ? 0 : firstTrue(0, text.length, (k) => charCenter(line, k).y >= row.top);
+  const end = rows.length === 1 ? text.length : firstTrue(start, text.length, (k) => charCenter(line, k).y > row.bottom);
+  const k = firstTrue(start, end, (k) => charCenter(line, k).x > x);
+  // Past the end of a wrapped row: stop before the space it wrapped at, so the
+  // cursor shows on this row rather than at the start of the next one.
+  if (k === end && end < text.length && end > start && /\s/.test(text[end - 1])) return end - 1;
+  return k;
+}
+
 // -------------------------------------------------- per-note memory
 //
 // Switching tabs remounts the editor; undo history, cursors and scroll
@@ -730,8 +813,85 @@ export function ContentArea({
     if (key === "PageUp" || key === "PageDown") setMulti([]);
   };
 
+  /** The rectangle between two screen points, as one selection per visual row
+   * it crosses - the row under (x2, y2) is the primary. Same rules as VS Code:
+   * a straight vertical drag puts a cursor on every row (at its end, if the
+   * row is shorter); a wider rectangle skips rows whose text ends before its
+   * left edge; and if that skips everything, every row gets a cursor at its end. */
+  const columnSels = (x1: number, y1: number, x2: number, y2: number): Sel[] => {
+    const el = ref.current;
+    if (!el || el.childNodes.length === 0) return [];
+    const lines = Array.from(el.childNodes);
+    const first = nodeBox(lines[0]);
+    const last = nodeBox(lines[lines.length - 1]);
+    const clampY = (y: number) => Math.min(Math.max(y, first.top + 1), last.bottom - 1);
+    const top = Math.min(clampY(y1), clampY(y2));
+    const bottom = Math.max(clampY(y1), clampY(y2));
+    const left = Math.min(x1, x2);
+    // About half a character: hands drift sideways while dragging down, and a
+    // rectangle edge "on" a character shouldn't depend on which half it's in.
+    const slack = parseFloat(getComputedStyle(el).fontSize) * 0.3;
+    const straightDown = Math.abs(x2 - x1) < slack;
+
+    const crossed: { line: Node; rows: VisualRow[]; r: number; lineStart: number }[] = [];
+    for (let i = firstTrue(0, lines.length, (k) => nodeBox(lines[k]).bottom > top); i < lines.length; i++) {
+      const line = lines[i];
+      if (nodeBox(line).top > bottom) break;
+      const rows = visualRows(line);
+      const lineStart = flatOffsetFromPoint(el, line, 0);
+      rows.forEach((row, r) => {
+        if (row.bottom > top && row.top <= bottom) crossed.push({ line, rows, r, lineStart });
+      });
+    }
+
+    const inBox = crossed.filter((c) => straightDown || left <= c.rows[c.r].right + slack);
+    const sels: Sel[] =
+      inBox.length > 0
+        ? inBox.map((c) => ({
+            anchor: c.lineStart + offsetOnRow(c.line, c.rows, c.r, x1),
+            head: c.lineStart + offsetOnRow(c.line, c.rows, c.r, x2),
+          }))
+        : crossed.map((c) => core.caret(c.lineStart + offsetOnRow(c.line, c.rows, c.r, Infinity)));
+    return y2 < y1 ? sels.reverse() : sels;
+  };
+
+  const startColumnSelect = (e: React.MouseEvent<HTMLDivElement>) => {
+    const el = ref.current;
+    if (!el) return;
+    // Also keeps Windows' middle-button autoscroll from kicking in.
+    e.preventDefault();
+    const startX = e.clientX;
+    const startYInNote = e.clientY - el.getBoundingClientRect().top;
+
+    const selectTo = (x: number, y: number) => {
+      const sels = columnSels(startX, el.getBoundingClientRect().top + startYInNote, x, y);
+      if (sels.length > 0) showSels(core.normalize(sels), { scroll: false });
+    };
+    selectTo(e.clientX, e.clientY);
+
+    const onMove = (ev: MouseEvent) => {
+      const sc = scroller();
+      if (sc) {
+        const box = sc.getBoundingClientRect();
+        if (ev.clientY < box.top) sc.scrollTop -= box.top - ev.clientY;
+        else if (ev.clientY > box.bottom) sc.scrollTop += ev.clientY - box.bottom;
+      }
+      selectTo(ev.clientX, ev.clientY);
+    };
+    const onUp = () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
   const onMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
     mem.history.breakGroup();
+    if (e.button === 1 || (e.button === 0 && e.altKey && e.shiftKey)) {
+      startColumnSelect(e);
+      return;
+    }
     if (e.altKey && e.button === 0) {
       // Alt+click adds a cursor, like VS Code.
       e.preventDefault();
