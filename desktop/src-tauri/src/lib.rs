@@ -102,11 +102,24 @@ fn load_notes(app: AppHandle) -> Result<Option<String>, String> {
     fs::read_to_string(path).map(Some).map_err(|e| e.to_string())
 }
 
-/// Writes plain text to an arbitrary path the user picked via the save dialog.
-/// Unscoped on purpose (same trust level as save_notes) - the path only ever
-/// comes from a native file-save dialog the user just drove themselves.
+/// Cynote only ever opens and saves note files, so the commands that take a
+/// path from the page refuse anything else. Should a page ever be tricked
+/// into running script, it still couldn't read other files on the computer
+/// or drop a program somewhere Windows would run it.
+pub fn is_note_file(path: &str) -> bool {
+    let p = std::path::Path::new(path);
+    p.is_absolute()
+        && p.extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| matches!(e.to_ascii_lowercase().as_str(), "cyte" | "txt" | "md"))
+}
+
+/// Writes a note file the user picked via the save dialog (or opened before).
 #[tauri::command]
 fn export_note_txt(path: String, contents: String) -> Result<(), String> {
+    if !is_note_file(&path) {
+        return Err("only .cyte, .txt and .md files can be saved".into());
+    }
     fs::write(path, contents).map_err(|e| e.to_string())
 }
 
@@ -484,8 +497,24 @@ pub fn run() {
             cloud_sync::set_cloud_sync_id,
             cloud_sync::clear_cloud_sync_id,
             cloud_sync::push_cloud_notes,
-            cloud_sync::fetch_cloud_peers
+            cloud_sync::fetch_cloud_changes
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_note_file;
+
+    #[test]
+    fn only_note_files_pass() {
+        assert!(is_note_file(r"C:\Users\x\Desktop\nota.cyte"));
+        assert!(is_note_file(r"C:\Users\x\Documents\a.TXT"));
+        assert!(is_note_file(r"D:\b.md"));
+        assert!(!is_note_file(r"C:\Users\x\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup\x.bat"));
+        assert!(!is_note_file(r"C:\Users\x\.ssh\id_rsa"));
+        assert!(!is_note_file(r"C:\x\nota.cyte.exe"));
+        assert!(!is_note_file("nota.cyte"));
+    }
 }

@@ -32,6 +32,7 @@ export function SettingsView({
   const [cloudCopied, setCloudCopied] = useState(false);
   const [cloudJoining, setCloudJoining] = useState(false);
   const [cloudGenerating, setCloudGenerating] = useState(false);
+  const [cloudCodeError, setCloudCodeError] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -79,10 +80,13 @@ export function SettingsView({
     const code = cloudCodeInput.trim();
     if (!code) return;
     setCloudJoining(true);
+    setCloudCodeError(false);
     const ok = await setCloudSyncId(code);
     if (ok) {
-      setCloudSyncIdState(code);
+      setCloudSyncIdState(await getCloudSyncId());
       setCloudCodeInput("");
+    } else {
+      setCloudCodeError(true);
     }
     setCloudJoining(false);
   };
@@ -154,7 +158,7 @@ export function SettingsView({
         </div>
 
         <div className="settings-section">
-          <div className="settings-section-title">Sincronização — Dispositivos na mesma rede</div>
+          <div className="settings-section-title">Sincronização na mesma rede</div>
 
           {trusted.map((d) => (
             <div key={d.deviceId} className="device-row synced">
@@ -220,12 +224,20 @@ export function SettingsView({
                   className="sync-code-input"
                   placeholder="Código de pareamento"
                   value={cloudCodeInput}
-                  onChange={(e) => setCloudCodeInput(e.target.value)}
+                  onChange={(e) => {
+                    setCloudCodeInput(e.target.value);
+                    setCloudCodeError(false);
+                  }}
                 />
                 <button className="pill" onClick={joinCode} disabled={cloudJoining || !cloudCodeInput.trim()}>
                   {cloudJoining ? "Conectando…" : "Conectar"}
                 </button>
               </div>
+              {cloudCodeError && (
+                <div className="settings-row-hint sync-code-error">
+                  Código inválido. Ele tem 4 grupos de 5 letras e números, como 4F2A9-C81D0-77B3E-0A1C5.
+                </div>
+              )}
             </div>
           )}
         </div>

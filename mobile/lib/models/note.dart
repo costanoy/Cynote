@@ -56,9 +56,9 @@ class Note {
         title: json['title'] as String,
         time: json['time'] as String? ?? '',
         body: json['body'] as String,
-        updatedAt: json['updatedAt'] as int?,
+        updatedAt: (json['updatedAt'] as num?)?.toInt(),
         originDeviceId: json['originDeviceId'] as String? ?? 'seed',
-        forkedFrom: json['forkedFrom'] != null
+        forkedFrom: json['forkedFrom'] is Map<String, dynamic>
             ? ForkedFrom.fromJson(json['forkedFrom'] as Map<String, dynamic>)
             : null,
       );

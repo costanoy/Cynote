@@ -11,7 +11,7 @@ class SettingsScreen extends StatelessWidget {
   final VoidCallback onToggleDarkMode;
   final String? cloudSyncId;
   final Future<String> Function() onGenerateCloudCode;
-  final Future<void> Function(String code) onJoinCloudCode;
+  final Future<bool> Function(String code) onJoinCloudCode;
   final Future<void> Function() onClearCloudCode;
 
   const SettingsScreen({
@@ -81,7 +81,7 @@ class _CloudSyncSection extends StatefulWidget {
   final CyColors t;
   final String? syncId;
   final Future<String> Function() onGenerate;
-  final Future<void> Function(String code) onJoin;
+  final Future<bool> Function(String code) onJoin;
   final Future<void> Function() onClear;
 
   const _CloudSyncSection({
@@ -102,6 +102,7 @@ class _CloudSyncSectionState extends State<_CloudSyncSection> {
   bool _generating = false;
   bool _joining = false;
   bool _copied = false;
+  bool _invalidCode = false;
 
   @override
   void initState() {
@@ -136,12 +137,17 @@ class _CloudSyncSectionState extends State<_CloudSyncSection> {
   Future<void> _join() async {
     final code = _controller.text.trim();
     if (code.isEmpty) return;
-    setState(() => _joining = true);
-    await widget.onJoin(code);
-    if (mounted) {
-      setState(() => _joining = false);
-      _controller.clear();
-    }
+    setState(() {
+      _joining = true;
+      _invalidCode = false;
+    });
+    final ok = await widget.onJoin(code);
+    if (!mounted) return;
+    setState(() {
+      _joining = false;
+      _invalidCode = !ok;
+    });
+    if (ok) _controller.clear();
   }
 
   @override
@@ -222,7 +228,7 @@ class _CloudSyncSectionState extends State<_CloudSyncSection> {
             child: TextField(
               controller: _controller,
               focusNode: _focus,
-              onChanged: (_) => setState(() {}),
+              onChanged: (_) => setState(() => _invalidCode = false),
               cursorColor: t.accent,
               style: CyType.mono(14, t.fieldInk),
               decoration: InputDecoration(
@@ -240,6 +246,13 @@ class _CloudSyncSectionState extends State<_CloudSyncSection> {
             enabled: !_joining && _controller.text.trim().isNotEmpty,
             onTap: _join,
           ),
+          if (_invalidCode) ...[
+            const SizedBox(height: 10),
+            Text(
+              'Código inválido. Ele tem 4 grupos de 5 letras e números, como 4F2A9-C81D0-77B3E-0A1C5.',
+              style: CyType.ui(13, t.danger, height: 1.45),
+            ),
+          ],
         ],
       ],
     );

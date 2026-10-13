@@ -1,12 +1,9 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { NoteSketch, TabData } from "./types";
+import type { TabData } from "./types";
+import { safeSketches } from "./sketches";
 
 function isTauri() {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
-}
-
-function isNoteSketch(s: unknown): s is NoteSketch {
-  return typeof s === "object" && s !== null && typeof (s as NoteSketch).dataUrl === "string";
 }
 
 /** Backfills fields added after some notes.json files were already written on disk. */
@@ -19,8 +16,8 @@ function migrate(tabs: unknown[], fallbackDeviceId: string): TabData[] {
       body: t.body ?? "",
       favorite: t.favorite ?? false,
       // Older notes.json files stored sketches as bare timestamp numbers -
-      // drop those instead of rendering a broken image.
-      sketches: Array.isArray(t.sketches) ? t.sketches.filter(isNoteSketch) : [],
+      // those (and anything that isn't an embedded image) are dropped.
+      sketches: safeSketches(t.sketches),
       updatedAt: t.updatedAt ?? Date.now(),
       originDeviceId: t.originDeviceId ?? fallbackDeviceId,
       forkedFrom: t.forkedFrom,

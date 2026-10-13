@@ -29,7 +29,7 @@ import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchP
 import { mergeFromPeer, dropDuplicateCopies } from "./merge";
 import { loadBookkeeping, saveBookkeeping } from "./bookkeeping";
 import { loadDeletedNoteIds, markNotesDeleted, forgetDeletedNote } from "./deletedNotes";
-import { getCloudSyncId, pushCloudNotes, fetchCloudPeers } from "./cloudSync";
+import { getCloudSyncId, pushCloudNotes, fetchCloudChanges } from "./cloudSync";
 import { isDirty as isTabDirtyAgainst, snapshotOf, tabHasContent, type SavedSnapshot } from "./dirtyTracking";
 import { checkForUpdate, installUpdate, type Update } from "./updater";
 import type { PeerInfo } from "./types";
@@ -265,18 +265,43 @@ function App() {
   // a network that blocks device-to-device discovery (a work/guest Wi-Fi with
   // client isolation, for instance), once a pairing code is set up between
   // them (see SettingsView).
+  //
+  // Only what changed crosses the network: our notes are uploaded when they
+  // differ from the last upload, and another device's notes are downloaded
+  // when its timestamp moves (kept here so every cycle can still merge them).
   const cloudSyncBusy = useRef(false);
+  const cloudState = useRef({
+    syncId: "",
+    lastPushed: "",
+    peers: new Map<string, { updatedAt: number; notes: TabData[] }>(),
+  });
   const runCloudSyncCycle = async (myDeviceId: string, myDeviceName: string) => {
     if (cloudSyncBusy.current) return;
     cloudSyncBusy.current = true;
     try {
       const syncId = await getCloudSyncId();
       if (!syncId) return;
-      await pushCloudNotes(syncId, myDeviceId, myDeviceName, tabsRef.current);
-      const peers = await fetchCloudPeers(syncId, myDeviceId);
-      if (peers.length > 0) {
+      const cloud = cloudState.current;
+      if (cloud.syncId !== syncId) {
+        cloudState.current = { syncId, lastPushed: "", peers: new Map() };
+      }
+      const { peers } = cloudState.current;
+
+      const payload = JSON.stringify(tabsRef.current);
+      if (payload !== cloudState.current.lastPushed && (await pushCloudNotes(syncId, myDeviceId, myDeviceName, payload))) {
+        cloudState.current.lastPushed = payload;
+      }
+
+      const known = Object.fromEntries([...peers].map(([id, p]) => [id, p.updatedAt]));
+      const changes = await fetchCloudChanges(syncId, myDeviceId, known);
+      if (!changes) return;
+      for (const id of [...peers.keys()]) if (!changes.devices.includes(id)) peers.delete(id);
+      for (const p of changes.changed) {
+        peers.set(p.deviceId, { updatedAt: p.updatedAt, notes: Array.isArray(p.notes) ? (p.notes as TabData[]) : [] });
+      }
+      if (peers.size > 0) {
         mergeAndApply(
-          peers.map((p) => ({ deviceId: p.deviceId, notes: p.notes as TabData[] })),
+          [...peers].map(([deviceId, p]) => ({ deviceId, notes: p.notes })),
           myDeviceId
         );
       }
@@ -981,7 +1006,7 @@ function App() {
             <div className="cy-empty blank-page">
               <Sprout />
               <div className="cy-empty-title">Página em branco</div>
-              <div className="cy-empty-hint">Plante a primeira linha — o resto cresce.</div>
+              <div className="cy-empty-hint">Plante a primeira linha e o resto cresce.</div>
             </div>
           )}
 

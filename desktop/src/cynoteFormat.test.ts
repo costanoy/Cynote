@@ -66,3 +66,23 @@ describe("cynoteFormat", () => {
     expect(parsed.meta).not.toBeNull();
   });
 });
+
+describe("drawings inside a .cyte file", () => {
+  it("keeps embedded images and drops web addresses", () => {
+    const meta = {
+      v: 1,
+      id: "n1",
+      titleIsCustom: true,
+      favorite: false,
+      updatedAt: 1,
+      originDeviceId: "d",
+      sketches: [
+        { id: "a", dataUrl: "data:image/png;base64,AAAA", x: 0, y: 0, width: 10, height: 10 },
+        { id: "b", dataUrl: "http://example.com/x.png", x: 0, y: 0, width: 10, height: 10 },
+        { id: "c", dataUrl: "javascript:alert(1)", x: 0, y: 0, width: 10, height: 10 },
+      ],
+    };
+    const parsed = parseNoteFile(`Title\n\nBody\n\n<!--CYNOTE:${JSON.stringify(meta)}-->\n`, "x");
+    expect(parsed.meta?.sketches.map((s) => s.id)).toEqual(["a"]);
+  });
+});

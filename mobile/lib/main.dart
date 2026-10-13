@@ -307,8 +307,8 @@ class _CynoteRootState extends State<CynoteRoot> {
     return service.generateSyncId();
   }
 
-  Future<void> _joinCloudCode(String code) async {
-    await _cloudSyncService?.setSyncId(code);
+  Future<bool> _joinCloudCode(String code) async {
+    return await _cloudSyncService?.setSyncId(code) ?? false;
   }
 
   Future<void> _clearCloudCode() async {

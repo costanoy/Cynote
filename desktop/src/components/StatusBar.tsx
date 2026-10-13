@@ -60,8 +60,8 @@ export function StatusBar({
         onClick={onSaveNow}
         title={
           syncStatus === "error"
-            ? "Erro de sincronização — clique para tentar de novo"
-            : `${SYNC_LABEL[syncStatus]} — clique para salvar agora (Ctrl+S)`
+            ? "Erro de sincronização\nClique para tentar de novo"
+            : `${SYNC_LABEL[syncStatus]}\nClique para salvar agora (Ctrl+S)`
         }
       >
         <SyncFlower status={syncStatus} />

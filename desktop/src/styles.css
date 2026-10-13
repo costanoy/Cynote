@@ -595,6 +595,9 @@
   padding: 0 14px;
   font-size: 13px;
 }
+.sync-code-error {
+  color: var(--danger);
+}
 .sync-code-input {
   flex: 1;
   min-width: 150px;

@@ -141,7 +141,13 @@ pub async fn note_previews(paths: Vec<String>) -> Vec<String> {
         paths
             .iter()
             .take(PREVIEW_MAX_FILES)
-            .map(|p| read_preview(Path::new(p), p.to_lowercase().ends_with(".cyte")))
+            .map(|p| {
+                if crate::is_note_file(p) {
+                    read_preview(Path::new(p), p.to_lowercase().ends_with(".cyte"))
+                } else {
+                    String::new()
+                }
+            })
             .collect()
     })
     .await
@@ -153,6 +159,9 @@ pub async fn note_previews(paths: Vec<String>) -> Vec<String> {
 /// to render sketches and needs a single source of truth for the format.
 #[tauri::command]
 pub fn read_txt_file(path: String) -> Result<String, String> {
+    if !crate::is_note_file(&path) {
+        return Err("only .cyte, .txt and .md files can be opened".into());
+    }
     fs::read_to_string(&path).map_err(|e| e.to_string())
 }
 
@@ -160,7 +169,7 @@ pub fn read_txt_file(path: String) -> Result<String, String> {
 /// apart from a second, separate file that happens to carry the same note id.
 #[tauri::command]
 pub fn file_exists(path: String) -> bool {
-    std::path::Path::new(&path).is_file()
+    crate::is_note_file(&path) && std::path::Path::new(&path).is_file()
 }
 
 /// Brings the main window to front and hands it the note to open; the

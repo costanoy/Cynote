@@ -1,4 +1,5 @@
 import type { NoteSketch, TabData } from "./types";
+import { safeSketches } from "./sketches";
 
 /**
  * The .cyte file format: a plain-text file that reads just like a .txt
@@ -62,7 +63,8 @@ export function parseNoteFile(raw: string, fallbackTitle: string): ParsedNoteFil
   let meta: CynoteMeta | null = null;
   try {
     const parsed = JSON.parse(footerMatch[1]);
-    if (parsed && typeof parsed.id === "string") meta = parsed;
+    // A .cyte file can come from anyone - keep only drawings that are embedded images.
+    if (parsed && typeof parsed.id === "string") meta = { ...parsed, sketches: safeSketches(parsed.sketches) };
   } catch {
     meta = null;
   }

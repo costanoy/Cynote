@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use std::fs;
 use std::time::{Duration, SystemTime, UNIX_EPOCH};
 use tauri::{AppHandle, Manager};
@@ -80,13 +81,25 @@ pub fn generate_cloud_sync_id(app: AppHandle) -> Result<String, String> {
     Ok(id)
 }
 
+/// Codes look like `4F2A9-C81D0-77B3E-0A1C5`. Accepting only that shape keeps
+/// a mistyped (or crafted) code from turning into some other database path,
+/// and matches what the database rules allow.
+pub fn normalize_sync_id(raw: &str) -> Option<String> {
+    let code = raw.trim().to_uppercase();
+    let groups: Vec<&str> = code.split('-').collect();
+    let well_formed =
+        groups.len() == 4 && groups.iter().all(|g| g.len() == 5 && g.chars().all(|c| c.is_ascii_hexdigit()));
+    well_formed.then_some(code)
+}
+
+fn checked_sync_id(sync_id: &str) -> Result<String, String> {
+    normalize_sync_id(sync_id).ok_or_else(|| "Código de pareamento inválido".to_string())
+}
+
 #[tauri::command]
 pub fn set_cloud_sync_id(app: AppHandle, sync_id: String) -> Result<(), String> {
-    let trimmed = sync_id.trim().to_string();
-    if trimmed.is_empty() {
-        return Err("Código vazio".to_string());
-    }
-    save_config(&app, &CloudSyncConfig { sync_id: Some(trimmed) })
+    let code = checked_sync_id(&sync_id)?;
+    save_config(&app, &CloudSyncConfig { sync_id: Some(code) })
 }
 
 #[tauri::command]
@@ -106,6 +119,7 @@ pub async fn push_cloud_notes(
     device_name: String,
     notes_json: String,
 ) -> Result<(), String> {
+    let sync_id = checked_sync_id(&sync_id)?;
     tauri::async_runtime::spawn_blocking(move || {
         let notes: Value = serde_json::from_str(&notes_json).map_err(|e| e.to_string())?;
         let body = serde_json::json!({
@@ -131,40 +145,80 @@ pub struct CloudPeer {
     device_id: String,
     #[serde(rename = "deviceName")]
     device_name: String,
+    #[serde(rename = "updatedAt")]
+    updated_at: u64,
     notes: Value,
 }
 
-/// Every other device's last-pushed notes under this pairing, straight from
-/// the shared path - the caller (JS/Dart) merges each one in with the same
-/// logic already used for LAN peers.
-#[tauri::command]
-pub async fn fetch_cloud_peers(sync_id: String, my_device_id: String) -> Result<Vec<CloudPeer>, String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        let url = format!("{DB_URL}/sync/{sync_id}.json");
-        let resp = ureq::get(&url)
-            .timeout(HTTP_TIMEOUT)
-            .call()
-            .map_err(|e| e.to_string())?;
-        let text = resp.into_string().map_err(|e| e.to_string())?;
-        let value: Value = serde_json::from_str(&text).unwrap_or(Value::Null);
+#[derive(Serialize)]
+pub struct CloudChanges {
+    /// Every other device currently in the pairing.
+    devices: Vec<String>,
+    /// Full notes, only for devices that pushed since the `known` timestamps.
+    changed: Vec<CloudPeer>,
+}
 
-        let mut peers = Vec::new();
-        if let Value::Object(map) = value {
-            for (device_id, entry) in map {
-                if device_id == my_device_id {
-                    continue;
-                }
-                let device_name = entry
-                    .get("deviceName")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("Dispositivo")
-                    .to_string();
-                let notes = entry.get("notes").cloned().unwrap_or(Value::Array(vec![]));
-                peers.push(CloudPeer { device_id, device_name, notes });
+fn get_json(url: &str) -> Result<Value, String> {
+    let text = ureq::get(url)
+        .timeout(HTTP_TIMEOUT)
+        .call()
+        .map_err(|e| e.to_string())?
+        .into_string()
+        .map_err(|e| e.to_string())?;
+    Ok(serde_json::from_str(&text).unwrap_or(Value::Null))
+}
+
+/// What changed under this pairing since the caller last looked. Downloading
+/// every device's notes on every cycle (every 25 s, all day) would eat the
+/// database's free monthly download quota as notes - and especially drawings -
+/// grow; instead this lists the devices and reads each one's tiny `updatedAt`,
+/// and fetches full notes only for devices whose timestamp moved.
+#[tauri::command]
+pub async fn fetch_cloud_changes(
+    sync_id: String,
+    my_device_id: String,
+    known: HashMap<String, u64>,
+) -> Result<CloudChanges, String> {
+    let sync_id = checked_sync_id(&sync_id)?;
+    tauri::async_runtime::spawn_blocking(move || {
+        let listing = get_json(&format!("{DB_URL}/sync/{sync_id}.json?shallow=true"))?;
+        let devices: Vec<String> = match listing {
+            Value::Object(map) => map.keys().filter(|id| **id != my_device_id).cloned().collect(),
+            _ => Vec::new(),
+        };
+
+        let mut changed = Vec::new();
+        for device_id in &devices {
+            let stamp = get_json(&format!("{DB_URL}/sync/{sync_id}/{device_id}/updatedAt.json"))?.as_u64();
+            if stamp.is_some() && stamp == known.get(device_id).copied() {
+                continue;
             }
+            let entry = get_json(&format!("{DB_URL}/sync/{sync_id}/{device_id}.json"))?;
+            let device_name = entry
+                .get("deviceName")
+                .and_then(|v| v.as_str())
+                .unwrap_or("Dispositivo")
+                .to_string();
+            let updated_at = entry.get("updatedAt").and_then(|v| v.as_u64()).or(stamp).unwrap_or(0);
+            let notes = entry.get("notes").cloned().unwrap_or(Value::Array(vec![]));
+            changed.push(CloudPeer { device_id: device_id.clone(), device_name, updated_at, notes });
         }
-        Ok(peers)
+        Ok(CloudChanges { devices, changed })
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::normalize_sync_id;
+
+    #[test]
+    fn accepts_only_well_formed_codes() {
+        assert_eq!(normalize_sync_id(" 4f2a9-c81d0-77b3e-0a1c5 "), Some("4F2A9-C81D0-77B3E-0A1C5".to_string()));
+        assert_eq!(normalize_sync_id("4F2A9-C81D0-77B3E"), None);
+        assert_eq!(normalize_sync_id("4F2A9-C81D0-77B3E-0A1CZ"), None);
+        assert_eq!(normalize_sync_id("../../x"), None);
+        assert_eq!(normalize_sync_id("4F2A9-C81D0-77B3E-0A1C5/../y"), None);
+    }
 }

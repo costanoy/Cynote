@@ -41,7 +41,7 @@ export function FindBar(p: Props) {
             ref={mainRef}
             className="find-input goto"
             inputMode="numeric"
-            placeholder={`Ir para a linha (1–${p.lineCount})`}
+            placeholder={`Ir para a linha (1 a ${p.lineCount})`}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
                 const n = parseInt(e.currentTarget.value, 10);

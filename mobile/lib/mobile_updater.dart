@@ -25,6 +25,10 @@ class MobileUpdate {
 
 const _manifestUrl = 'https://github.com/costanoy/Cynote/releases/latest/download/latest-android.json';
 
+/// The installer is only ever fetched from this project's own releases, so
+/// a tampered manifest can't point the app at an APK hosted anywhere else.
+const _apkUrlPrefix = 'https://github.com/costanoy/Cynote/releases/download/';
+
 /// Null if there's no update, the device is offline, or the check failed.
 Future<MobileUpdate?> checkForMobileUpdate() async {
   final client = HttpClient();
@@ -41,11 +45,14 @@ Future<MobileUpdate?> checkForMobileUpdate() async {
     final current = int.tryParse(info.buildNumber) ?? 0;
     if (buildNumber <= current) return null;
 
+    final apkUrl = json['apkUrl'] as String;
+    if (!apkUrl.startsWith(_apkUrlPrefix) || !apkUrl.toLowerCase().endsWith('.apk')) return null;
+
     return MobileUpdate(
       buildNumber: buildNumber,
       version: json['version'] as String,
       notes: json['notes'] as String? ?? '',
-      apkUrl: json['apkUrl'] as String,
+      apkUrl: apkUrl,
     );
   } catch (e) {
     // Swallowed on purpose (offline shouldn't nag the user) - logged so a
@@ -65,8 +72,10 @@ Future<void> downloadAndInstallMobileUpdate(MobileUpdate update) async {
   final client = HttpClient();
   final bytes = <int>[];
   try {
+    if (!update.apkUrl.startsWith(_apkUrlPrefix)) throw StateError('unexpected download address');
     final request = await client.getUrl(Uri.parse(update.apkUrl));
     final response = await request.close();
+    if (response.statusCode != 200) throw HttpException('download failed: HTTP ${response.statusCode}');
     await for (final chunk in response) {
       bytes.addAll(chunk);
     }

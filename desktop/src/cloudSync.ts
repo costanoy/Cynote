@@ -44,36 +44,41 @@ export async function clearCloudSyncId(): Promise<void> {
   }
 }
 
-export async function pushCloudNotes(
-  syncId: string,
-  deviceId: string,
-  deviceName: string,
-  notes: unknown[]
-): Promise<void> {
-  if (!isTauri()) return;
+/** True once the database has the notes - false means try again next cycle. */
+export async function pushCloudNotes(syncId: string, deviceId: string, deviceName: string, notesJson: string): Promise<boolean> {
+  if (!isTauri()) return false;
   try {
-    await invoke("push_cloud_notes", {
-      syncId,
-      deviceId,
-      deviceName,
-      notesJson: JSON.stringify(notes),
-    });
+    await invoke("push_cloud_notes", { syncId, deviceId, deviceName, notesJson });
+    return true;
   } catch {
-    // best-effort - picked up again on the next cycle
+    return false;
   }
 }
 
 export interface CloudPeer {
   deviceId: string;
   deviceName: string;
+  updatedAt: number;
   notes: unknown[];
 }
 
-export async function fetchCloudPeers(syncId: string, myDeviceId: string): Promise<CloudPeer[]> {
-  if (!isTauri()) return [];
+export interface CloudChanges {
+  /** Every other device currently in the pairing. */
+  devices: string[];
+  /** Full notes, only for devices that pushed since the `known` timestamps. */
+  changed: CloudPeer[];
+}
+
+/** Null when the database couldn't be reached. */
+export async function fetchCloudChanges(
+  syncId: string,
+  myDeviceId: string,
+  known: Record<string, number>
+): Promise<CloudChanges | null> {
+  if (!isTauri()) return null;
   try {
-    return await invoke<CloudPeer[]>("fetch_cloud_peers", { syncId, myDeviceId });
+    return await invoke<CloudChanges>("fetch_cloud_changes", { syncId, myDeviceId, known });
   } catch {
-    return [];
+    return null;
   }
 }

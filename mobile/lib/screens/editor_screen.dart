@@ -34,7 +34,7 @@ class EditorScreen extends StatefulWidget {
 
 /// What the formatting sheet can drop into the note.
 enum _Format {
-  bullets('—', 'Lista com marcadores', '— '),
+  bullets('•', 'Lista com marcadores', '• '),
   numbered('1.', 'Lista numerada', '1. '),
   checkbox('[ ]', 'Caixa de seleção', '[ ] '),
   dateTime('12:00', 'Inserir data e hora', null);

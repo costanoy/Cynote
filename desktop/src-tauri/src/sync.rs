@@ -3,6 +3,7 @@ use mdns_sd::{ServiceDaemon, ServiceEvent, ServiceInfo};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
+use std::io::Read;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
@@ -35,12 +36,22 @@ pub enum PairStatus {
     Declined,
 }
 
+/// A paired device, and the secret both sides agreed on when pairing. Every
+/// request for notes - in either direction - has to present that secret;
+/// without it, anyone on the same network could ask for (and get) them.
+#[derive(Clone, Serialize, Deserialize)]
+pub struct TrustedPeer {
+    pub name: String,
+    pub secret: String,
+}
+
 pub struct SyncStateInner {
     pub own: DeviceIdentity,
     pub my_port: u16,
     pub discovered: HashMap<String, PeerInfo>,
-    pub trusted: HashMap<String, String>,
-    pub incoming: HashMap<String, (PeerInfo, PairStatus)>,
+    pub trusted: HashMap<String, TrustedPeer>,
+    /// Pairing requests waiting on the user, with the secret each one proposed.
+    pub incoming: HashMap<String, (PeerInfo, PairStatus, String)>,
 }
 
 pub type SyncState = Arc<Mutex<SyncStateInner>>;
@@ -51,15 +62,21 @@ fn trusted_file_path(app: &AppHandle) -> Result<std::path::PathBuf, String> {
     Ok(dir.join("trusted_devices.json"))
 }
 
-fn load_trusted(app: &AppHandle) -> HashMap<String, String> {
-    trusted_file_path(app)
+/// Devices paired by older versions were stored as just a name, with no
+/// secret to check them against - they're dropped, and need pairing again.
+fn load_trusted(app: &AppHandle) -> HashMap<String, TrustedPeer> {
+    let raw: HashMap<String, serde_json::Value> = trusted_file_path(app)
         .ok()
         .and_then(|p| fs::read_to_string(p).ok())
         .and_then(|s| serde_json::from_str(&s).ok())
-        .unwrap_or_default()
+        .unwrap_or_default();
+    raw.into_iter()
+        .filter_map(|(id, v)| serde_json::from_value::<TrustedPeer>(v).ok().map(|t| (id, t)))
+        .filter(|(_, t)| is_valid_secret(&t.secret))
+        .collect()
 }
 
-fn save_trusted(app: &AppHandle, trusted: &HashMap<String, String>) {
+fn save_trusted(app: &AppHandle, trusted: &HashMap<String, TrustedPeer>) {
     if let Ok(path) = trusted_file_path(app) {
         if let Ok(json) = serde_json::to_string(trusted) {
             let _ = fs::write(path, json);
@@ -72,6 +89,28 @@ fn json_response(status: u16, body: &str) -> Response<std::io::Cursor<Vec<u8>>> 
     Response::from_string(body)
         .with_status_code(tiny_http::StatusCode(status))
         .with_header(header)
+}
+
+fn new_secret() -> String {
+    format!("{}{}", uuid::Uuid::new_v4().simple(), uuid::Uuid::new_v4().simple())
+}
+
+fn is_valid_secret(secret: &str) -> bool {
+    (32..=128).contains(&secret.len()) && secret.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+/// Compares in constant time, so response timing can't reveal how much of a
+/// guessed secret was right.
+fn same_secret(a: &str, b: &str) -> bool {
+    a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+}
+
+fn bearer_token(request: &tiny_http::Request) -> Option<String> {
+    request
+        .headers()
+        .iter()
+        .find(|h| h.field.equiv("Authorization"))
+        .and_then(|h| h.value.as_str().strip_prefix("Bearer ").map(|t| t.trim().to_string()))
 }
 
 fn parse_query(url: &str) -> HashMap<String, String> {
@@ -93,45 +132,73 @@ fn handle_request(app: &AppHandle, state: &SyncState, mut request: tiny_http::Re
 
     let response = match (&method, path.as_str()) {
         (Method::Get, "/cynote/notes") => {
-            let own = state.lock().unwrap().own.clone();
-            let notes_json = crate::notes_file_path(app)
-                .ok()
-                .and_then(|p| fs::read_to_string(p).ok())
-                .unwrap_or_else(|| "[]".to_string());
-            let body = format!(
-                "{{\"deviceId\":{:?},\"deviceName\":{:?},\"notes\":{}}}",
-                own.device_id, own.device_name, notes_json
-            );
-            json_response(200, &body)
+            let authorized = bearer_token(&request).is_some_and(|token| {
+                state.lock().unwrap().trusted.values().any(|t| same_secret(&t.secret, &token))
+            });
+            if !authorized {
+                json_response(401, "{\"error\":\"not paired\"}")
+            } else {
+                let own = state.lock().unwrap().own.clone();
+                let notes: serde_json::Value = crate::notes_file_path(app)
+                    .ok()
+                    .and_then(|p| fs::read_to_string(p).ok())
+                    .and_then(|s| serde_json::from_str(&s).ok())
+                    .unwrap_or_else(|| serde_json::json!([]));
+                let body = serde_json::json!({
+                    "deviceId": own.device_id,
+                    "deviceName": own.device_name,
+                    "notes": notes,
+                });
+                json_response(200, &body.to_string())
+            }
         }
         (Method::Post, "/cynote/pair-request") => {
+            // A pairing request is a few hundred bytes - don't let anyone on
+            // the network make this read an unbounded body into memory.
             let mut body = String::new();
-            let _ = request.as_reader().read_to_string(&mut body);
+            let _ = request.as_reader().take(16 * 1024).read_to_string(&mut body);
             let remote_addr = request
                 .remote_addr()
                 .map(|a| a.ip().to_string())
                 .unwrap_or_default();
 
-            if let Ok(peer) = serde_json::from_str::<serde_json::Value>(&body) {
-                let device_id = peer["deviceId"].as_str().unwrap_or_default().to_string();
-                let device_name = peer["deviceName"].as_str().unwrap_or("Dispositivo").to_string();
-                let port = peer["port"].as_u64().unwrap_or(0) as u16;
-                let info = PeerInfo {
-                    device_id: device_id.clone(),
-                    device_name,
-                    address: remote_addr,
-                    port,
-                };
-
-                {
-                    let mut s = state.lock().unwrap();
-                    s.incoming.insert(device_id, (info.clone(), PairStatus::Pending));
+            let fields = serde_json::from_str::<serde_json::Value>(&body).ok().and_then(|peer| {
+                let device_id: String = peer["deviceId"].as_str()?.chars().take(64).collect();
+                let secret = peer["secret"].as_str()?.to_string();
+                if device_id.is_empty() || !is_valid_secret(&secret) {
+                    return None;
                 }
-                let _ = app.emit("pairing-request", &info);
-                crate::flash_tray_icon(app);
-                json_response(200, "{\"status\":\"pending\"}")
-            } else {
-                json_response(400, "{\"error\":\"invalid body\"}")
+                let device_name: String = peer["deviceName"].as_str().unwrap_or("Dispositivo").chars().take(80).collect();
+                let port = peer["port"].as_u64().unwrap_or(0) as u16;
+                Some((device_id, device_name, port, secret))
+            });
+
+            match fields {
+                Some((device_id, device_name, port, secret)) => {
+                    let info = PeerInfo {
+                        device_id: device_id.clone(),
+                        device_name,
+                        address: remote_addr,
+                        port,
+                    };
+                    let is_new = {
+                        let mut s = state.lock().unwrap();
+                        // While a request is waiting on the user, another one
+                        // claiming to be the same device can't swap in its own secret.
+                        let pending = matches!(s.incoming.get(&device_id), Some((_, PairStatus::Pending, _)));
+                        if !pending {
+                            s.incoming.insert(device_id, (info.clone(), PairStatus::Pending, secret));
+                        }
+                        !pending
+                    };
+                    if is_new {
+                        let _ = app.emit("pairing-request", &info);
+                        crate::flash_tray_icon(app);
+                    }
+                    json_response(200, "{\"status\":\"pending\"}")
+                }
+                // Also what older versions get: they don't send a pairing secret.
+                None => json_response(400, "{\"error\":\"invalid body\"}"),
             }
         }
         (Method::Get, "/cynote/pair-status") => {
@@ -141,7 +208,7 @@ fn handle_request(app: &AppHandle, state: &SyncState, mut request: tiny_http::Re
             let status = s
                 .incoming
                 .get(&device_id)
-                .map(|(_, st)| match st {
+                .map(|(_, st, _)| match st {
                     PairStatus::Pending => "pending",
                     PairStatus::Accepted => "accepted",
                     PairStatus::Declined => "declined",
@@ -257,9 +324,9 @@ pub fn list_trusted_devices(state: tauri::State<SyncState>) -> Vec<PeerInfo> {
     let s = state.lock().unwrap();
     s.trusted
         .iter()
-        .map(|(id, name)| PeerInfo {
+        .map(|(id, peer)| PeerInfo {
             device_id: id.clone(),
-            device_name: name.clone(),
+            device_name: peer.name.clone(),
             address: String::new(),
             port: 0,
         })
@@ -278,10 +345,20 @@ pub fn list_reachable_trusted_devices(state: tauri::State<SyncState>) -> Vec<Pee
 }
 
 #[tauri::command]
-pub async fn fetch_peer_notes(address: String, port: u16) -> Result<String, String> {
+pub async fn fetch_peer_notes(state: tauri::State<'_, SyncState>, device_id: String) -> Result<String, String> {
+    let (peer, secret) = {
+        let s = state.lock().unwrap();
+        let peer = s.discovered.get(&device_id).cloned().ok_or("device not reachable")?;
+        let secret = s.trusted.get(&device_id).map(|t| t.secret.clone()).ok_or("device not paired")?;
+        (peer, secret)
+    };
     tauri::async_runtime::spawn_blocking(move || {
-        let url = format!("http://{}:{}/cynote/notes", address, port);
-        let resp = ureq::get(&url).timeout(HTTP_TIMEOUT).call().map_err(|e| e.to_string())?;
+        let url = format!("http://{}:{}/cynote/notes", peer.address, peer.port);
+        let resp = ureq::get(&url)
+            .timeout(HTTP_TIMEOUT)
+            .set("Authorization", &format!("Bearer {}", secret))
+            .call()
+            .map_err(|e| e.to_string())?;
         resp.into_string().map_err(|e| e.to_string())
     })
     .await
@@ -302,13 +379,19 @@ pub async fn request_pairing(
     };
     let peer_id = peer.device_id.clone();
     let peer_name = peer.device_name.clone();
+    // Proposed by whoever starts the pairing; both sides keep it once accepted.
+    let secret = new_secret();
+    let secret_for_request = secret.clone();
 
     let accepted = tauri::async_runtime::spawn_blocking(move || -> Result<bool, String> {
         let url = format!("http://{}:{}/cynote/pair-request", peer.address, peer.port);
-        let body = format!(
-            "{{\"deviceId\":{:?},\"deviceName\":{:?},\"port\":{}}}",
-            own.device_id, own.device_name, my_port
-        );
+        let body = serde_json::json!({
+            "deviceId": own.device_id,
+            "deviceName": own.device_name,
+            "port": my_port,
+            "secret": secret_for_request,
+        })
+        .to_string();
         ureq::post(&url)
             .timeout(HTTP_TIMEOUT)
             .set("Content-Type", "application/json")
@@ -339,7 +422,7 @@ pub async fn request_pairing(
 
     if accepted {
         let mut s = sync_state.lock().unwrap();
-        s.trusted.insert(peer_id, peer_name);
+        s.trusted.insert(peer_id, TrustedPeer { name: peer_name, secret });
         save_trusted(&app, &s.trusted);
     }
     Ok(accepted)
@@ -350,8 +433,8 @@ pub fn list_pairing_requests(state: tauri::State<SyncState>) -> Vec<PeerInfo> {
     let s = state.lock().unwrap();
     s.incoming
         .values()
-        .filter(|(_, status)| *status == PairStatus::Pending)
-        .map(|(info, _)| info.clone())
+        .filter(|(_, status, _)| *status == PairStatus::Pending)
+        .map(|(info, _, _)| info.clone())
         .collect()
 }
 
@@ -364,20 +447,38 @@ pub fn respond_to_pairing(
 ) -> Result<(), String> {
     let mut s = state.lock().unwrap();
     let accepted_info = if accept {
-        s.incoming.get(&device_id).map(|(info, _)| info.clone())
+        s.incoming.get(&device_id).map(|(info, _, secret)| (info.clone(), secret.clone()))
     } else {
         None
     };
-    if let Some((_, status)) = s.incoming.get_mut(&device_id) {
+    if let Some((_, status, _)) = s.incoming.get_mut(&device_id) {
         *status = if accept {
             PairStatus::Accepted
         } else {
             PairStatus::Declined
         };
     }
-    if let Some(info) = accepted_info {
-        s.trusted.insert(info.device_id, info.device_name);
+    if let Some((info, secret)) = accepted_info {
+        s.trusted.insert(info.device_id, TrustedPeer { name: info.device_name, secret });
         save_trusted(&app, &s.trusted);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{is_valid_secret, new_secret, same_secret};
+
+    #[test]
+    fn pairing_secrets() {
+        let s = new_secret();
+        assert_eq!(s.len(), 64);
+        assert!(is_valid_secret(&s));
+        assert_ne!(s, new_secret());
+        assert!(same_secret(&s, &s.clone()));
+        assert!(!same_secret(&s, &new_secret()));
+        assert!(!same_secret(&s, &s[..63]));
+        assert!(!is_valid_secret("short"));
+        assert!(!is_valid_secret(&"z".repeat(64)));
+    }
 }

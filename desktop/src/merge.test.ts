@@ -200,3 +200,35 @@ describe("dropDuplicateCopies", () => {
     expect(removedIds).toEqual(["f2", "f3"]);
   });
 });
+
+describe("data arriving through sync", () => {
+  const PNG = "data:image/png;base64,iVBORw0KGgo=";
+
+  it("ignores anything that isn't a well-formed note instead of importing it", () => {
+    const junk = [null, 42, "x", { id: 7, title: "t", body: "b" }, { id: "n2", title: "t" }, { id: "", title: "t", body: "b" }];
+    const result = mergeFromPeer([], [...junk, { id: "ok", title: "Real", body: "note" }] as unknown as TabData[], "peer", "me", {});
+    expect(result.tabs.map((t) => t.id)).toEqual(["ok"]);
+  });
+
+  it("drops drawings that point at a web address, keeping embedded ones", () => {
+    const remote = {
+      id: "n1",
+      title: "T",
+      body: "b",
+      sketches: [
+        { id: "a", dataUrl: PNG, x: 1, y: 2, width: 30, height: 40 },
+        { id: "b", dataUrl: "https://tracker.example/pixel.png", x: 0, y: 0, width: 1, height: 1 },
+      ],
+    } as unknown as TabData;
+    const imported = mergeFromPeer([], [remote], "peer", "me", {}).tabs[0];
+    expect(imported.sketches.map((s) => s.id)).toEqual(["a"]);
+  });
+
+  it("keeps only known fields, with sane types", () => {
+    const remote = { id: "n1", title: "T", body: "b", updatedAt: "soon", favorite: "yes", injected: "<script>" } as unknown as TabData;
+    const imported = mergeFromPeer([], [remote], "peer", "me", {}).tabs[0] as unknown as Record<string, unknown>;
+    expect(imported.updatedAt).toBe(0);
+    expect(imported.favorite).toBe(false);
+    expect("injected" in imported).toBe(false);
+  });
+});

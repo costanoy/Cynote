@@ -1,4 +1,5 @@
 import type { TabData } from "./types";
+import { safeSketches } from "./sketches";
 
 /** A note's content on each side the last time it was reconciled with a given peer. */
 interface HashPair {
@@ -23,13 +24,32 @@ function snapshot(title: string, body: string): string {
  * notes.json written by an older desktop version. A file link is a path on the
  * peer's own disk, so it never comes along. */
 function normalizeRemoteTab(remote: TabData): TabData {
+  const r = remote as unknown as Record<string, unknown>;
+  const forked = r.forkedFrom as Record<string, unknown> | undefined;
   return {
-    ...remote,
-    favorite: remote.favorite ?? false,
-    sketches: remote.sketches ?? [],
-    updatedAt: remote.updatedAt ?? 0,
-    filePath: undefined,
+    id: remote.id,
+    title: remote.title,
+    body: remote.body,
+    favorite: r.favorite === true,
+    sketches: safeSketches(r.sketches),
+    updatedAt: typeof r.updatedAt === "number" && Number.isFinite(r.updatedAt) ? r.updatedAt : 0,
+    originDeviceId: typeof r.originDeviceId === "string" ? r.originDeviceId : "",
+    forkedFrom:
+      forked && typeof forked.deviceId === "string" && typeof forked.noteId === "string"
+        ? { deviceId: forked.deviceId, noteId: forked.noteId }
+        : undefined,
+    titleIsCustom: typeof r.titleIsCustom === "boolean" ? r.titleIsCustom : undefined,
   };
+}
+
+/** Synced data comes from another device - or from anyone holding the pairing
+ * code - so anything that isn't a well-formed note is ignored, not imported. */
+function isWellFormedNote(n: unknown): n is TabData {
+  if (typeof n !== "object" || n === null) return false;
+  const t = n as Record<string, unknown>;
+  return (
+    typeof t.id === "string" && t.id.length > 0 && t.id.length <= 200 && typeof t.title === "string" && typeof t.body === "string"
+  );
 }
 
 function conflictCopy(local: TabData, myDeviceId: string): TabData {
@@ -85,7 +105,9 @@ export function mergeFromPeer(
   const bodyExistsElsewhere = (id: string, body: string) =>
     [...tabs, ...additions].some((t) => t.id !== id && t.body === body);
 
-  for (const remote of peerTabs) {
+  for (const raw of peerTabs) {
+    if (!isWellFormedNote(raw)) continue;
+    const remote = normalizeRemoteTab(raw);
     const id = remote.id;
     const remoteSnap = snapshot(remote.title, remote.body);
     const i = indexById.get(id);
@@ -95,7 +117,7 @@ export function mergeFromPeer(
       // versions ("(do X)") - importing them back would just duplicate it.
       if (remote.forkedFrom?.deviceId === myDeviceId) continue;
       if (deletedIds.has(id)) continue;
-      additions.push(normalizeRemoteTab(remote));
+      additions.push(remote);
       peerBook[id] = { local: remoteSnap, remote: remoteSnap };
       changed = true;
       continue;

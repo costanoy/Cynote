@@ -28,6 +28,24 @@ Map<String, dynamic> bookkeepingToJson(Bookkeeping b) => b.map(
       (peerId, notes) => MapEntry(peerId, notes.map((noteId, pair) => MapEntry(noteId, pair.toJson()))),
     );
 
+/// Notes arriving from another device - or from anyone holding the pairing
+/// code - so malformed entries are skipped instead of breaking the whole sync.
+List<Note> notesFromJsonList(Object? list) {
+  if (list is! List) return [];
+  final out = <Note>[];
+  for (final item in list) {
+    if (item is! Map<String, dynamic>) continue;
+    final id = item['id'];
+    if (id is! String || id.isEmpty || id.length > 200 || item['title'] is! String || item['body'] is! String) continue;
+    try {
+      out.add(Note.fromJson(item));
+    } catch (_) {
+      // one bad note shouldn't cost the rest
+    }
+  }
+  return out;
+}
+
 String _snapshot(String title, String body) => '$title $body';
 
 final _random = Random();

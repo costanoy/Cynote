@@ -42,7 +42,7 @@ interface PeerNotesResponse {
 export async function fetchPeerNotes(peer: PeerInfo): Promise<PeerNotesResponse | null> {
   if (!isTauri()) return null;
   try {
-    const json = await invoke<string>("fetch_peer_notes", { address: peer.address, port: peer.port });
+    const json = await invoke<string>("fetch_peer_notes", { deviceId: peer.deviceId });
     return JSON.parse(json) as PeerNotesResponse;
   } catch {
     return null;
