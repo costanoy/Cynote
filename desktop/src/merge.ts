@@ -117,6 +117,8 @@ export function mergeFromPeer(
       // versions ("(do X)") - importing them back would just duplicate it.
       if (remote.forkedFrom?.deviceId === myDeviceId) continue;
       if (deletedIds.has(id)) continue;
+      // An empty "Nova nota" carries nothing - it's synced once it has text.
+      if (isBlankUntitled(remote)) continue;
       additions.push(remote);
       peerBook[id] = { local: remoteSnap, remote: remoteSnap };
       changed = true;
@@ -148,7 +150,10 @@ export function mergeFromPeer(
     const remoteTime = remote.updatedAt ?? 0;
     const remoteWins = remoteTime > localTime || (remoteTime === localTime && remoteSnap > localSnap);
     if (remoteWins) {
-      if (local.body.trim() !== "" && !bodyExistsElsewhere(id, local.body)) {
+      // Keep the losing text as a copy only if some of it would otherwise be
+      // lost - when one side was simply behind, every line it has is already
+      // in the winner, and a copy would be pure noise.
+      if (local.body.trim() !== "" && !bodyExistsElsewhere(id, local.body) && hasLinesMissingFrom(local.body, remote.body)) {
         additions.push(conflictCopy(local, myDeviceId));
       }
       takeRemote();
@@ -170,6 +175,22 @@ export function mergeFromPeer(
  * behind. Drops copies that are exact duplicates (same title and text) of one
  * already kept - no content is lost, since an identical copy remains.
  */
+const DEFAULT_TITLE = "Nova nota";
+
+/** A note with no text and no title of its own - nothing worth syncing. */
+export function isBlankUntitled(n: { title: string; body: string }): boolean {
+  const title = n.title.trim();
+  return n.body.trim() === "" && (title === "" || title === DEFAULT_TITLE);
+}
+
+const nonEmptyLines = (text: string) => new Set(text.split("\n").map((l) => l.trim()).filter(Boolean));
+
+/** Whether some line of `text` appears nowhere in `other`. */
+export function hasLinesMissingFrom(text: string, other: string): boolean {
+  const theirs = nonEmptyLines(other);
+  return [...nonEmptyLines(text)].some((line) => !theirs.has(line));
+}
+
 export function dropDuplicateCopies(tabs: TabData[]): { tabs: TabData[]; removedIds: string[] } {
   const seen = new Set<string>();
   const removedIds: string[] = [];

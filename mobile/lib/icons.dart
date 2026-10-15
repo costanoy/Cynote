@@ -35,6 +35,19 @@ class SearchIcon extends StatelessWidget {
       );
 }
 
+class TrashIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+  const TrashIcon({super.key, this.size = 18, required this.color});
+
+  @override
+  Widget build(BuildContext context) => _mono(
+        '<path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.4 4.5l.7 8.5h5.8l.7-8.5M7 7v4M9 7v4" stroke-width="1.4"/>',
+        size: size,
+        color: color,
+      );
+}
+
 class SettingsIcon extends StatelessWidget {
   final double size;
   final Color color;

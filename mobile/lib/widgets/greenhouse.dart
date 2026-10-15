@@ -17,10 +17,11 @@ bool motionEnabled(BuildContext context) => !MediaQuery.disableAnimationsOf(cont
 /// Tap feedback shared by every button: shrinks a little while pressed.
 class Pressable extends StatefulWidget {
   final VoidCallback? onTap;
+  final VoidCallback? onLongPress;
   final double pressedScale;
   final Widget Function(BuildContext context, bool pressed) builder;
 
-  const Pressable({super.key, required this.onTap, required this.builder, this.pressedScale = 0.95});
+  const Pressable({super.key, required this.onTap, required this.builder, this.onLongPress, this.pressedScale = 0.95});
 
   @override
   State<Pressable> createState() => _PressableState();
@@ -39,6 +40,7 @@ class _PressableState extends State<Pressable> {
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: widget.onTap,
+      onLongPress: widget.onLongPress,
       onTapDown: (_) => _set(true),
       onTapUp: (_) => _set(false),
       onTapCancel: () => _set(false),
@@ -782,8 +784,9 @@ String syncLabel(SyncState s) => switch (s) {
 class CyDialogAction {
   final String label;
   final bool primary;
+  final bool danger;
   final VoidCallback onTap;
-  const CyDialogAction(this.label, this.onTap, {this.primary = false});
+  const CyDialogAction(this.label, this.onTap, {this.primary = false, this.danger = false});
 }
 
 /// A paper plaque crowned by a medallion, over a scrim.
@@ -854,7 +857,11 @@ class CyDialog extends StatelessWidget {
                                   t: t,
                                   label: actions[i].label,
                                   onTap: actions[i].onTap,
-                                  kind: actions[i].primary ? PillKind.primary : PillKind.outline,
+                                  kind: actions[i].danger
+                                      ? PillKind.danger
+                                      : actions[i].primary
+                                          ? PillKind.primary
+                                          : PillKind.outline,
                                   horizontalPadding: 16,
                                 ),
                               ),

@@ -83,6 +83,7 @@ MergeResult mergeFromPeer({
   required String peerId,
   required String myDeviceId,
   required Bookkeeping bookkeeping,
+  Set<String> deletedIds = const {},
 }) {
   final indexById = {for (var i = 0; i < myNotes.length; i++) myNotes[i].id: i};
   final peerBook = Map<String, HashPair>.of(bookkeeping[peerId] ?? {});
@@ -102,6 +103,10 @@ MergeResult mergeFromPeer({
       // Copies this device already made of the peer's own content in older
       // versions ("(do X)") - importing them back would just duplicate it.
       if (remote.forkedFrom?.deviceId == myDeviceId) continue;
+      // Deleted here: the peer still having its own copy doesn't bring it back.
+      if (deletedIds.contains(id)) continue;
+      // An empty "Nova nota" carries nothing - it's synced once it has text.
+      if (isBlankUntitled(remote)) continue;
       additions.add(remote);
       peerBook[id] = HashPair(remoteSnap, remoteSnap);
       changed = true;
@@ -140,7 +145,12 @@ MergeResult mergeFromPeer({
     final remoteWins = remote.updatedAt > local.updatedAt ||
         (remote.updatedAt == local.updatedAt && remoteSnap.compareTo(localSnap) > 0);
     if (remoteWins) {
-      if (local.body.trim().isNotEmpty && !bodyExistsElsewhere(id, local.body)) {
+      // Keep the losing text as a copy only if some of it would otherwise be
+      // lost - when one side was simply behind, every line it has is already
+      // in the winner, and a copy would be pure noise.
+      if (local.body.trim().isNotEmpty &&
+          !bodyExistsElsewhere(id, local.body) &&
+          hasLinesMissingFrom(local.body, remote.body)) {
         additions.add(_conflictCopy(local, myDeviceId));
       }
       takeRemote();
@@ -171,3 +181,25 @@ List<Note> dropDuplicateCopies(List<Note> notes) {
     return seen.add(key);
   }).toList();
 }
+
+const _defaultTitle = 'Nova nota';
+
+/// A note with no text and no title of its own - nothing worth syncing.
+bool isBlankUntitled(Note n) {
+  final title = n.title.trim();
+  return n.body.trim().isEmpty && (title.isEmpty || title == _defaultTitle);
+}
+
+Set<String> _nonEmptyLines(String text) =>
+    {for (final line in text.split('\n')) if (line.trim().isNotEmpty) line.trim()};
+
+/// Whether some line of [text] appears nowhere in [other].
+bool hasLinesMissingFrom(String text, String other) => !_nonEmptyLines(other).containsAll(_nonEmptyLines(text));
+
+/// Clears what older versions left behind: exact duplicate copies, and empty
+/// "Nova nota"s that arrived from another device. Notes this device made are
+/// never touched, and nothing with text in it is ever lost - an identical
+/// copy always remains.
+List<Note> tidyNotes(List<Note> notes, String ownDeviceId) => dropDuplicateCopies(notes)
+    .where((n) => !(isBlankUntitled(n) && n.originDeviceId != ownDeviceId))
+    .toList();

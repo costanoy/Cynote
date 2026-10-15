@@ -143,6 +143,53 @@ void main() {
     });
   });
 
+  group('fewer copies', () {
+    test('notes deleted here are never brought back', () {
+      final r = merge([], [note('n1', 'Apagada', 'texto'), note('n2', 'Outra', 'texto 2')]);
+      expect(r.notes.map((n) => n.id), containsAll(['n1', 'n2']));
+      final again = mergeFromPeer(
+        myNotes: [],
+        peerNotes: [note('n1', 'Apagada', 'texto'), note('n2', 'Outra', 'texto 2')],
+        peerId: deviceB,
+        myDeviceId: deviceA,
+        bookkeeping: {},
+        deletedIds: {'n1'},
+      );
+      expect(again.notes.map((n) => n.id), ['n2']);
+    });
+
+    test('empty untitled notes are not imported, titled ones are', () {
+      final r = merge([], [note('b1', 'Nova nota', ''), note('b2', ' ', ' '), note('t1', 'Compras', '')]);
+      expect(r.notes.map((n) => n.id), ['t1']);
+    });
+
+    test('no conflict copy when the losing text is entirely inside the winner', () {
+      final r = merge([note('n1', 'Lista', 'pão\nleite', updatedAt: 1)], [note('n1', 'Lista', 'pão\nleite\novos', updatedAt: 9)]);
+      expect(r.notes, hasLength(1));
+      expect(r.notes.single.body, 'pão\nleite\novos');
+    });
+
+    test('a copy is still kept when the losing text has a line of its own', () {
+      final r = merge([note('n1', 'Lista', 'pão\nmanteiga', updatedAt: 1)], [note('n1', 'Lista', 'pão\nleite', updatedAt: 9)]);
+      expect(r.notes, hasLength(2));
+      expect(r.notes.last.body, 'pão\nmanteiga');
+    });
+
+    test('tidyNotes drops exact duplicate copies and empty notes from other devices only', () {
+      final fork = const ForkedFrom(deviceId: deviceB, noteId: 'n1');
+      Note blank(String id, String origin) => Note(id: id, title: 'Nova nota', time: '', body: '', originDeviceId: origin);
+      final tidy = tidyNotes([
+        note('n1', 'Ideias', 'a'),
+        note('f1', 'Ideias (do PC)', 'b', forkedFrom: fork),
+        note('f2', 'Ideias (do PC)', 'b', forkedFrom: fork),
+        note('f3', 'Ideias (do PC)', 'c', forkedFrom: fork),
+        blank('mine', deviceA),
+        blank('theirs', deviceB),
+      ], deviceA);
+      expect(tidy.map((n) => n.id), ['n1', 'f1', 'f3', 'mine']);
+    });
+  });
+
   group('dropDuplicateCopies', () {
     test('collapses identical sync copies but keeps originals', () {
       Note fork(String id, String body) => note(id, 'Ideias (do VINICIUS)', body,

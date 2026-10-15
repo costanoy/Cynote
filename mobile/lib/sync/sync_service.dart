@@ -10,6 +10,7 @@ import 'package:path_provider/path_provider.dart';
 import '../device_identity.dart';
 import '../models/note.dart';
 import 'bookkeeping_store.dart';
+import 'deleted_notes_store.dart';
 import 'merge.dart';
 import 'peer_info.dart';
 
@@ -50,7 +51,8 @@ bool sameSecret(String a, String b) {
 class SyncService extends ChangeNotifier {
   final DeviceIdentity own;
   final BookkeepingStore bookkeeping;
-  SyncService(this.own, this.bookkeeping);
+  final DeletedNotesStore deleted;
+  SyncService(this.own, this.bookkeeping, this.deleted);
 
   HttpServer? _server;
   BonsoirBroadcast? _broadcast;
@@ -86,6 +88,7 @@ class SyncService extends ChangeNotifier {
     try {
       await _loadTrusted();
       await bookkeeping.load();
+      await deleted.load();
 
       _server = await HttpServer.bind(InternetAddress.anyIPv4, 0);
       _server!.listen(_handleRequest);
@@ -338,6 +341,7 @@ class SyncService extends ChangeNotifier {
           peerId: peerId,
           myDeviceId: own.deviceId,
           bookkeeping: book,
+          deletedIds: deleted.ids,
         );
         currentNotes = result.notes;
         book = result.bookkeeping;

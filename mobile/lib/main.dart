@@ -9,7 +9,8 @@ import 'mobile_updater.dart';
 import 'sync/sync_service.dart';
 import 'sync/cloud_sync_service.dart';
 import 'sync/bookkeeping_store.dart';
-import 'sync/merge.dart' show dropDuplicateCopies;
+import 'sync/merge.dart' show dropDuplicateCopies, tidyNotes;
+import 'sync/deleted_notes_store.dart';
 import 'sync/peer_info.dart';
 import 'icons.dart';
 import 'theme.dart';
@@ -66,6 +67,7 @@ class _CynoteRootState extends State<CynoteRoot> {
   CloudSyncService? _cloudSyncService;
   String? _connectingToDeviceId;
   bool _pairingDialogShowing = false;
+  final DeletedNotesStore _deleted = DeletedNotesStore();
   MobileUpdate? _availableUpdate;
   bool _downloadingUpdate = false;
   Timer? _updateCheckTimer;
@@ -96,13 +98,13 @@ class _CynoteRootState extends State<CynoteRoot> {
       if (!mounted) return;
       setState(() => _identity = identity);
       final bookkeeping = BookkeepingStore();
-      final service = SyncService(identity, bookkeeping);
+      final service = SyncService(identity, bookkeeping, _deleted);
       service.notesProvider = () => _notes;
       service.onNotesMerged = _onNotesMerged;
       service.addListener(_onSyncChanged);
       _syncService = service;
 
-      final cloudService = CloudSyncService(identity, bookkeeping);
+      final cloudService = CloudSyncService(identity, bookkeeping, _deleted);
       cloudService.notesProvider = () => _notes;
       cloudService.onNotesMerged = _onNotesMerged;
       cloudService.addListener(_onCloudSyncChanged);
@@ -112,7 +114,19 @@ class _CynoteRootState extends State<CynoteRoot> {
       // missing here, and the load landing afterwards would then overwrite
       // whatever the merge brought in.
       await notesLoaded;
+      await _deleted.load();
       if (!mounted) return;
+      // Clears what older versions left behind (exact duplicate copies, empty
+      // notes from other devices) - recorded as deleted, so sync can't
+      // bring them back.
+      final tidy = tidyNotes(_notes, identity.deviceId);
+      if (tidy.length != _notes.length) {
+        final kept = {for (final n in tidy) n.id};
+        await _deleted.addAll(_notes.where((n) => !kept.contains(n.id)).map((n) => n.id));
+        if (!mounted) return;
+        setState(() => _notes = tidy);
+        _scheduleSave();
+      }
       service.start();
       cloudService.start();
     });
@@ -273,6 +287,41 @@ class _CynoteRootState extends State<CynoteRoot> {
     _scheduleSave();
   }
 
+  void _confirmDeleteNote(Note note) {
+    final t = _colors;
+    final name = note.title.trim().isEmpty ? 'Sem título' : note.title.trim();
+    showCyDialog(
+      context,
+      t,
+      (ctx) => CyDialog(
+        t: t,
+        icon: TrashIcon(size: 22, color: t.gold),
+        title: 'Excluir nota',
+        body: 'Excluir “$name” deste celular? Se ela também estiver aberta no computador, lá ela continua.',
+        actions: [
+          CyDialogAction('Cancelar', () => Navigator.of(ctx).pop()),
+          CyDialogAction('Excluir', () {
+            Navigator.of(ctx).pop();
+            _deleteNote(note);
+          }, danger: true),
+        ],
+      ),
+    );
+  }
+
+  void _deleteNote(Note note) {
+    setState(() {
+      _notes = _notes.where((n) => n.id != note.id).toList();
+      if (_activeNoteId == note.id) {
+        _activeNoteId = null;
+        _screen = CyScreen.home;
+      }
+    });
+    // Sync must not bring it back from a device that still has its own copy.
+    _deleted.addAll([note.id]);
+    _scheduleSave();
+  }
+
   void _onTitleChanged(String value) {
     setState(() {
       _notes = _notes.map((n) => n.id == _activeNoteId ? n.copyWith(title: value) : n).toList();
@@ -338,6 +387,7 @@ class _CynoteRootState extends State<CynoteRoot> {
           onSearch: _goSearch,
           onSettings: _goSettings,
           onAddNote: _addNote,
+          onLongPressNote: _confirmDeleteNote,
         );
         break;
       case CyScreen.search:

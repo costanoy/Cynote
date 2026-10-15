@@ -232,3 +232,31 @@ describe("data arriving through sync", () => {
     expect("injected" in imported).toBe(false);
   });
 });
+
+describe("fewer copies", () => {
+  it("doesn't import an empty untitled note, but does import an empty one with a real title", () => {
+    const peer = [
+      { id: "b1", title: "Nova nota", body: "" },
+      { id: "b2", title: "  ", body: " \n " },
+      { id: "t1", title: "Compras", body: "" },
+    ] as unknown as TabData[];
+    const result = mergeFromPeer([], peer, "peer", "me", {});
+    expect(result.tabs.map((t) => t.id)).toEqual(["t1"]);
+  });
+
+  it("makes no conflict copy when every line of the losing text is already in the winner", () => {
+    const mine = [{ ...note("n1", "Lista", "pão\nleite", 1) }];
+    const peer = [{ ...note("n1", "Lista", "pão\nleite\novos", 9) }];
+    const result = mergeFromPeer(mine, peer, "peer", "me", {});
+    expect(result.tabs).toHaveLength(1);
+    expect(result.tabs[0].body).toBe("pão\nleite\novos");
+  });
+
+  it("still keeps a copy when the losing text has a line the winner doesn't", () => {
+    const mine = [{ ...note("n1", "Lista", "pão\nmanteiga", 1) }];
+    const peer = [{ ...note("n1", "Lista", "pão\nleite", 9) }];
+    const result = mergeFromPeer(mine, peer, "peer", "me", {});
+    expect(result.tabs).toHaveLength(2);
+    expect(result.tabs[1].body).toBe("pão\nmanteiga");
+  });
+});

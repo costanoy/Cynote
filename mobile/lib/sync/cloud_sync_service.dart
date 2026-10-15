@@ -9,6 +9,7 @@ import 'package:uuid/uuid.dart';
 import '../device_identity.dart';
 import '../models/note.dart';
 import 'bookkeeping_store.dart';
+import 'deleted_notes_store.dart';
 import 'merge.dart';
 
 /// Realtime Database REST endpoint. Not itself a secret - what actually
@@ -44,7 +45,8 @@ class _CachedPeer {
 class CloudSyncService extends ChangeNotifier {
   final DeviceIdentity own;
   final BookkeepingStore bookkeeping;
-  CloudSyncService(this.own, this.bookkeeping);
+  final DeletedNotesStore deleted;
+  CloudSyncService(this.own, this.bookkeeping, this.deleted);
 
   String? syncId;
   Timer? _timer;
@@ -62,6 +64,7 @@ class CloudSyncService extends ChangeNotifier {
     try {
       await _loadSyncId();
       await bookkeeping.load();
+      await deleted.load();
       if (syncId != null) {
         _restartTimer();
         runSyncCycle();
@@ -208,6 +211,7 @@ class CloudSyncService extends ChangeNotifier {
           peerId: peerId,
           myDeviceId: own.deviceId,
           bookkeeping: book,
+          deletedIds: deleted.ids,
         );
         currentNotes = result.notes;
         book = result.bookkeeping;

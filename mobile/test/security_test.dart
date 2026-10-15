@@ -47,7 +47,7 @@ void main() {
 
     test('compare only equal when identical', () {
       final a = newPairingSecret();
-      expect(sameSecret(a, '$a'), isTrue);
+      expect(sameSecret(a, String.fromCharCodes(a.codeUnits)), isTrue);
       expect(sameSecret(a, newPairingSecret()), isFalse);
       expect(sameSecret(a, a.substring(0, 63)), isFalse);
     });

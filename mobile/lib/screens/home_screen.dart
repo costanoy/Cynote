@@ -15,6 +15,7 @@ class HomeScreen extends StatelessWidget {
   final VoidCallback onSearch;
   final VoidCallback onSettings;
   final VoidCallback onAddNote;
+  final void Function(Note)? onLongPressNote;
 
   const HomeScreen({
     super.key,
@@ -24,6 +25,7 @@ class HomeScreen extends StatelessWidget {
     required this.onSearch,
     required this.onSettings,
     required this.onAddNote,
+    this.onLongPressNote,
   });
 
   @override
@@ -52,7 +54,12 @@ class HomeScreen extends StatelessWidget {
                   key: ValueKey(notes[i].id),
                   // Only the first screenful cascades in; the rest just appear.
                   delay: Duration(milliseconds: i < 10 ? i * 45 : 0),
-                  child: NoteCard(t: t, note: notes[i], onTap: () => onOpenNote(notes[i])),
+                  child: NoteCard(
+                    t: t,
+                    note: notes[i],
+                    onTap: () => onOpenNote(notes[i]),
+                    onLongPress: onLongPressNote == null ? null : () => onLongPressNote!(notes[i]),
+                  ),
                 ),
               ),
             ),
@@ -107,6 +114,7 @@ class _AddButton extends StatelessWidget {
 class NoteCardFrame extends StatelessWidget {
   final CyColors t;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final EdgeInsets padding;
   final bool innerRule;
   final Widget child;
@@ -116,6 +124,7 @@ class NoteCardFrame extends StatelessWidget {
     required this.t,
     required this.onTap,
     required this.child,
+    this.onLongPress,
     this.padding = const EdgeInsets.fromLTRB(20, 16, 18, 16),
     this.innerRule = true,
   });
@@ -137,6 +146,7 @@ class NoteCardFrame extends StatelessWidget {
   Widget build(BuildContext context) {
     return Pressable(
       onTap: onTap,
+      onLongPress: onLongPress,
       pressedScale: 0.98,
       builder: (context, pressed) => AnimatedContainer(
         duration: const Duration(milliseconds: 200),
@@ -169,7 +179,8 @@ class NoteCard extends StatelessWidget {
   final CyColors t;
   final Note note;
   final VoidCallback onTap;
-  const NoteCard({super.key, required this.t, required this.note, required this.onTap});
+  final VoidCallback? onLongPress;
+  const NoteCard({super.key, required this.t, required this.note, required this.onTap, this.onLongPress});
 
   @override
   Widget build(BuildContext context) {
@@ -177,6 +188,7 @@ class NoteCard extends StatelessWidget {
     return NoteCardFrame(
       t: t,
       onTap: onTap,
+      onLongPress: onLongPress,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
