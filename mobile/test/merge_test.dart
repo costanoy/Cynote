@@ -190,6 +190,50 @@ void main() {
     });
   });
 
+  group('first sync after updating from a version before 0.1.20', () {
+    Bookkeeping seed(List<Note> uploaded, List<Note> peer, {Bookkeeping legacy = const {}, Bookkeeping current = const {}}) =>
+        seedUpgradeBookkeeping(current, legacy: legacy, lastUploaded: uploaded, peers: {deviceB: peer});
+
+    test('a note only the peer edited since the last upload is updated, with no copy', () {
+      final old = note('n1', 'Cronologia', 'Duelel\nPublicar 14/10', updatedAt: 1);
+      final peer = [note('n1', 'Cronologia', 'Duelel v\nPublicar 16/10', updatedAt: 9)];
+      final r = merge([old], peer, seed([old], peer));
+      expect(r.notes, hasLength(1));
+      expect(r.notes.single.body, 'Duelel v\nPublicar 16/10');
+    });
+
+    test('an edit made here after the last upload is kept', () {
+      final peer = [note('n1', 'T', 'a', updatedAt: 1)];
+      final r = merge([note('n1', 'T', 'a\nfeito no celular', updatedAt: 5)], peer, seed(peer, peer));
+      expect(r.changed, isFalse);
+      expect(r.notes.single.body, 'a\nfeito no celular');
+    });
+
+    test('both sides edited since the last upload is still a conflict, with the older text kept', () {
+      final uploaded = [note('n1', 'T', 'a', updatedAt: 1)];
+      final peer = [note('n1', 'T', 'a\nno PC', updatedAt: 9)];
+      final r = merge([note('n1', 'T', 'a\nno celular', updatedAt: 5)], peer, seed(uploaded, peer));
+      expect(r.notes.map((n) => n.body), ['a\nno PC', 'a\nno celular']);
+    });
+
+    test('a note the old version already saw differ is settled as a conflict', () {
+      final mine = note('n1', 'T', 'meu texto', updatedAt: 1);
+      final peer = [note('n1', 'T', 'outro texto', updatedAt: 9)];
+      final legacy = {deviceB: {'n1': const HashPair('T meu texto', 'T outro texto')}};
+      final book = seed([mine], peer, legacy: legacy);
+      expect(book[deviceB], isEmpty);
+      expect(merge([mine], peer, book).notes, hasLength(2));
+    });
+
+    test('notes missing from the last upload, or already recorded, are left alone', () {
+      final peer = [note('n1', 'T', 'b'), note('n2', 'U', 'c')];
+      final current = {deviceB: {'n2': const HashPair('U x', 'U y')}};
+      final book = seed([note('n2', 'U', 'c')], peer, current: current);
+      expect(book[deviceB]!.keys, ['n2']);
+      expect(book[deviceB]!['n2']!.local, 'U x');
+    });
+  });
+
   group('dropDuplicateCopies', () {
     test('collapses identical sync copies but keeps originals', () {
       Note fork(String id, String body) => note(id, 'Ideias (do VINICIUS)', body,

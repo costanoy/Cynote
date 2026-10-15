@@ -188,11 +188,34 @@ class CloudSyncService extends ChangeNotifier {
     }
   }
 
+  /// The first sync after updating from a version before 0.1.20 - see
+  /// seedUpgradeBookkeeping. Runs before this version's first upload replaces
+  /// the old one's. False if the database couldn't be reached.
+  Future<bool> _seedAfterUpgrade(String code) async {
+    final legacy = bookkeeping.legacy;
+    if (legacy == null) return true;
+    try {
+      final uploaded = await _getJson('$_dbUrl/sync/$code/${own.deviceId}/notes.json');
+      if (!await _fetchChanges(code)) return false;
+      bookkeeping.value = seedUpgradeBookkeeping(
+        bookkeeping.value,
+        legacy: legacy,
+        lastUploaded: notesFromJsonList(uploaded),
+        peers: {for (final e in _peers.entries) e.key: e.value.notes},
+      );
+      await bookkeeping.finishUpgrade();
+      return true;
+    } catch (_) {
+      return false;
+    }
+  }
+
   Future<void> runSyncCycle() async {
     final code = syncId;
     if (code == null || _cycleRunning) return;
     _cycleRunning = true;
     try {
+      if (!await _seedAfterUpgrade(code)) return;
       final notesJson = jsonEncode(notesProvider().map((n) => n.toJson()).toList());
       if (notesJson != _lastPushed && await _pushNotes(code, notesJson)) {
         _lastPushed = notesJson;

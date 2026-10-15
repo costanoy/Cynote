@@ -169,6 +169,35 @@ MergeResult mergeFromPeer({
   );
 }
 
+/// Before 0.1.20 the app never took a peer's edits: whenever a note differed
+/// from the peer's, it made a "(do X)" copy and noted that down ([legacy]).
+/// So a note it uploaded last time that the peer has too, with
+/// nothing noted about it, was the same on both sides back then - what it
+/// uploaded is the last version both agreed on. Starting the bookkeeping from
+/// there lets the first sync after updating see that the peer simply edited
+/// the note since (and take that text), instead of calling it a conflict and
+/// keeping this device's older text as a copy.
+Bookkeeping seedUpgradeBookkeeping(
+  Bookkeeping current, {
+  required Bookkeeping legacy,
+  required List<Note> lastUploaded,
+  required Map<String, List<Note>> peers,
+}) {
+  final uploaded = {for (final n in lastUploaded) n.id: _snapshot(n.title, n.body)};
+  final out = Map<String, Map<String, HashPair>>.of(current);
+  peers.forEach((peerId, notes) {
+    final book = Map<String, HashPair>.of(out[peerId] ?? {});
+    final diverged = legacy[peerId] ?? const {};
+    for (final n in notes) {
+      final snap = uploaded[n.id];
+      if (snap == null || diverged.containsKey(n.id)) continue;
+      book.putIfAbsent(n.id, () => HashPair(snap, snap));
+    }
+    out[peerId] = book;
+  });
+  return out;
+}
+
 /// Older versions of the merge re-forked a note on every save while it
 /// differed from the peer's copy, leaving piles of identical "(do X)" copies
 /// behind. Drops copies that exactly duplicate (same title and text) one
