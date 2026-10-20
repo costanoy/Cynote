@@ -3,7 +3,9 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'models/note.dart';
+import 'note_sort.dart';
 import 'notes_store.dart' as notes_store;
+import 'ui_prefs.dart';
 import 'device_identity.dart';
 import 'mobile_updater.dart';
 import 'sync/sync_service.dart';
@@ -59,6 +61,7 @@ class _CynoteRootState extends State<CynoteRoot> {
   CyScreen _returnScreen = CyScreen.home;
   bool _darkMode = true;
   late List<Note> _notes = widget.initialNotes;
+  NoteSort _sort = NoteSort.recent;
   SyncState _syncStatus = SyncState.synced;
   String? _activeNoteId;
   Timer? _saveDebounce;
@@ -85,6 +88,9 @@ class _CynoteRootState extends State<CynoteRoot> {
       if (!mounted || update == null) return;
       setState(() => _availableUpdate = update);
       _showUpdateDialog();
+    });
+    loadNoteSort().then((sort) {
+      if (mounted && sort != _sort) setState(() => _sort = sort);
     });
     final notesLoaded = notes_store.loadNotes().then((saved) {
       if (!mounted) return;
@@ -350,6 +356,11 @@ class _CynoteRootState extends State<CynoteRoot> {
 
   void _toggleDarkMode() => setState(() => _darkMode = !_darkMode);
 
+  void _setSort(NoteSort sort) {
+    setState(() => _sort = sort);
+    saveNoteSort(sort);
+  }
+
   Future<String> _generateCloudCode() async {
     final service = _cloudSyncService;
     if (service == null) return '';
@@ -367,6 +378,8 @@ class _CynoteRootState extends State<CynoteRoot> {
   @override
   Widget build(BuildContext context) {
     final t = _colors;
+    // Search lists its results in the same order as the home screen.
+    final ordered = sortNotes(_notes, _sort);
 
     Widget content;
     switch (_screen) {
@@ -382,7 +395,9 @@ class _CynoteRootState extends State<CynoteRoot> {
       case CyScreen.home:
         content = HomeScreen(
           t: t,
-          notes: _notes,
+          notes: ordered,
+          sort: _sort,
+          onSortChanged: _setSort,
           onOpenNote: (n) => _openNote(n, CyScreen.home),
           onSearch: _goSearch,
           onSettings: _goSettings,
@@ -393,7 +408,7 @@ class _CynoteRootState extends State<CynoteRoot> {
       case CyScreen.search:
         content = SearchScreen(
           t: t,
-          notes: _notes,
+          notes: ordered,
           onOpenNote: (n) => _openNote(n, CyScreen.search),
           onBack: _goHome,
         );

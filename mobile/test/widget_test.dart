@@ -15,21 +15,57 @@ void main() {
   // The interface has ambient animations that never end (breathing lamp,
   // swaying sprout); with reduced motion on they hold still, so
   // pumpAndSettle can settle.
-  Future<void> pumpApp(WidgetTester tester) async {
+  Future<void> pumpApp(WidgetTester tester, {List<Note>? notes}) async {
     tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     // A phone-sized screen, like the one the layout is designed for.
     tester.view.physicalSize = const Size(390, 844);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    await tester.pumpWidget(CynoteApp(initialNotes: testNotes()));
+    await tester.pumpWidget(CynoteApp(initialNotes: notes ?? testNotes()));
   }
 
-  Future<void> goToHome(WidgetTester tester) async {
-    await pumpApp(tester);
+  Future<void> goToHome(WidgetTester tester, {List<Note>? notes}) async {
+    await pumpApp(tester, notes: notes);
     await tester.tap(find.text('Continuar sem sincronizar'));
     await tester.pumpAndSettle();
   }
+
+  /// Titles from top to bottom, as they are on screen.
+  List<String> onScreenOrder(WidgetTester tester, List<String> titles) =>
+      [...titles]..sort((a, b) => tester.getTopLeft(find.text(a)).dy.compareTo(tester.getTopLeft(find.text(b)).dy));
+
+  testWidgets('Notes list the last edited first, and can be sorted by title or oldest', (tester) async {
+    final now = DateTime.now();
+    Note edited(String id, String title, Duration ago) =>
+        Note(id: id, title: title, time: 'Agora', body: 'texto', updatedAt: now.subtract(ago).millisecondsSinceEpoch);
+    await goToHome(tester, notes: [
+      edited('n1', 'Zebra', const Duration(hours: 30)),
+      edited('n2', 'Abacate', const Duration(minutes: 5)),
+      edited('n3', 'Âmbar', const Duration(days: 40)),
+    ]);
+    const titles = ['Zebra', 'Abacate', 'Âmbar'];
+
+    expect(find.text('3 notas'), findsOneWidget);
+    expect(find.text('Mais recentes'), findsOneWidget);
+    expect(onScreenOrder(tester, titles), ['Abacate', 'Zebra', 'Âmbar']);
+    // The card shows when the note was edited, not the time it was created.
+    expect(find.text('há 5 min'), findsOneWidget);
+    expect(find.text('Agora'), findsNothing);
+
+    await tester.tap(find.text('Mais recentes'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ordenar por'), findsOneWidget);
+    await tester.tap(find.text('Título (A a Z)'));
+    await tester.pumpAndSettle();
+    expect(onScreenOrder(tester, titles), ['Abacate', 'Âmbar', 'Zebra']);
+
+    await tester.tap(find.text('Título (A a Z)'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Mais antigas'));
+    await tester.pumpAndSettle();
+    expect(onScreenOrder(tester, titles), ['Âmbar', 'Zebra', 'Abacate']);
+  });
 
   testWidgets('Sync screen shows sync prompt and can be skipped to home', (tester) async {
     await pumpApp(tester);

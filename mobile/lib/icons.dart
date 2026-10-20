@@ -110,6 +110,40 @@ class RedoIcon extends StatelessWidget {
       );
 }
 
+/// Sorting: three lines of falling length, with an arrow down the side.
+class SortIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+  const SortIcon({super.key, this.size = 16, required this.color});
+
+  @override
+  Widget build(BuildContext context) => _mono(
+        '<path d="M2.5 4h7M2.5 8h5M2.5 12h3" stroke-width="1.5"/><path d="M12.5 3.5v9M10.5 10.5l2 2 2-2" stroke-width="1.5"/>',
+        size: size,
+        color: color,
+      );
+}
+
+class ChevronDownIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+  const ChevronDownIcon({super.key, this.size = 12, required this.color});
+
+  @override
+  Widget build(BuildContext context) =>
+      _mono('<path d="M4 6l4 4 4-4" stroke-width="1.7"/>', size: size, color: color);
+}
+
+class CheckIcon extends StatelessWidget {
+  final double size;
+  final Color color;
+  const CheckIcon({super.key, this.size = 16, required this.color});
+
+  @override
+  Widget build(BuildContext context) =>
+      _mono('<path d="M3 8.5l3.2 3.2L13 4.8" stroke-width="1.8"/>', size: size, color: color);
+}
+
 class ClearIcon extends StatelessWidget {
   final double size;
   final Color color;

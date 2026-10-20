@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../icons.dart';
 import '../models/note.dart';
+import '../note_sort.dart';
 import '../theme.dart';
 import '../widgets/greenhouse.dart';
 import 'home_screen.dart' show NoteCardFrame, flattenNoteText;
@@ -201,7 +202,7 @@ class _ResultCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(width: 10),
-              Text(note.time, style: CyType.ui(12, t.inkFaint)),
+              Text(editedLabel(note.updatedAt, DateTime.now()), style: CyType.ui(12, t.inkFaint)),
             ],
           ),
           if (snippet.isNotEmpty) ...[
