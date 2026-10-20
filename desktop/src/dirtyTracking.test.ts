@@ -57,6 +57,17 @@ describe("dirtyTracking", () => {
     expect(isDirty(moved, snap)).toBe(true);
   });
 
+  it("a drawing's anchor following the text isn't an edit of its own", () => {
+    const t = tab({
+      sketches: [{ id: "sk1", dataUrl: "data:image/png;base64,a", x: 0, y: 0, width: 10, height: 10 }],
+    });
+    const snap = snapshotOf(t);
+    const anchored = { ...t, sketches: [{ ...t.sketches[0], anchor: { line: 4, dy: 2 } }] };
+    expect(isDirty(anchored, snap)).toBe(false);
+    const redrawn = { ...t, sketches: [{ ...t.sketches[0], strokes: [{ tool: "pen" as const, color: "ink" as const, size: 2, points: [0, 0, 1] }] }] };
+    expect(isDirty(redrawn, snap)).toBe(true);
+  });
+
   describe("tabHasContent", () => {
     it("is false for a blank tab", () => {
       expect(tabHasContent(tab())).toBe(false);

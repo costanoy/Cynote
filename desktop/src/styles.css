@@ -903,25 +903,46 @@
   pointer-events: none;
 }
 
-/* Pasted drawings float over the text. */
+/* Drawings laid over the text (see ContentArea). The mouse goes straight
+   through them to the text; only their toolbar and resize handle take it, and
+   ContentArea picks up presses that land on ink. */
 .note-sketch-wrap {
   position: absolute;
   z-index: 3;
+  pointer-events: none;
+  outline: none;
 }
 .note-sketch {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 6px;
+  border-radius: 4px;
   outline: 1px dashed transparent;
   outline-offset: 3px;
-  cursor: move;
-  user-select: none;
-  -webkit-user-drag: none;
   transition: outline-color 0.2s;
 }
-.note-sketch-wrap:hover .note-sketch {
+.note-sketch-wrap.active .note-sketch,
+.note-sketch-wrap:focus .note-sketch {
   outline-color: var(--gold);
+}
+.note-sketch-wrap.moving .note-sketch {
+  outline-style: solid;
+  outline-color: var(--gold-line);
+  filter: drop-shadow(0 6px 10px var(--shadow));
+}
+/* Over ink, the pointer grabs the drawing instead of pointing at text. */
+.note-body-row.over-ink,
+.note-body-row.over-ink .note-body,
+.note-body-row.over-ink .line-gutter {
+  cursor: move;
+}
+.note-body-row.move-sketch,
+.note-body-row.move-sketch * {
+  cursor: grabbing !important;
+}
+.note-body-row.resize-sketch,
+.note-body-row.resize-sketch * {
+  cursor: nwse-resize !important;
 }
 .sketch-toolbar {
   position: absolute;
@@ -933,18 +954,17 @@
   background: var(--frame);
   border: 1px solid var(--gold-line);
   border-radius: 9px;
+  pointer-events: auto;
   animation: cyRise 0.18s ease;
 }
-/* Bridges the gap up to the toolbar so the hover survives the trip. */
-.sketch-toolbar::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 100%;
-  height: 8px;
+/* Too close to the top of the page for room above: hang it below. (The trip
+   from the ink to the toolbar keeps the drawing active - see ContentArea.) */
+.note-sketch-wrap.below .sketch-toolbar {
+  top: auto;
+  bottom: -30px;
 }
-.note-sketch-wrap:hover .sketch-toolbar {
+.note-sketch-wrap.active .sketch-toolbar,
+.note-sketch-wrap:focus-within .sketch-toolbar {
   display: flex;
 }
 .sketch-tool-btn {
@@ -959,8 +979,20 @@
   color: var(--frame-ink);
   transition: var(--t-base);
 }
+.sketch-tool-btn:hover {
+  background: var(--gold-soft);
+}
 .sketch-tool-btn.delete:hover {
   background: rgba(180, 83, 63, 0.55);
+}
+.sketch-tool-btn.grip {
+  width: 18px;
+  cursor: grab;
+  touch-action: none;
+  color: var(--frame-ink-soft);
+}
+.sketch-tool-btn.grip:hover {
+  color: var(--frame-ink);
 }
 .sketch-resize-handle {
   position: absolute;
@@ -973,9 +1005,12 @@
   border: 1.5px solid var(--lead);
   cursor: nwse-resize;
   display: none;
+  pointer-events: auto;
+  touch-action: none;
   transition: transform 0.18s, box-shadow 0.25s;
 }
-.note-sketch-wrap:hover .sketch-resize-handle {
+.note-sketch-wrap.active .sketch-resize-handle,
+.note-sketch-wrap:focus-within .sketch-resize-handle {
   display: block;
 }
 .sketch-resize-handle:hover {
@@ -985,86 +1020,287 @@
 
 /* --------------------------------------------------------- Note Styling */
 
-/* Always mounted (the canvas keeps its size in sync), only shown when open. */
+/* A sheet of tracing paper over the note: the text shows through, and what's
+   drawn stays exactly where it was drawn. Always mounted (the canvas keeps its
+   size in sync), only shown when open. It stops short of the scrollbar, which
+   still scrolls the note underneath. */
 .overlay {
   position: absolute;
-  inset: 0;
+  inset: 0 10px 0 0;
   z-index: 30;
-  display: flex;
-  flex-direction: column;
-  background-color: var(--paper-2);
-  background-image: radial-gradient(var(--rule) 0.8px, transparent 0.8px);
-  background-size: 16px 16px;
+  outline: none;
+  background: color-mix(in srgb, var(--paper) 30%, transparent);
+  box-shadow:
+    inset 0 0 0 1px var(--gold-line),
+    inset 0 0 36px var(--gold-soft);
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transition: opacity 0.3s ease, visibility 0s 0.3s;
+  transition:
+    opacity 0.25s ease,
+    visibility 0s 0.25s;
 }
 .overlay.open {
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transition: opacity 0.3s ease;
+  transition: opacity 0.25s ease;
+}
+.draw-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
 }
 .overlay-header {
+  position: absolute;
+  top: 10px;
+  right: 12px;
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 12px 18px 0;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 13px 4px 10px;
+  border-radius: 999px;
+  background: var(--frame);
+  border: 1px solid var(--gold-line);
+  color: var(--frame-ink);
+  box-shadow: 0 6px 16px var(--shadow);
+  pointer-events: none;
+  animation: cyRise 0.3s var(--ease-rise);
+  transition: opacity 0.2s;
+}
+.overlay-header svg {
+  color: var(--gold);
 }
 .overlay-title {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 14px;
   letter-spacing: 0.04em;
 }
 .overlay-subtitle {
   font-family: var(--font-body);
   font-style: italic;
-  font-size: 12.5px;
-  color: var(--ink-faint);
+  font-size: 12px;
+  color: var(--frame-ink-soft);
 }
-.draw-canvas {
-  display: block;
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  touch-action: none;
-  cursor: crosshair;
+/* Out of the way while a stroke is being drawn. */
+.overlay.drawing .overlay-header,
+.overlay.drawing .draw-dock {
+  opacity: 0.3;
 }
-.overlay-footer {
+
+.draw-dock {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 12px;
+  margin: 0 auto;
+  width: max-content;
+  max-width: calc(100% - 20px);
+  box-sizing: border-box;
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: center;
   flex-wrap: wrap;
-  padding: 10px 14px 12px;
-  border-top: 1px solid var(--rule);
-  background: var(--paper);
+  gap: 6px 2px;
+  padding: 6px 8px;
+  border-radius: 18px;
+  background: var(--frame);
+  border: 1px solid var(--gold-line);
+  color: var(--frame-ink);
+  box-shadow: 0 12px 28px var(--shadow);
+  animation: cyRise 0.3s var(--ease-rise);
+  transition: opacity 0.2s;
 }
-.swatches {
+.draw-group {
   display: flex;
-  gap: 7px;
-  padding-right: 6px;
+  align-items: center;
+  gap: 2px;
+  transition: opacity 0.2s;
 }
-.swatch {
+.draw-group.dimmed {
+  opacity: 0.45;
+}
+.draw-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 5px;
+  background: var(--gold-line);
+}
+.draw-tool,
+.draw-size {
   all: unset;
   box-sizing: border-box;
-  width: 22px;
-  height: 22px;
+  height: 28px;
+  border-radius: 9px;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: var(--t-base);
+}
+.draw-tool {
+  width: 30px;
+  color: var(--frame-ink);
+}
+.draw-tool:hover,
+.draw-size:hover {
+  background: var(--gold-soft);
+  box-shadow: 0 0 0 1px var(--gold-line);
+}
+.draw-tool:active,
+.draw-size:active {
+  transform: scale(0.9);
+}
+.draw-tool.active {
+  background: var(--gold);
+  color: var(--frame-2);
+  box-shadow: 0 0 12px var(--glow);
+}
+.draw-tool:disabled {
+  opacity: 0.32;
+  cursor: default;
+  pointer-events: none;
+}
+.draw-size {
+  width: 24px;
+  color: var(--frame-ink-soft);
+}
+.draw-size i {
+  display: block;
+  border-radius: 50%;
+  background: currentColor;
+}
+.draw-size.size-0 i {
+  width: 4px;
+  height: 4px;
+}
+.draw-size.size-1 i {
+  width: 7px;
+  height: 7px;
+}
+.draw-size.size-2 i {
+  width: 11px;
+  height: 11px;
+}
+.draw-size.active {
+  color: var(--gold);
+  box-shadow: inset 0 0 0 1px var(--gold-line);
+}
+.draw-swatch {
+  all: unset;
+  box-sizing: border-box;
+  width: 20px;
+  height: 20px;
+  margin: 0 2px;
   border-radius: 50%;
   border: 1.5px solid var(--lead);
   cursor: pointer;
   transition: var(--t-base);
 }
-.swatch.selected {
-  transform: scale(1.12);
-  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--gold);
-}
-.swatch:hover {
+.draw-swatch:hover {
   transform: scale(1.18) rotate(-8deg);
-  box-shadow: 0 0 0 2px var(--paper), 0 0 0 3.5px var(--gold-line);
+  box-shadow:
+    0 0 0 2px var(--frame),
+    0 0 0 3.5px var(--gold-line);
 }
-.swatch:active {
+.draw-swatch.active {
+  transform: scale(1.12);
+  box-shadow:
+    0 0 0 2px var(--frame),
+    0 0 0 3.5px var(--gold);
+}
+.draw-swatch:active {
   transform: scale(0.9);
+}
+.draw-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 8px;
+}
+.draw-dock .pill {
+  color: var(--frame-ink);
+  border-color: var(--gold-line);
+}
+.draw-dock .pill.ghost {
+  border-color: transparent;
+  color: var(--frame-ink-soft);
+}
+.draw-dock .pill:hover {
+  background: var(--gold-soft);
+}
+.draw-dock .pill.primary {
+  border-color: transparent;
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+.draw-dock .pill.primary:hover {
+  background: var(--accent);
+}
+
+.draw-confirm {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: max-content;
+  height: max-content;
+  max-width: calc(100% - 24px);
+  box-sizing: border-box;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 14px 12px 18px;
+  border-radius: 14px;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--gold-line);
+  box-shadow: 0 14px 30px var(--shadow);
+  font-family: var(--font-ui);
+  font-size: 13.5px;
+  animation: cyGrow 0.22s var(--ease-grow);
+}
+.draw-confirm > span {
+  margin-right: 6px;
+}
+.pill.danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
+}
+.pill.danger:hover {
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+}
+
+/* While drawing, the page under the sheet stays as it is: same note, same zoom. */
+.cy-window.drawing .tab-bar,
+.cy-window.drawing .status-bar {
+  opacity: 0.5;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+
+/* "Desenho excluído · Desfazer" */
+.cy-toast.with-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 5px 4px 14px;
+  pointer-events: auto;
+}
+.cy-toast-action {
+  all: unset;
+  cursor: pointer;
+  padding: 3px 10px;
+  border-radius: 999px;
+  color: var(--gold);
+  font-weight: 500;
+  transition: var(--t-base);
+}
+.cy-toast-action:hover {
+  background: var(--gold-soft);
 }
 
 /* ----------------------------------------------------------- status bar */

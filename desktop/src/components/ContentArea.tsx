@@ -1,12 +1,21 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { NoteSketch } from "../types";
-import { EditIcon, TrashIcon } from "../icons";
+import { EditIcon, GripIcon, TrashIcon } from "../icons";
 import * as core from "../editorCore";
 import type { EditorState, Sel } from "../editorCore";
+import { drawOps } from "../ink";
+import { layoutOf, placeAt, sketchRect, type NoteLayout, type Rect } from "../noteLayout";
+import { imagesFor } from "../sketchImages";
 import { FindBar, type FindMode } from "./FindBar";
 
-const MIN_SKETCH_SIZE = 40;
-const MAX_SKETCH_SIZE = 480;
+const MIN_SKETCH_SIZE = 16;
+// How close to the ink a click still grabs a drawing, in px.
+const INK_REACH = 5;
+// Pen ink is solid; a marker's is see-through. Pressing on solid ink grabs the
+// drawing, while a highlight leaves the text under it clickable - any ink
+// still brings up the drawing's toolbar, whose handle moves it.
+const SOLID_INK = 140;
+const ANY_INK = 24;
 
 type EditKind = Parameters<core.History["record"]>[1];
 
@@ -296,10 +305,18 @@ type Props = {
   body: string;
   sketches: NoteSketch[];
   spellCheck: boolean;
+  darkMode: boolean;
+  /** Changes whenever the text is set differently (zoom, reading mode) - the
+   * editor's box doesn't always change size with it, so nothing else would
+   * tell the drawings and extra cursors to follow. */
+  textStyleKey: string;
+  /** The drawing open in Note Styling, shown there instead of here meanwhile. */
+  hiddenSketchId: string | null;
   onBodyInput: (value: string) => void;
   onCaretChange: (line: number, col: number) => void;
-  onMoveSketch: (id: string, x: number, y: number) => void;
-  onResizeSketch: (id: string, width: number, height: number) => void;
+  /** Moves or resizes drawings. `quiet` when nothing visible changes - only
+   * anchoring a drawing made before anchors existed. */
+  onUpdateSketches: (patches: Record<string, Partial<NoteSketch>>, quiet?: boolean) => void;
   onEditSketch: (id: string) => void;
   onDeleteSketch: (id: string) => void;
 };
@@ -309,10 +326,12 @@ export function ContentArea({
   body,
   sketches,
   spellCheck,
+  darkMode,
+  textStyleKey,
+  hiddenSketchId,
   onBodyInput,
   onCaretChange,
-  onMoveSketch,
-  onResizeSketch,
+  onUpdateSketches,
   onEditSketch,
   onDeleteSketch,
 }: Props) {
@@ -455,6 +474,237 @@ export function ContentArea({
     );
   };
 
+  // ------------------------------------------------------------ drawings
+  //
+  // Drawings sit in the text column, each hanging from a line (see
+  // noteLayout.ts). They don't take the mouse over the text: a press only
+  // grabs one where there's ink, so a highlight laid over a line never gets
+  // in the way of clicking into that line.
+
+  const sketchesRef = useRef(sketches);
+  sketchesRef.current = sketches;
+  const hiddenSketchRef = useRef(hiddenSketchId);
+  hiddenSketchRef.current = hiddenSketchId;
+  const onUpdateSketchesRef = useRef(onUpdateSketches);
+  onUpdateSketchesRef.current = onUpdateSketches;
+  const layoutRef = useRef<NoteLayout | null>(null);
+  const sketchCanvases = useRef(new Map<string, HTMLCanvasElement>());
+  const [sketchRects, setSketchRects] = useState<Map<string, Rect>>(() => new Map());
+  const [hoveredSketch, setHoveredSketch] = useState<string | null>(null);
+  const [selectedSketch, setSelectedSketch] = useState<string | null>(null);
+  // While a drawing is dragged or resized: where it would land.
+  const [sketchPreview, setSketchPreview] = useState<{ id: string; rect: Rect; kind: "move" | "resize" } | null>(null);
+  const [overInk, setOverInk] = useState(false);
+  const sketchGesture = useRef<{
+    id: string;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    start: Rect;
+    latest: Rect | null;
+  } | null>(null);
+  const lastSketchPress = useRef({ id: "", time: 0, x: 0, y: 0 });
+  const hoverFrame = useRef(0);
+
+  const measureSketches = () => {
+    const el = ref.current;
+    const row = rowRef.current;
+    const sc = scroller();
+    if (!el || !row || !sc) return;
+    if (sketchesRef.current.length === 0) {
+      layoutRef.current = null;
+      setSketchRects((prev) => (prev.size === 0 ? prev : new Map()));
+      return;
+    }
+    const layout = layoutOf(sc, row, el);
+    layoutRef.current = layout;
+    const next = new Map<string, Rect>();
+    for (const s of sketchesRef.current) next.set(s.id, sketchRect(s, layout));
+    setSketchRects((prev) => (sameRects(prev, next) ? prev : next));
+    // Drawings from before anchors existed get one, from where they are now.
+    const patches: Record<string, Partial<NoteSketch>> = {};
+    for (const s of sketchesRef.current) {
+      if (s.anchor) continue;
+      patches[s.id] = { anchor: placeAt(layout, next.get(s.id)!).anchor };
+    }
+    if (Object.keys(patches).length > 0) onUpdateSketchesRef.current(patches, true);
+  };
+
+  useLayoutEffect(measureSketches, [sketches, body]);
+
+  useLayoutEffect(() => {
+    paintExtras();
+    paintMatchRing();
+    measureSketches();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [textStyleKey]);
+
+  /** The drawing with ink at (or right next to) this point, topmost first. */
+  const sketchAt = (clientX: number, clientY: number, minAlpha: number): string | null => {
+    const list = sketchesRef.current;
+    for (let i = list.length - 1; i >= 0; i--) {
+      const s = list[i];
+      const canvas = sketchCanvases.current.get(s.id);
+      if (!canvas || s.id === hiddenSketchRef.current) continue;
+      if (inkNear(canvas, clientX, clientY, minAlpha)) return s.id;
+    }
+    return null;
+  };
+
+  const rectOf = (id: string) => (sketchPreview?.id === id ? sketchPreview.rect : sketchRects.get(id));
+
+  const commitRect = (id: string, r: Rect, resized: boolean) => {
+    const layout = layoutRef.current;
+    if (!layout) return;
+    const patch: Partial<NoteSketch> = placeAt(layout, r);
+    if (resized) {
+      patch.width = Math.round((r.width / layout.factor) * 10) / 10;
+      patch.height = Math.round((r.height / layout.factor) * 10) / 10;
+    }
+    onUpdateSketchesRef.current({ [id]: patch });
+  };
+
+  const selectSketch = (id: string | null) => {
+    setSelectedSketch(id);
+    if (id) requestAnimationFrame(() => document.getElementById("sketch-" + id)?.focus({ preventScroll: true }));
+  };
+
+  const onRowPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if ((e.target as Element).closest?.(".sketch-toolbar, .sketch-resize-handle")) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    const id = sketchAt(e.clientX, e.clientY, SOLID_INK);
+    if (!id) {
+      if (selectedSketch) setSelectedSketch(null);
+      return;
+    }
+    // Pressing on ink belongs to the drawing, not the text underneath.
+    e.preventDefault();
+    e.stopPropagation();
+    const last = lastSketchPress.current;
+    if (last.id === id && e.timeStamp - last.time < 450 && Math.hypot(e.clientX - last.x, e.clientY - last.y) < 6) {
+      lastSketchPress.current = { id: "", time: 0, x: 0, y: 0 };
+      onEditSketch(id);
+      return;
+    }
+    lastSketchPress.current = { id, time: e.timeStamp, x: e.clientX, y: e.clientY };
+    const start = rectOf(id);
+    if (!start) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    sketchGesture.current = { id, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, start, latest: null };
+    selectSketch(id);
+  };
+
+  const onRowPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const g = sketchGesture.current;
+    if (g && g.pointerId === e.pointerId) {
+      const dx = e.clientX - g.startX;
+      const dy = e.clientY - g.startY;
+      if (!g.latest && Math.hypot(dx, dy) < 3) return;
+      g.latest = { ...g.start, left: Math.max(0, g.start.left + dx), top: Math.max(0, g.start.top + dy) };
+      setSketchPreview({ id: g.id, rect: g.latest, kind: "move" });
+      return;
+    }
+    if (sketchesRef.current.length === 0 || hoverFrame.current) return;
+    const { clientX, clientY } = e;
+    hoverFrame.current = requestAnimationFrame(() => {
+      hoverFrame.current = 0;
+      const solid = sketchAt(clientX, clientY, SOLID_INK);
+      const hit = solid ?? sketchAt(clientX, clientY, ANY_INK);
+      setOverInk(solid !== null);
+      setHoveredSketch((current) => {
+        if (hit) return hit;
+        // Stay put while the pointer is still around the drawing (or on its way
+        // up to its toolbar), not just on its ink.
+        const canvas = current ? sketchCanvases.current.get(current) : null;
+        if (!canvas) return null;
+        const box = canvas.getBoundingClientRect();
+        const inside = clientX > box.left - 12 && clientX < box.right + 12 && clientY > box.top - 40 && clientY < box.bottom + 40;
+        return inside ? current : null;
+      });
+    });
+  };
+
+  const onRowPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    const g = sketchGesture.current;
+    if (!g || g.pointerId !== e.pointerId) return;
+    sketchGesture.current = null;
+    if (e.currentTarget.hasPointerCapture(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+    if (g.latest) commitRect(g.id, g.latest, false);
+    setSketchPreview(null);
+  };
+
+  const onRowPointerLeave = () => {
+    if (sketchGesture.current) return;
+    setOverInk(false);
+    setHoveredSketch(null);
+  };
+
+  /** The toolbar's handle: moves any drawing, even a highlight with no solid
+   * ink to grab. The pointer events it captures bubble to the row's handlers. */
+  const startMove = (id: string, e: React.PointerEvent<HTMLElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const start = rectOf(id);
+    if (!start) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    sketchGesture.current = { id, pointerId: e.pointerId, startX: e.clientX, startY: e.clientY, start, latest: null };
+    selectSketch(id);
+  };
+
+  const startResize = (id: string, e: React.PointerEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const start = rectOf(id);
+    if (!start) return;
+    const handle = e.currentTarget;
+    handle.setPointerCapture(e.pointerId);
+    selectSketch(id);
+    let latest = start;
+    // Grows from the top-left corner and keeps its proportions, following
+    // whichever way the pointer moved more.
+    const onMove = (ev: PointerEvent) => {
+      const grow = Math.max((start.width + ev.clientX - e.clientX) / start.width, (start.height + ev.clientY - e.clientY) / start.height);
+      const min = MIN_SKETCH_SIZE / Math.min(start.width, start.height);
+      const scale = Math.max(grow, min);
+      latest = { ...start, width: start.width * scale, height: start.height * scale };
+      setSketchPreview({ id, rect: latest, kind: "resize" });
+    };
+    const onEnd = () => {
+      handle.removeEventListener("pointermove", onMove);
+      handle.removeEventListener("pointerup", onEnd);
+      handle.removeEventListener("pointercancel", onEnd);
+      if (latest !== start) commitRect(id, latest, true);
+      setSketchPreview(null);
+    };
+    handle.addEventListener("pointermove", onMove);
+    handle.addEventListener("pointerup", onEnd);
+    handle.addEventListener("pointercancel", onEnd);
+  };
+
+  const onSketchKeyDown = (id: string, e: React.KeyboardEvent) => {
+    const r = rectOf(id);
+    if (e.key === "Delete" || e.key === "Backspace") {
+      e.preventDefault();
+      setSelectedSketch(null);
+      onDeleteSketch(id);
+      ref.current?.focus({ preventScroll: true });
+    } else if (e.key === "Enter") {
+      e.preventDefault();
+      onEditSketch(id);
+    } else if (e.key === "Escape") {
+      e.preventDefault();
+      e.stopPropagation();
+      setSelectedSketch(null);
+      ref.current?.focus({ preventScroll: true });
+    } else if (r && e.key.startsWith("Arrow")) {
+      e.preventDefault();
+      const step = e.shiftKey ? 10 : 1;
+      const dx = e.key === "ArrowLeft" ? -step : e.key === "ArrowRight" ? step : 0;
+      const dy = e.key === "ArrowUp" ? -step : e.key === "ArrowDown" ? step : 0;
+      commitRect(id, { ...r, left: Math.max(0, r.left + dx), top: Math.max(0, r.top + dy) }, false);
+    }
+  };
+
   // Mount: fill the editor once, then restore where this note was left.
   useLayoutEffect(() => {
     const el = ref.current!;
@@ -469,15 +719,25 @@ export function ContentArea({
       if (sc) mem.scrollTop = sc.scrollTop;
     };
     sc?.addEventListener("scroll", onScroll);
+    // Rewrapping, zoom and reading mode all move the text - and the drawings
+    // hanging from it.
     const resize = new ResizeObserver(() => {
       paintExtras();
       paintMatchRing();
+      measureSketches();
     });
     resize.observe(el);
+    if (rowRef.current) resize.observe(rowRef.current);
+    // The note's typeface can finish loading after the first layout and
+    // shift every line a little.
+    document.fonts?.ready.then(() => {
+      if (ref.current) measureSketches();
+    });
     return () => {
       if (sc) mem.scrollTop = sc.scrollTop;
       sc?.removeEventListener("scroll", onScroll);
       resize.disconnect();
+      if (hoverFrame.current) cancelAnimationFrame(hoverFrame.current);
       ["cy-multi", "cy-find", "cy-find-current"].forEach((n) => setHighlight(n, []));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1019,7 +1279,15 @@ export function ContentArea({
           />
         )}
       </div>
-      <div className="note-body-row" ref={rowRef}>
+      <div
+        className={"note-body-row" + (overInk ? " over-ink" : "") + (sketchPreview ? " " + sketchPreview.kind + "-sketch" : "")}
+        ref={rowRef}
+        onPointerDownCapture={onRowPointerDown}
+        onPointerMove={onRowPointerMove}
+        onPointerUp={onRowPointerUp}
+        onPointerCancel={onRowPointerUp}
+        onPointerLeave={onRowPointerLeave}
+      >
         <div className="line-gutter" onMouseDown={onGutterMouseDown} />
         <div
           ref={ref}
@@ -1046,123 +1314,159 @@ export function ContentArea({
         {matchBoxes.map((b, i) => (
           <div key={i} className="match-ring" style={b} />
         ))}
+        {sketches.map((s) => {
+          const rect = rectOf(s.id);
+          if (!rect || s.id === hiddenSketchId) return null;
+          return (
+            <SketchView
+              key={s.id}
+              sketch={s}
+              rect={rect}
+              darkMode={darkMode}
+              active={s.id === hoveredSketch || s.id === selectedSketch || s.id === sketchPreview?.id}
+              moving={s.id === sketchPreview?.id && sketchPreview.kind === "move"}
+              canvases={sketchCanvases.current}
+              onEdit={() => onEditSketch(s.id)}
+              onDelete={() => {
+                setSelectedSketch(null);
+                setHoveredSketch(null);
+                onDeleteSketch(s.id);
+              }}
+              onMoveStart={(e) => startMove(s.id, e)}
+              onResizeStart={(e) => startResize(s.id, e)}
+              onKeyDown={(e) => onSketchKeyDown(s.id, e)}
+              onBlur={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node | null)) {
+                  setSelectedSketch((current) => (current === s.id ? null : current));
+                }
+              }}
+            />
+          );
+        })}
       </div>
-
-      {sketches.map((sketch) => (
-        <DraggableSketch
-          key={sketch.id}
-          sketch={sketch}
-          onMove={onMoveSketch}
-          onResize={onResizeSketch}
-          onEdit={onEditSketch}
-          onDelete={onDeleteSketch}
-        />
-      ))}
     </>
   );
 }
 
-function DraggableSketch({
+function sameRects(a: Map<string, Rect>, b: Map<string, Rect>): boolean {
+  if (a.size !== b.size) return false;
+  for (const [id, r] of b) {
+    const o = a.get(id);
+    if (!o) return false;
+    if (Math.abs(o.left - r.left) > 0.25 || Math.abs(o.top - r.top) > 0.25) return false;
+    if (Math.abs(o.width - r.width) > 0.25 || Math.abs(o.height - r.height) > 0.25) return false;
+  }
+  return true;
+}
+
+/** Whether a drawing has ink at least `minAlpha` opaque (0 to 255) at, or
+ * within reach of, this point on screen. */
+function inkNear(canvas: HTMLCanvasElement, clientX: number, clientY: number, minAlpha: number): boolean {
+  const box = canvas.getBoundingClientRect();
+  const x = clientX - box.left;
+  const y = clientY - box.top;
+  if (box.width === 0 || box.height === 0) return false;
+  if (x < -INK_REACH || y < -INK_REACH || x > box.width + INK_REACH || y > box.height + INK_REACH) return false;
+  const sx = canvas.width / box.width;
+  const sy = canvas.height / box.height;
+  const x0 = Math.max(0, Math.floor((x - INK_REACH) * sx));
+  const y0 = Math.max(0, Math.floor((y - INK_REACH) * sy));
+  const x1 = Math.min(canvas.width, Math.ceil((x + INK_REACH) * sx));
+  const y1 = Math.min(canvas.height, Math.ceil((y + INK_REACH) * sy));
+  if (x1 <= x0 || y1 <= y0) return false;
+  const ctx = canvas.getContext("2d", { willReadFrequently: true });
+  if (!ctx) return false;
+  const data = ctx.getImageData(x0, y0, x1 - x0, y1 - y0).data;
+  for (let i = 3; i < data.length; i += 4) if (data[i] >= minAlpha) return true;
+  return false;
+}
+
+/** A drawing in the note, painted from its strokes at its current size and in
+ * the current theme (or from its picture, for drawings made before strokes
+ * were kept). The mouse goes straight through it except on its toolbar and
+ * resize handle - ContentArea decides from the ink what a press means. */
+function SketchView({
   sketch,
-  onMove,
-  onResize,
+  rect,
+  darkMode,
+  active,
+  moving,
+  canvases,
   onEdit,
   onDelete,
+  onMoveStart,
+  onResizeStart,
+  onKeyDown,
+  onBlur,
 }: {
   sketch: NoteSketch;
-  onMove: (id: string, x: number, y: number) => void;
-  onResize: (id: string, width: number, height: number) => void;
-  onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  rect: Rect;
+  darkMode: boolean;
+  active: boolean;
+  moving: boolean;
+  canvases: Map<string, HTMLCanvasElement>;
+  onEdit: () => void;
+  onDelete: () => void;
+  onMoveStart: (e: React.PointerEvent<HTMLElement>) => void;
+  onResizeStart: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onKeyDown: (e: React.KeyboardEvent) => void;
+  onBlur: (e: React.FocusEvent<HTMLDivElement>) => void;
 }) {
-  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
-  const [resizeDims, setResizeDims] = useState<{ width: number; height: number } | null>(null);
-  const dragStart = useRef({ mouseX: 0, mouseY: 0, x: 0, y: 0 });
-  const resizeStart = useRef({ mouseX: 0, width: 0, height: 0, aspect: 1 });
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [imagesLoaded, setImagesLoaded] = useState(0);
 
-  const onMouseDown = (e: React.MouseEvent) => {
-    e.preventDefault();
-    dragStart.current = { mouseX: e.clientX, mouseY: e.clientY, x: sketch.x, y: sketch.y };
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    canvases.set(sketch.id, canvas);
+    return () => {
+      canvases.delete(sketch.id);
+    };
+  }, [canvases, sketch.id]);
 
-    const onMouseMove = (ev: MouseEvent) => {
-      const dx = ev.clientX - dragStart.current.mouseX;
-      const dy = ev.clientY - dragStart.current.mouseY;
-      setDragPos({ x: dragStart.current.x + dx, y: dragStart.current.y + dy });
-    };
-    const onMouseUp = (ev: MouseEvent) => {
-      const dx = ev.clientX - dragStart.current.mouseX;
-      const dy = ev.clientY - dragStart.current.mouseY;
-      onMove(sketch.id, dragStart.current.x + dx, dragStart.current.y + dy);
-      setDragPos(null);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-  };
-
-  // Drags the bottom-right handle to scale the sketch up or down, keeping
-  // its original aspect ratio instead of stretching it out of shape.
-  const onResizeMouseDown = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
-    resizeStart.current = {
-      mouseX: e.clientX,
-      width: sketch.width,
-      height: sketch.height,
-      aspect: sketch.width / sketch.height,
-    };
-
-    const computeSize = (clientX: number) => {
-      const dx = clientX - resizeStart.current.mouseX;
-      const width = Math.min(MAX_SKETCH_SIZE, Math.max(MIN_SKETCH_SIZE, resizeStart.current.width + dx));
-      const height = width / resizeStart.current.aspect;
-      return { width, height };
-    };
-    const onMouseMove = (ev: MouseEvent) => setResizeDims(computeSize(ev.clientX));
-    const onMouseUp = (ev: MouseEvent) => {
-      const size = computeSize(ev.clientX);
-      onResize(sketch.id, size.width, size.height);
-      setResizeDims(null);
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-  };
-
-  const pos = dragPos ?? { x: sketch.x, y: sketch.y };
-  const size = resizeDims ?? { width: sketch.width, height: sketch.height };
+  useLayoutEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ratio = window.devicePixelRatio || 1;
+    const w = Math.max(1, Math.round(rect.width * ratio));
+    const h = Math.max(1, Math.round(rect.height * ratio));
+    if (canvas.width !== w) canvas.width = w;
+    if (canvas.height !== h) canvas.height = h;
+    const ctx = canvas.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return;
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    ctx.setTransform(w / rect.width, 0, 0, h / rect.height, 0, 0);
+    const ops = sketch.strokes ?? [{ tool: "image" as const, src: sketch.dataUrl, x: 0, y: 0, w: rect.width, h: rect.height }];
+    const { images } = imagesFor(ops, () => setImagesLoaded((n) => n + 1));
+    const scale = sketch.strokes ? rect.width / (sketch.naturalWidth ?? sketch.width) : 1;
+    drawOps(ctx, ops, { dark: darkMode, scale, images });
+  }, [sketch.strokes, sketch.dataUrl, sketch.naturalWidth, sketch.width, rect.width, rect.height, darkMode, imagesLoaded]);
 
   return (
-    <div className="note-sketch-wrap" style={{ left: pos.x, top: pos.y, width: size.width, height: size.height }}>
-      <img
-        src={sketch.dataUrl}
-        alt=""
-        draggable={false}
-        className="note-sketch"
-        onMouseDown={onMouseDown}
-        onDoubleClick={() => onEdit(sketch.id)}
-      />
+    <div
+      id={"sketch-" + sketch.id}
+      className={"note-sketch-wrap" + (active ? " active" : "") + (moving ? " moving" : "") + (rect.top < 36 ? " below" : "")}
+      style={{ left: rect.left, top: rect.top, width: rect.width, height: rect.height }}
+      tabIndex={-1}
+      role="group"
+      aria-label="Desenho"
+      onKeyDown={onKeyDown}
+      onBlur={onBlur}
+    >
+      <canvas ref={canvasRef} className="note-sketch" />
       <div className="sketch-toolbar">
-        <button
-          className="sketch-tool-btn"
-          title="Editar desenho"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => onEdit(sketch.id)}
-        >
+        <span className="sketch-tool-btn grip" title="Arraste para mover" onPointerDown={onMoveStart}>
+          <GripIcon />
+        </span>
+        <button className="sketch-tool-btn" title="Editar desenho (Enter)" aria-label="Editar desenho" onClick={onEdit}>
           <EditIcon />
         </button>
-        <button
-          className="sketch-tool-btn delete"
-          title="Excluir desenho"
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={() => onDelete(sketch.id)}
-        >
+        <button className="sketch-tool-btn delete" title="Excluir desenho (Delete)" aria-label="Excluir desenho" onClick={onDelete}>
           <TrashIcon />
         </button>
       </div>
-      <div className="sketch-resize-handle" title="Redimensionar" onMouseDown={onResizeMouseDown} />
+      <div className="sketch-resize-handle" title="Redimensionar" onPointerDown={onResizeStart} />
     </div>
   );
 }

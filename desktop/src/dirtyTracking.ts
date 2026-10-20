@@ -1,4 +1,4 @@
-import type { TabData } from "./types";
+import type { NoteSketch, TabData } from "./types";
 
 /**
  * Tracks, per tab, whether its title/body/sketches differ from the last time
@@ -17,10 +17,26 @@ export interface SavedSnapshot {
 // A tab with no snapshot yet (never saved to a file) is compared against a
 // blank note - so a fresh "Nova nota" tab isn't flagged dirty until it
 // actually has something in it worth losing.
-export const EMPTY_SNAPSHOT: SavedSnapshot = { title: "Nova nota", body: "", sketchesKey: "[]" };
+export const EMPTY_SNAPSHOT: SavedSnapshot = { title: "Nova nota", body: "", sketchesKey: "" };
+
+// Drawings never change in place (an edit makes a new object), and this runs
+// for every tab on every render - so each one is serialized only once.
+const sketchKeys = new WeakMap<NoteSketch, string>();
+
+function sketchKey(s: NoteSketch): string {
+  let key = sketchKeys.get(s);
+  if (key === undefined) {
+    // The anchor just follows the text around; the edit that moved it is
+    // what makes the note unsaved.
+    const { anchor: _anchor, ...rest } = s;
+    key = JSON.stringify(rest);
+    sketchKeys.set(s, key);
+  }
+  return key;
+}
 
 export function snapshotOf(tab: TabData): SavedSnapshot {
-  return { title: tab.title, body: tab.body, sketchesKey: JSON.stringify(tab.sketches ?? []) };
+  return { title: tab.title, body: tab.body, sketchesKey: (tab.sketches ?? []).map(sketchKey).join("\n") };
 }
 
 export function isDirty(tab: TabData, snapshot: SavedSnapshot | undefined): boolean {

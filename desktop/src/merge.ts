@@ -1,5 +1,5 @@
 import type { TabData } from "./types";
-import { safeSketches } from "./sketches";
+import { safeSketches, shiftSketchAnchors } from "./sketches";
 
 /** A note's content on each side the last time it was reconciled with a given peer. */
 interface HashPair {
@@ -136,7 +136,13 @@ export function mergeFromPeer(
     if (prev && prev.remote === remoteSnap) continue;
 
     const takeRemote = () => {
-      tabs[i] = { ...local, title: remote.title, body: remote.body, updatedAt: remote.updatedAt ?? 0 };
+      tabs[i] = {
+        ...local,
+        title: remote.title,
+        body: remote.body,
+        updatedAt: remote.updatedAt ?? 0,
+        sketches: shiftSketchAnchors(local.sketches, local.body, remote.body),
+      };
       peerBook[id] = { local: remoteSnap, remote: remoteSnap };
       changed = true;
     };

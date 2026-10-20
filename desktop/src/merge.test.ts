@@ -152,6 +152,16 @@ describe("mergeFromPeer", () => {
     expect(n1(a).sketches).toHaveLength(1);
   });
 
+  it("keeps drawings on their lines when the peer's text added lines above them", () => {
+    const sketch = { id: "s", dataUrl: "data:image/png;base64,AA", x: 40, y: 20, width: 10, height: 10, anchor: { line: 1, dy: 0 } };
+    const a: Device = { id: DEVICE_A, tabs: [{ ...note("n1", "T", "um\ndois", 1), sketches: [sketch] }], book: {} };
+    const b: Device = { id: DEVICE_B, tabs: [note("n1", "T", "um\ndois", 1)], book: {} };
+    pull(a, b);
+    edit(b, "n1", "zero\num\ndois", 5);
+    pull(a, b);
+    expect(n1(a).sketches[0].anchor).toEqual({ line: 2, dy: 0 });
+  });
+
   it("never imports a peer's file link, which is a path on the peer's own disk", () => {
     const peer = [{ ...note("n1", "T", "b"), filePath: "D:\\other-machine\\t.cyte" }];
     const result = mergeFromPeer([], peer, DEVICE_B, DEVICE_A, {});

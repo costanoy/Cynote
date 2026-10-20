@@ -49,6 +49,44 @@ export function DrawIcon({ size = 14, width = 1.5 }: IconProps & { width?: numbe
   );
 }
 
+/** Note Styling's marker: a chisel-tip highlighter over a streak of its ink. */
+export function MarkerIcon({ size = 15 }: IconProps) {
+  return (
+    <Stroke size={size} width={1.35} join>
+      <path d="M11.2 2.3l2.5 2.5-6.3 6.3-3.6 1.1 1.1-3.6z" />
+      <path d="M9.6 3.9l2.5 2.5" />
+      <path d="M2.5 14.2h6" strokeWidth={2.4} opacity={0.45} />
+    </Stroke>
+  );
+}
+
+export function EraserIcon({ size = 15 }: IconProps) {
+  return (
+    <Stroke size={size} width={1.35} join>
+      <path d="M2.8 10.1l6.4-6.4 4.1 4.1-5.2 5.2H5.8z" />
+      <path d="M5.9 7l4.1 4.1M8.1 13h5.4" />
+    </Stroke>
+  );
+}
+
+export function UndoIcon({ size = 14 }: IconProps) {
+  return (
+    <Stroke size={size} width={1.5} join>
+      <path d="M5.8 3.4l-3 3 3 3" />
+      <path d="M2.8 6.4h6.6a3.7 3.7 0 0 1 0 7.4H7.2" />
+    </Stroke>
+  );
+}
+
+export function RedoIcon({ size = 14 }: IconProps) {
+  return (
+    <Stroke size={size} width={1.5} join>
+      <path d="M10.2 3.4l3 3-3 3" />
+      <path d="M13.2 6.4H6.6a3.7 3.7 0 0 0 0 7.4h2.2" />
+    </Stroke>
+  );
+}
+
 export function SettingsIcon({ size = 15 }: IconProps) {
   return (
     <Stroke size={size} width={1.4}>

@@ -6,7 +6,7 @@ import { Header } from "./components/Header";
 import { TabBar } from "./components/TabBar";
 import { SettingsView } from "./components/SettingsView";
 import { ContentArea } from "./components/ContentArea";
-import { DrawingOverlay, DRAW_COLORS } from "./components/DrawingOverlay";
+import { DrawingOverlay, type DrawingOverlayHandle, type DrawingResult } from "./components/DrawingOverlay";
 import { StatusBar } from "./components/StatusBar";
 import { Dialog } from "./components/Dialog";
 import { CornerVignette, Sprout } from "./icons";
@@ -30,6 +30,7 @@ import { mergeFromPeer, dropDuplicateCopies } from "./merge";
 import { loadBookkeeping, saveBookkeeping } from "./bookkeeping";
 import { loadDeletedNoteIds, markNotesDeleted, forgetDeletedNote } from "./deletedNotes";
 import { getCloudSyncId, pushCloudNotes, fetchCloudChanges } from "./cloudSync";
+import { shiftSketchAnchors, tabsForSync } from "./sketches";
 import { isDirty as isTabDirtyAgainst, snapshotOf, tabHasContent, type SavedSnapshot } from "./dirtyTracking";
 import { checkForUpdate, installUpdate, type Update } from "./updater";
 import type { PeerInfo } from "./types";
@@ -70,6 +71,8 @@ function basenameNoExt(path: string): string {
 
 const AUTOSAVE_DELAY_MS = 1500;
 const TOAST_MS = 1800;
+// Long enough to reach the "Desfazer" button.
+const UNDO_TOAST_MS = 8000;
 const SPELLCHECK_KEY = "cynote-spellcheck-enabled";
 // Shared with the Dashnotes window, which follows the main window's theme.
 const THEME_KEY = "cynote-theme";
@@ -97,6 +100,10 @@ function App() {
   const [deviceName, setDeviceName] = useState<string>("Computador");
   const [activeTab, setActiveTab] = useState(0);
   const [drawingOpen, setDrawingOpen] = useState(false);
+  // Read by the long-lived key and wheel handlers below.
+  const drawingOpenRef = useRef(false);
+  drawingOpenRef.current = drawingOpen;
+  const drawingRef = useRef<DrawingOverlayHandle>(null);
   const [editingSketchId, setEditingSketchId] = useState<string | null>(null);
   const [readingMode, setReadingMode] = useState(false);
   const [darkMode, setDarkMode] = useState(loadDarkModePref);
@@ -116,18 +123,20 @@ function App() {
     const onWheel = (e: WheelEvent) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
+      // A drawing in progress is laid out against the text as it is now.
+      if (drawingOpenRef.current) return;
       zoomBy(e.deltaY < 0 ? 10 : -10);
     };
     window.addEventListener("wheel", onWheel, { passive: false });
     return () => window.removeEventListener("wheel", onWheel);
   }, []);
-  const [drawColor, setDrawColor] = useState(DRAW_COLORS[0].hex);
-  const [toast, setToast] = useState<string | null>(null);
+  type ToastAction = { label: string; run: () => void };
+  const [toast, setToast] = useState<{ message: string; action?: ToastAction; key: number } | null>(null);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const showToast = (message: string) => {
+  const showToast = (message: string, action?: ToastAction) => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
-    setToast(message);
-    toastTimer.current = setTimeout(() => setToast(null), TOAST_MS);
+    setToast({ message, action, key: Date.now() });
+    toastTimer.current = setTimeout(() => setToast(null), action ? UNDO_TOAST_MS : TOAST_MS);
   };
   const [pinned, setPinned] = useState(false);
   const [loaded, setLoaded] = useState(false);
@@ -287,7 +296,7 @@ function App() {
       }
       const { peers } = cloudState.current;
 
-      const payload = JSON.stringify(tabsRef.current);
+      const payload = JSON.stringify(tabsForSync(tabsRef.current));
       if (payload !== cloudState.current.lastPushed && (await pushCloudNotes(syncId, myDeviceId, myDeviceName, payload))) {
         cloudState.current.lastPushed = payload;
       }
@@ -416,6 +425,14 @@ function App() {
         e.preventDefault();
         toggleDrawing();
       } else if (
+        drawingOpenRef.current &&
+        (e.ctrlKey || e.metaKey) &&
+        ["n", "t", "w", "tab", "=", "+", "-", "0"].includes(e.key.toLowerCase())
+      ) {
+        // While drawing, the note under the canvas stays as it is: same tab,
+        // same zoom.
+        e.preventDefault();
+      } else if (
         (e.ctrlKey || e.metaKey) &&
         !e.shiftKey &&
         (e.key.toLowerCase() === "n" || e.key.toLowerCase() === "t")
@@ -452,7 +469,7 @@ function App() {
           setTabsMenuOpen(false);
         } else if (openLayersRef.current.drawing) {
           e.preventDefault();
-          closeDrawing();
+          drawingRef.current?.requestClose();
         }
       }
     };
@@ -790,6 +807,7 @@ function App() {
         body: value,
         updatedAt: Date.now(),
         title: tab.titleIsCustom ? tab.title : deriveTitleFromBody(value),
+        sketches: shiftSketchAnchors(tab.sketches, tab.body, value),
       };
       return next;
     });
@@ -803,14 +821,34 @@ function App() {
     if (path) setTabSavedPath(i, path);
   };
 
-  const SKETCH_MAX_WIDTH = 260;
+  // ------------------------------------------------------------ Note Styling
 
-  // Opens a blank canvas for a brand-new sketch - any in-progress edit of an
-  // existing one is dropped so re-opening never lands back in edit mode.
+  /** Changes one note's drawings, found by id rather than by tab position.
+   * `quiet` leaves the note's edit time alone (bookkeeping, not an edit). */
+  const changeSketches = (noteId: string, change: (sketches: NoteSketch[]) => NoteSketch[], quiet = false) => {
+    setTabs((prev) =>
+      prev.map((t) => {
+        if (t.id !== noteId) return t;
+        const sketches = change(t.sketches ?? []);
+        return sketches === t.sketches ? t : { ...t, sketches, updatedAt: quiet ? t.updatedAt : Date.now() };
+      })
+    );
+  };
+
+  const activeNoteId = () => tabsRef.current[activeTabRef.current]?.id;
+
+  // The header button and Ctrl+Shift+D: opens a blank sheet over the note,
+  // or closes it - asking first if a drawing would be lost.
   const toggleDrawing = () => {
+    if (drawingOpenRef.current) {
+      drawingRef.current?.requestClose();
+      return;
+    }
     setEditingSketchId(null);
     setShowSettings(false);
-    setDrawingOpen((v) => !v);
+    setFormatMenuOpen(false);
+    setTabsMenuOpen(false);
+    setDrawingOpen(true);
   };
 
   const closeDrawing = () => {
@@ -819,109 +857,86 @@ function App() {
   };
 
   const editSketch = (sketchId: string) => {
+    if (drawingOpenRef.current) return;
+    setShowSettings(false);
     setEditingSketchId(sketchId);
     setDrawingOpen(true);
   };
 
   const deleteSketch = (sketchId: string) => {
-    setTabs((prev) => {
-      const next = prev.slice();
-      const tab = next[activeTab];
-      next[activeTab] = {
-        ...tab,
-        sketches: tab.sketches.filter((s) => s.id !== sketchId),
-        updatedAt: Date.now(),
-      };
-      return next;
+    const noteId = activeNoteId();
+    const tab = tabsRef.current.find((t) => t.id === noteId);
+    const index = tab?.sketches?.findIndex((s) => s.id === sketchId) ?? -1;
+    if (!noteId || !tab || index < 0) return;
+    const removed = tab.sketches[index];
+    changeSketches(noteId, (list) => list.filter((s) => s.id !== sketchId));
+    showToast("Desenho excluído", {
+      label: "Desfazer",
+      run: () =>
+        changeSketches(noteId, (list) =>
+          list.some((s) => s.id === sketchId) ? list : [...list.slice(0, index), removed, ...list.slice(index)]
+        ),
     });
   };
 
-  // `canvas` is already cropped to the drawing; `drawnWidth` is how wide that
-  // crop was on screen, so the sketch lands in the note at the size it was drawn.
-  const insertSketch = (canvas: HTMLCanvasElement, drawnWidth: number) => {
-    // Capture the image now, synchronously - the setTabs updater below may
-    // run after the caller clears the canvas, which would otherwise insert
-    // a blank image.
-    const dataUrl = canvas.toDataURL("image/png");
-    const aspect = canvas.height / canvas.width;
-    const width = Math.min(SKETCH_MAX_WIDTH, drawnWidth);
-    const height = Math.round(width * aspect);
-
-    if (editingSketchId) {
-      const id = editingSketchId;
-      setTabs((prev) => {
-        const next = prev.slice();
-        const tab = next[activeTab];
-        next[activeTab] = {
-          ...tab,
-          sketches: tab.sketches.map((s) => (s.id === id ? { ...s, dataUrl, width, height } : s)),
-          updatedAt: Date.now(),
-        };
-        return next;
-      });
-    } else {
-      // Drop it into view, wherever the note is scrolled to.
-      const scrollTop = document.querySelector(".content-wrap")?.scrollTop ?? 0;
-      setTabs((prev) => {
-        const next = prev.slice();
-        const tab = next[activeTab];
-        const cascade = (tab.sketches.length % 6) * 22;
-        const sketch: NoteSketch = {
-          id: "sk" + Date.now(),
-          dataUrl,
-          x: 70 + cascade,
-          y: scrollTop + 40 + cascade,
-          width,
-          height,
-        };
-        next[activeTab] = {
-          ...tab,
-          sketches: [...tab.sketches, sketch],
-          updatedAt: Date.now(),
-        };
-        return next;
-      });
-    }
+  const insertSketch = (results: DrawingResult[]) => {
+    const noteId = activeNoteId();
+    const editing = editingSketchId;
     closeDrawing();
-  };
-
-  const moveSketch = (sketchId: string, x: number, y: number) => {
-    setTabs((prev) => {
-      const next = prev.slice();
-      const tab = next[activeTab];
-      next[activeTab] = {
-        ...tab,
-        sketches: tab.sketches.map((s) => (s.id === sketchId ? { ...s, x, y } : s)),
-        updatedAt: Date.now(),
-      };
-      return next;
+    if (!noteId) return;
+    // Everything in a reopened drawing was erased: that's deleting it (and can be undone).
+    if (editing && results.length === 0) {
+      deleteSketch(editing);
+      return;
+    }
+    const stamp = "sk" + Date.now();
+    const made = results.map((r, i) => ({ id: i === 0 && editing ? editing : `${stamp}-${i}`, ...r }));
+    changeSketches(noteId, (list) => {
+      if (!editing) return [...list, ...made];
+      // The reopened drawing keeps its place in the list; anything drawn
+      // apart from it while it was open is added after.
+      const at = list.findIndex((s) => s.id === editing);
+      return at < 0 ? [...list, ...made] : [...list.slice(0, at), ...made, ...list.slice(at + 1)];
     });
   };
 
-  const resizeSketch = (sketchId: string, width: number, height: number) => {
-    setTabs((prev) => {
-      const next = prev.slice();
-      const tab = next[activeTab];
-      next[activeTab] = {
-        ...tab,
-        sketches: tab.sketches.map((s) => (s.id === sketchId ? { ...s, width, height } : s)),
-        updatedAt: Date.now(),
-      };
-      return next;
-    });
-  };
+  const updateSketches = (noteId: string, patches: Record<string, Partial<NoteSketch>>, quiet = false) =>
+    changeSketches(
+      noteId,
+      (list) => {
+        let hit = false;
+        const next = list.map((s) => {
+          const patch = patches[s.id];
+          if (!patch) return s;
+          hit = true;
+          return { ...s, ...patch };
+        });
+        return hit ? next : list;
+      },
+      quiet
+    );
+
+  // The tabs can't be switched while drawing, but a note opened from outside
+  // (Explorer, Dashnotes) still can - the sheet was laid over the other one.
+  const shownNoteId = tabs[activeTab]?.id;
+  useEffect(() => {
+    if (drawingOpenRef.current) closeDrawing();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shownNoteId]);
 
   if (!loaded || tabs.length === 0) {
     return <div className="cy-window" />;
   }
 
   const charCount = tabs[activeTab].body.length;
-  const editingSketch = editingSketchId ? tabs[activeTab].sketches.find((s) => s.id === editingSketchId) : undefined;
-  const isBlankPage = charCount === 0 && tabs[activeTab].sketches.length === 0;
+  const activeNote = tabs[activeTab];
+  const activeSketches = activeNote.sketches ?? [];
+  const editingSketch = editingSketchId ? activeSketches.find((s) => s.id === editingSketchId) ?? null : null;
+  const isBlankPage = charCount === 0 && activeSketches.length === 0 && !drawingOpen;
   const dirtyCount = tabs.filter((t) => isTabDirty(t) && tabHasContent(t)).length;
 
   return (
-    <div className="cy-window">
+    <div className={"cy-window" + (drawingOpen ? " drawing" : "")}>
       <Header
         formatMenuOpen={formatMenuOpen}
         onToggleFormatMenu={() => setFormatMenuOpen((v) => !v)}
@@ -930,8 +945,8 @@ function App() {
         onToggleDrawing={toggleDrawing}
         settingsOpen={showSettings}
         onToggleSettings={() => {
-          closeDrawing();
-          setShowSettings((v) => !v);
+          if (drawingOpenRef.current) drawingRef.current?.requestClose(() => setShowSettings(true));
+          else setShowSettings((v) => !v);
         }}
         onSaveAs={exportActiveNoteTxt}
         onExportTxt={() => exportNoteAsTxt(tabsRef.current[activeTabRef.current])}
@@ -986,17 +1001,19 @@ function App() {
             }}
           >
             <ContentArea
-              key={tabs[activeTab].id}
-              noteId={tabs[activeTab].id}
-              body={tabs[activeTab].body}
-              sketches={tabs[activeTab].sketches}
+              key={activeNote.id}
+              noteId={activeNote.id}
+              body={activeNote.body}
+              sketches={activeSketches}
               spellCheck={spellCheckEnabled}
+              darkMode={darkMode}
+              textStyleKey={zoom + (readingMode ? "r" : "")}
+              hiddenSketchId={drawingOpen ? editingSketchId : null}
               onBodyInput={onBodyInput}
               onCaretChange={(line, col) =>
                 setCaret((prev) => (prev.line === line && prev.col === col ? prev : { line, col }))
               }
-              onMoveSketch={moveSketch}
-              onResizeSketch={resizeSketch}
+              onUpdateSketches={(patches, quiet) => updateSketches(activeNote.id, patches, quiet)}
               onEditSketch={editSketch}
               onDeleteSketch={deleteSketch}
             />
@@ -1011,19 +1028,29 @@ function App() {
           )}
 
           <DrawingOverlay
+            ref={drawingRef}
             open={drawingOpen}
-            drawColor={drawColor}
-            onSetColor={setDrawColor}
-            onCancel={closeDrawing}
+            editing={editingSketch}
+            darkMode={darkMode}
+            onClose={closeDrawing}
             onInsert={insertSketch}
-            initialImage={editingSketch?.dataUrl}
-            initialWidth={editingSketch?.width}
           />
         </div>
       )}
       {toast && (
-        <div className="cy-toast" key={toast}>
-          <span>{toast}</span>
+        <div className={"cy-toast" + (toast.action ? " with-action" : "")} key={toast.key}>
+          <span>{toast.message}</span>
+          {toast.action && (
+            <button
+              className="cy-toast-action"
+              onClick={() => {
+                toast.action?.run();
+                setToast(null);
+              }}
+            >
+              {toast.action.label}
+            </button>
+          )}
         </div>
       )}
       </div>
