@@ -155,8 +155,11 @@
   padding: 0 8px 0 10px;
   flex: none;
 }
+/* The row only takes the width its tabs need, so the buttons sit right after
+   the last tab; once tabs overflow it shrinks and scrolls, and the buttons
+   stay pinned at the right edge. */
 .tab-row {
-  flex: 1;
+  flex: 0 1 auto;
   min-width: 0;
   height: 100%;
   display: flex;
@@ -340,6 +343,10 @@
   overflow-y: auto;
   border-radius: 14px 6px 14px 14px;
   transform-origin: 100% 0;
+}
+.tabs-menu.from-left {
+  border-radius: 6px 14px 14px 14px;
+  transform-origin: 0 0;
 }
 .tabs-menu-heading {
   padding: 4px 10px 6px;

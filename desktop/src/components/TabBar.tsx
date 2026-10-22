@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { TabData } from "../types";
 import { ChevronDownIcon, CloseIcon, GripIcon, Leaf, PlusIcon } from "../icons";
 
@@ -48,6 +48,21 @@ export function TabBar({
   // Which tab the grip is currently dragging, if any - used only to dim it a
   // little for feedback while the drag is in progress.
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const barRef = useRef<HTMLDivElement>(null);
+  const menuButtonRef = useRef<HTMLButtonElement>(null);
+  // The buttons follow the last tab, so the menu opens under its button rather
+  // than at a fixed corner: hanging right from it when there is room, else
+  // hanging left so it never runs past the window edge.
+  const [menuAnchor, setMenuAnchor] = useState<{ left: number } | { right: number } | null>(null);
+
+  useLayoutEffect(() => {
+    if (!tabsMenuOpen || !barRef.current || !menuButtonRef.current) return;
+    const bar = barRef.current.getBoundingClientRect();
+    const btn = menuButtonRef.current.getBoundingClientRect();
+    const menuWidth = 220;
+    if (btn.left - bar.left + menuWidth <= bar.width - 12) setMenuAnchor({ left: btn.left - bar.left });
+    else setMenuAnchor({ right: Math.max(12, bar.right - btn.right) });
+  }, [tabsMenuOpen]);
 
   useEffect(() => {
     if (tabs.length > prevCount.current && rowRef.current) {
@@ -141,7 +156,7 @@ export function TabBar({
   };
 
   return (
-    <div className="tab-bar">
+    <div className="tab-bar" ref={barRef}>
       <div
         className="tab-row"
         ref={rowRef}
@@ -213,21 +228,25 @@ export function TabBar({
         })}
       </div>
       <div className="tab-bar-actions">
+        <button className="medallion small" onClick={onAdd} title="Nova guia (Ctrl+N ou Ctrl+T)">
+          <PlusIcon />
+        </button>
         <button
+          ref={menuButtonRef}
           className={"medallion small" + (tabsMenuOpen ? " active" : "")}
           onClick={onToggleMenu}
           title="Todas as guias"
         >
           <ChevronDownIcon />
         </button>
-        <button className="medallion small" onClick={onAdd} title="Nova guia (Ctrl+N ou Ctrl+T)">
-          <PlusIcon />
-        </button>
       </div>
       {tabsMenuOpen && (
         <>
           <div className="menu-backdrop" onClick={onCloseMenu} />
-          <div className="tabs-menu">
+          <div
+            className={"tabs-menu" + (menuAnchor && "left" in menuAnchor ? " from-left" : "")}
+            style={menuAnchor ?? undefined}
+          >
             <div className="tabs-menu-heading">Todas as guias</div>
             {tabs.map((tab, i) => (
               <button
