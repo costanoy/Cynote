@@ -58,6 +58,27 @@ export async function requestPairing(deviceId: string): Promise<boolean> {
   }
 }
 
+/** Local sync only listens on the network with a device paired, or while
+ * Settings is open so a new one can find this computer and pair. */
+export async function setLanPairingOpen(open: boolean): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await invoke("set_lan_pairing_open", { open });
+  } catch {
+    // best-effort
+  }
+}
+
+/** Unpairs every device paired on the local network. */
+export async function forgetTrustedDevices(): Promise<void> {
+  if (!isTauri()) return;
+  try {
+    await invoke("forget_trusted_devices");
+  } catch {
+    // best-effort
+  }
+}
+
 export async function respondToPairing(deviceId: string, accept: boolean): Promise<void> {
   if (!isTauri()) return;
   try {

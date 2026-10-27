@@ -1,7 +1,13 @@
 import { useEffect, useState } from "react";
 import { BackIcon, Bud, LeafDivider, OpenLeaves } from "../icons";
 import type { PeerInfo } from "../types";
-import { listDiscoveredDevices, listTrustedDevices, requestPairing } from "../sync";
+import {
+  forgetTrustedDevices,
+  listDiscoveredDevices,
+  listTrustedDevices,
+  requestPairing,
+  setLanPairingOpen,
+} from "../sync";
 import { getCloudSyncId, generateCloudSyncId, setCloudSyncId, clearCloudSyncId } from "../cloudSync";
 
 type Props = {
@@ -40,11 +46,12 @@ export function SettingsView({
       listDiscoveredDevices().then((d) => !cancelled && setDiscovered(d));
       listTrustedDevices().then((d) => !cancelled && setTrusted(d));
     };
-    refresh();
+    setLanPairingOpen(true).then(refresh);
     const interval = setInterval(refresh, 3000);
     return () => {
       cancelled = true;
       clearInterval(interval);
+      setLanPairingOpen(false);
     };
   }, []);
 
@@ -56,6 +63,11 @@ export function SettingsView({
     setConnectingId(peer.deviceId);
     await requestPairing(peer.deviceId);
     setConnectingId(null);
+  };
+
+  const disableLanSync = async () => {
+    await forgetTrustedDevices();
+    setTrusted(await listTrustedDevices());
   };
 
   const generateCode = async () => {
@@ -159,6 +171,9 @@ export function SettingsView({
 
         <div className="settings-section">
           <div className="settings-section-title">Sincronização na mesma rede</div>
+          <div className="settings-row-hint">
+            Para conectar um celular na mesma rede, deixe esta tela aberta enquanto ele procura o computador
+          </div>
 
           {trusted.map((d) => (
             <div key={d.deviceId} className="device-row synced">
@@ -167,6 +182,11 @@ export function SettingsView({
               <span className="device-row-status">Sincronizado</span>
             </div>
           ))}
+          {trusted.length > 0 && (
+            <button className="sync-clear-link" onClick={disableLanSync}>
+              Desativar sincronização na mesma rede
+            </button>
+          )}
 
           {discovered.map((d) => (
             <div key={d.deviceId} className="device-row found">

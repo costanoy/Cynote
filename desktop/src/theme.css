@@ -237,15 +237,6 @@ button:focus-visible {
     transform: rotate(3deg);
   }
 }
-@keyframes cyLamp {
-  0%,
-  100% {
-    box-shadow: 0 0 6px var(--glow);
-  }
-  50% {
-    box-shadow: 0 0 14px var(--glow);
-  }
-}
 
 /* ------------------------------------------------------------------
    Pieces shared by the main window and Dashnotes.
@@ -293,6 +284,9 @@ button:focus-visible {
   overflow: visible;
   pointer-events: none;
 }
+/* Lit, but still: it used to pulse its glow forever, and a box-shadow can't
+   animate without repainting - the window was redrawn every frame, even
+   sitting idle or hidden in the tray. */
 .cy-lamp {
   position: absolute;
   left: 50%;
@@ -302,7 +296,7 @@ button:focus-visible {
   margin-left: -3.5px;
   border-radius: 50%;
   background: var(--gold);
-  animation: cyLamp 4s ease-in-out infinite;
+  box-shadow: 0 0 10px var(--glow);
   pointer-events: none;
 }
 .cy-arch-strip {
@@ -507,9 +501,11 @@ button:focus-visible {
   pointer-events: none;
   animation: cyFade 0.6s ease;
 }
+/* Sways twice, then rests: an endless animation keeps the window repainting
+   for as long as the page stays blank. */
 .cy-empty svg {
   transform-origin: 50% 90%;
-  animation: cySway 6s ease-in-out infinite;
+  animation: cySway 6s ease-in-out 2 both;
 }
 .cy-empty-title {
   font-family: var(--font-display);

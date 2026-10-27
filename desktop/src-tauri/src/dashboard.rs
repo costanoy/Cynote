@@ -177,8 +177,7 @@ pub fn file_exists(path: String) -> bool {
 #[tauri::command]
 pub fn open_note_in_main(app: AppHandle, path: String) -> Result<(), String> {
     if let Some(window) = app.get_webview_window("main") {
-        let _ = window.show();
-        let _ = window.set_focus();
+        crate::bring_to_front(&window);
     }
     app.emit("open-note-file", path).map_err(|e| e.to_string())
 }

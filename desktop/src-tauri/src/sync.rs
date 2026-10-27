@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::io::Read;
+use std::net::{SocketAddr, TcpStream};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 use tauri::{AppHandle, Emitter, Manager};
@@ -52,6 +53,18 @@ pub struct SyncStateInner {
     pub trusted: HashMap<String, TrustedPeer>,
     /// Pairing requests waiting on the user, with the secret each one proposed.
     pub incoming: HashMap<String, (PeerInfo, PairStatus, String)>,
+    /// Settings is open, where a new device gets paired.
+    pairing_open: bool,
+    lan: Option<LanService>,
+}
+
+/// What runs while local sync is on: the listener paired devices fetch notes
+/// from (and new ones send pairing requests to), and the mDNS daemon that
+/// announces it and finds the other devices.
+struct LanService {
+    server: Arc<Server>,
+    mdns: ServiceDaemon,
+    fullname: String,
 }
 
 pub type SyncState = Arc<Mutex<SyncStateInner>>;
@@ -225,52 +238,89 @@ fn handle_request(app: &AppHandle, state: &SyncState, mut request: tiny_http::Re
 pub fn start(app: AppHandle, own: DeviceIdentity) {
     let trusted = load_trusted(&app);
     let state: SyncState = Arc::new(Mutex::new(SyncStateInner {
-        own: own.clone(),
+        own,
         my_port: 0,
         discovered: HashMap::new(),
         trusted,
         incoming: HashMap::new(),
+        pairing_open: false,
+        lan: None,
     }));
     app.manage(state.clone());
+    update_lan(&app, &state);
+}
 
+/// Local sync only listens on the network while it's in use: with a paired
+/// device, while Settings is open to pair a new one, or while a pairing
+/// request waits on an answer. Otherwise nothing listens at all - before,
+/// the listener stayed open on every network the computer joined, for as
+/// long as Cynote ran, even with nothing ever paired.
+fn lan_needed(s: &SyncStateInner) -> bool {
+    s.pairing_open
+        || !s.trusted.is_empty()
+        || s.incoming.values().any(|(_, status, _)| *status == PairStatus::Pending)
+}
+
+/// Starts or stops local sync to match lan_needed.
+fn update_lan(app: &AppHandle, state: &SyncState) {
+    let mut s = state.lock().unwrap();
+    if lan_needed(&s) {
+        if s.lan.is_none() {
+            start_lan(app, state, &mut s);
+        }
+    } else if let Some(lan) = s.lan.take() {
+        stop_lan(lan);
+        s.my_port = 0;
+        s.discovered.clear();
+    }
+}
+
+fn start_lan(app: &AppHandle, state: &SyncState, s: &mut SyncStateInner) {
     let server = match Server::http("0.0.0.0:0") {
-        Ok(s) => s,
+        Ok(server) => Arc::new(server),
         Err(_) => return,
     };
     let port = server.server_addr().to_ip().map(|a| a.port()).unwrap_or(0);
-    state.lock().unwrap().my_port = port;
 
-    // HTTP request-handling loop
+    // HTTP request-handling loop, until stop_lan unblocks it
     {
         let app = app.clone();
         let state = state.clone();
+        let server = server.clone();
         std::thread::spawn(move || {
             for request in server.incoming_requests() {
                 handle_request(&app, &state, request);
             }
+            close_server(server, port);
         });
     }
 
     // mDNS advertise + browse
     let mdns = match ServiceDaemon::new() {
         Ok(d) => d,
-        Err(_) => return,
+        Err(_) => {
+            server.unblock();
+            return;
+        }
     };
 
     let mut props = HashMap::new();
-    props.insert("deviceId".to_string(), own.device_id.clone());
-    props.insert("deviceName".to_string(), own.device_name.clone());
-    let instance_name = own.device_id.clone();
-    let host_name = format!("{}.local.", own.device_id);
+    props.insert("deviceId".to_string(), s.own.device_id.clone());
+    props.insert("deviceName".to_string(), s.own.device_name.clone());
+    let instance_name = s.own.device_id.clone();
+    let host_name = format!("{}.local.", s.own.device_id);
 
+    let mut fullname = String::new();
     if let Ok(service_info) = ServiceInfo::new(SERVICE_TYPE, &instance_name, &host_name, "", port, props)
         .map(|info| info.enable_addr_auto())
     {
+        fullname = service_info.get_fullname().to_string();
         let _ = mdns.register(service_info);
     }
 
     if let Ok(receiver) = mdns.browse(SERVICE_TYPE) {
-        let my_device_id = own.device_id.clone();
+        let my_device_id = s.own.device_id.clone();
+        let state = state.clone();
         std::thread::spawn(move || {
             while let Ok(event) = receiver.recv() {
                 if let ServiceEvent::ServiceResolved(info) = event {
@@ -302,10 +352,48 @@ pub fn start(app: AppHandle, own: DeviceIdentity) {
                         port: info.get_port(),
                     };
                     let mut s = state.lock().unwrap();
-                    s.discovered.insert(device_id, peer);
+                    if s.lan.is_some() {
+                        s.discovered.insert(device_id, peer);
+                    }
                 }
             }
         });
+    }
+
+    s.my_port = port;
+    s.lan = Some(LanService { server, mdns, fullname });
+}
+
+/// Turns local sync off: the announcement is withdrawn and the listener
+/// closes as soon as its loop notices (see close_server).
+fn stop_lan(lan: LanService) {
+    if !lan.fullname.is_empty() {
+        let _ = lan.mdns.unregister(&lan.fullname);
+    }
+    let _ = lan.mdns.shutdown();
+    lan.server.unblock();
+}
+
+/// Closes a stopped listener for good. tiny_http wakes its accept thread by
+/// connecting to the address it listens on, which Windows refuses for
+/// 0.0.0.0 - the port would stay open until something else connected.
+/// Connecting over loopback instead wakes it right away.
+fn close_server(mut server: Arc<Server>, port: u16) {
+    // stop_lan lets go of its handle right after unblocking the loop. (If the
+    // loop ended on its own, the listener is already closed - give up.)
+    for _ in 0..50 {
+        match Arc::try_unwrap(server) {
+            Ok(owned) => {
+                drop(owned);
+                let loopback = SocketAddr::from(([127, 0, 0, 1], port));
+                let _ = TcpStream::connect_timeout(&loopback, Duration::from_secs(1));
+                return;
+            }
+            Err(shared) => {
+                server = shared;
+                std::thread::sleep(Duration::from_millis(20));
+            }
+        }
     }
 }
 
@@ -421,11 +509,35 @@ pub async fn request_pairing(
     .map_err(|e| e.to_string())??;
 
     if accepted {
-        let mut s = sync_state.lock().unwrap();
-        s.trusted.insert(peer_id, TrustedPeer { name: peer_name, secret });
-        save_trusted(&app, &s.trusted);
+        {
+            let mut s = sync_state.lock().unwrap();
+            s.trusted.insert(peer_id, TrustedPeer { name: peer_name, secret });
+            save_trusted(&app, &s.trusted);
+        }
+        // Paired now, so local sync stays on even after Settings closes.
+        update_lan(&app, &sync_state);
     }
     Ok(accepted)
+}
+
+/// Settings opened or closed: while it's open, local sync runs so a new
+/// device can find this one and pair (see lan_needed).
+#[tauri::command]
+pub fn set_lan_pairing_open(app: AppHandle, state: tauri::State<SyncState>, open: bool) {
+    state.lock().unwrap().pairing_open = open;
+    update_lan(&app, state.inner());
+}
+
+/// Unpairs every device paired on the local network - with none left, local
+/// sync stops listening once Settings closes.
+#[tauri::command]
+pub fn forget_trusted_devices(app: AppHandle, state: tauri::State<SyncState>) {
+    {
+        let mut s = state.lock().unwrap();
+        s.trusted.clear();
+        save_trusted(&app, &s.trusted);
+    }
+    update_lan(&app, state.inner());
 }
 
 #[tauri::command]
@@ -445,23 +557,28 @@ pub fn respond_to_pairing(
     device_id: String,
     accept: bool,
 ) -> Result<(), String> {
-    let mut s = state.lock().unwrap();
-    let accepted_info = if accept {
-        s.incoming.get(&device_id).map(|(info, _, secret)| (info.clone(), secret.clone()))
-    } else {
-        None
-    };
-    if let Some((_, status, _)) = s.incoming.get_mut(&device_id) {
-        *status = if accept {
-            PairStatus::Accepted
+    {
+        let mut s = state.lock().unwrap();
+        let accepted_info = if accept {
+            s.incoming.get(&device_id).map(|(info, _, secret)| (info.clone(), secret.clone()))
         } else {
-            PairStatus::Declined
+            None
         };
+        if let Some((_, status, _)) = s.incoming.get_mut(&device_id) {
+            *status = if accept {
+                PairStatus::Accepted
+            } else {
+                PairStatus::Declined
+            };
+        }
+        if let Some((info, secret)) = accepted_info {
+            s.trusted.insert(info.device_id, TrustedPeer { name: info.device_name, secret });
+            save_trusted(&app, &s.trusted);
+        }
     }
-    if let Some((info, secret)) = accepted_info {
-        s.trusted.insert(info.device_id, TrustedPeer { name: info.device_name, secret });
-        save_trusted(&app, &s.trusted);
-    }
+    // A declined request was the last thing keeping local sync on, if
+    // Settings has closed meanwhile and nothing is paired.
+    update_lan(&app, state.inner());
     Ok(())
 }
 
