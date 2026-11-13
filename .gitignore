@@ -5,3 +5,7 @@ video/node_modules/
 video/frames/
 video/out/
 .claude/settings.local.json
+
+.claude/
+CLAUDE.md
+PORTFOLIO.md
