@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Cynote",
-  "version": "0.1.33",
+  "version": "0.1.34",
   "identifier": "com.cynote.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -62,8 +62,8 @@
   },
   "plugins": {
     "updater": {
-      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEM2NkQ0M0RFNUIyNDdDOTAKUldTUWZDUmIza050eGpPd1psMHJ1NS91MDBqdUpMY0dURG16YXoxUktLc1FZN2lyZXQ5Nnp4TGUK",
-      "endpoints": ["https://github.com/costanoy/Cynote/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDQwQ0VEQ0VFRTVDOTc1NDYKUldSR2Rjbmw3dHpPUVBPQ04wUE9malZEZ1NWTXJ2Qys2V1NPMlJQdkQ2K0dzbk1kZXNpZWF5cFYK",
+      "endpoints": ["https://github.com/costanoy/Cynote/releases/latest/download/latest-windows.json"],
       "windows": {
         "installMode": "passive"
       }

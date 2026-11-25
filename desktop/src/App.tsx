@@ -31,6 +31,7 @@ import { isDirty as isTabDirtyAgainst, snapshotOf, tabHasContent, type SavedSnap
 import { checkForUpdate, installUpdate, type Update } from "./updater";
 
 const UPDATE_CHECK_DELAY_MS = 4000;
+const UPDATE_RECHECK_MS = 6 * 60 * 60 * 1000;
 
 function makeBlankTab(deviceId: string): TabData {
   return {
@@ -585,20 +586,29 @@ function App() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Checked once, a few seconds after launch (no need to race the note
-  // list loading in). A silent miss (offline, no release yet) is fine -
-  // this only ever surfaces something when there's actually a new version.
+  // Checked a few seconds after launch (no need to race the note list
+  // loading in), then again every few hours: the app lives in the tray and
+  // can stay open for days. A silent miss (offline, no release yet) is fine -
+  // this only ever surfaces something when there's actually a new version,
+  // and a version already offered is not offered again in the same session.
   useEffect(() => {
     if (!loaded) return;
-    const timer = setTimeout(() => {
+    let offered: string | null = null;
+    const run = () => {
       checkForUpdate().then((update) => {
-        if (update) {
+        if (update && update.version !== offered) {
+          offered = update.version;
           setAvailableUpdate(update);
           setUpdatePromptOpen(true);
         }
       });
-    }, UPDATE_CHECK_DELAY_MS);
-    return () => clearTimeout(timer);
+    };
+    const timer = setTimeout(run, UPDATE_CHECK_DELAY_MS);
+    const interval = setInterval(run, UPDATE_RECHECK_MS);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(interval);
+    };
   }, [loaded]);
 
   const cancelUpdatePrompt = () => setUpdatePromptOpen(false);
