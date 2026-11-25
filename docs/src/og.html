@@ -1,0 +1,88 @@
+<!doctype html>
+<!-- Source of docs/assets/og-image.png (1200x630). Render it at exactly
+     1200x630, for example with the Impeccable shot command:
+       impeccable shot http://localhost:5180/src/og.html --viewport 1200x630
+     Same tokens and fonts as the site (assets/site.css). Not linked from the site. -->
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>Cynote og-image</title>
+<style>
+@font-face {
+  font-family: "Cynote Note";
+  src: url("../assets/fonts/jetbrains-mono-latin-400.woff2") format("woff2");
+  ascent-override: 62%;
+  descent-override: 38%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("../assets/fonts/jetbrains-mono-latin-400.woff2") format("woff2");
+}
+:root {
+  --page: #edf2e8; --page-2: #e1e8db; --rule: #cbd9c6; --edge: #c3cfbe;
+  --ink: #262b27; --ink-soft: #59625a; --ink-faint: #67716a;
+  --accent: #2350c0; --margin: #c9463d; --cover: #2f5240; --cover-ink: #e6efe4;
+  --p: 64px; --mx: 104px;
+  --ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; width: 1200px; height: 630px; overflow: hidden; }
+body { position: relative; background: var(--page); color: var(--ink); font-family: var(--ui); -webkit-font-smoothing: antialiased; }
+.strip { position: absolute; left: 0; right: 0; top: 0; height: 64px; display: flex; align-items: center; gap: 14px; padding: 0 0 0 52px; background: var(--page-2); border-bottom: 1px solid var(--edge); }
+.strip svg { width: 36px; height: 36px; }
+.strip b { font-size: 24px; font-weight: 600; }
+.strip .url { margin-left: auto; padding-right: 44px; color: var(--ink-soft); font-size: 18px; }
+.page { position: absolute; left: 0; right: 0; top: 65px; bottom: 40px;
+  background-image:
+    linear-gradient(to right, transparent var(--mx), var(--margin) var(--mx), var(--margin) calc(var(--mx) + 2px), transparent calc(var(--mx) + 2px)),
+    linear-gradient(to bottom, transparent calc(var(--p) - 2px), var(--rule) calc(var(--p) - 2px));
+  background-size: 100% 100%, 100% var(--p);
+  background-position: 0 0, 0 -10px;
+  background-repeat: no-repeat, repeat-y; }
+.rows { position: absolute; left: calc(var(--mx) + 26px); top: calc(65px + var(--p)); }
+.row { position: relative; height: var(--p); line-height: var(--p); white-space: nowrap; }
+.note { font-family: "Cynote Note", Consolas, monospace; font-size: 50px; font-variant-ligatures: none; }
+.ln { position: absolute; left: calc(-26px - var(--mx)); width: var(--mx); padding-right: 18px; text-align: right; color: var(--ink-faint); font-family: var(--ui); font-size: 20px; }
+.caret { display: inline-block; width: 3px; height: 46px; margin-left: 4px; vertical-align: -8px; background: var(--accent); }
+.cur { position: absolute; left: calc(-26px - var(--mx)); width: 1200px; height: 3px; top: calc(var(--p) - 11px); background: var(--accent); }
+.sub { font-size: 26px; color: var(--ink-soft); }
+.band { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; display: flex; align-items: center; gap: 26px; padding: 0 44px 0 52px; background: var(--cover); color: var(--cover-ink); font-size: 18px; font-variant-numeric: tabular-nums; }
+.band svg { width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
+.band .gap { flex: 1; }
+.sync { display: flex; align-items: center; gap: 8px; }
+.phone { position: absolute; left: 934px; top: 100px; width: 226px; height: 468px; padding: 8px; border-radius: 32px; background: #1f2520; box-shadow: 0 18px 48px rgba(30,44,34,.22), 0 2px 6px rgba(30,44,34,.18); }
+.scr { height: 100%; overflow: hidden; border-radius: 25px; background: var(--page); display: flex; flex-direction: column; }
+.ps { height: 22px; padding: 5px 0 0 20px; background: var(--page-2); font-size: 10px; }
+.pb { height: 40px; display: flex; align-items: center; padding: 0 14px; background: var(--page-2); font-size: 15px; }
+.pp { flex: 1; padding-top: 10px; background-image:
+    linear-gradient(to right, transparent 16px, var(--margin) 16px, var(--margin) 17px, transparent 17px),
+    linear-gradient(to bottom, transparent 19px, var(--rule) 19px);
+  background-size: 100% 100%, 100% 20px; background-position: 0 0, 0 8px; background-repeat: no-repeat, repeat-y;
+  font-family: "JetBrains Mono", monospace; font-size: 11px; line-height: 20px; padding-left: 26px; padding-right: 8px; white-space: pre-wrap; }
+.pband { height: 26px; display: flex; align-items: center; padding: 0 12px; background: var(--cover); color: var(--cover-ink); font-size: 11px; }
+</style>
+</head>
+<body>
+<div class="strip">
+  <svg viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" fill="#2F5240"/><path d="M19 1.8V9.6M25 1.8V9.6M31 1.8V9.6M37 1.8V9.6M43 1.8V9.6M49 1.8V9.6" stroke="#E6EFE4" stroke-opacity=".9" stroke-width="2.6" stroke-linecap="round"/><path d="M22 26H50M22 36H50" stroke="#E6EFE4" stroke-opacity=".62" stroke-width="3.4" stroke-linecap="round"/><path d="M22 46H50" stroke="#9DB8FF" stroke-width="4" stroke-linecap="round"/><path d="M15 17V53" stroke="#E58A80" stroke-width="2.4" stroke-linecap="round"/></svg>
+  <b>Cynote</b>
+  <span class="url">cynote.cyberhat.com.br</span>
+</div>
+<div class="page"></div>
+<div class="rows">
+  <div class="row note"><span class="ln">1</span>Suas notas,</div>
+  <div class="row note"><span class="ln">2</span>a um atalho de distância.<span class="caret"></span><span class="cur"></span></div>
+  <div class="row"><span class="ln">3</span></div>
+  <div class="row sub">Bloco de notas para Windows e Android.</div>
+  <div class="row sub">Atalhos do VS Code. Sincroniza com um código, sem conta.</div>
+</div>
+<div class="phone"><div class="scr"><div class="ps">08:12</div><div class="pb">Suas notas,</div><div class="pp">Suas notas,
+a um atalho de distância.</div><div class="pband">Sincronizado</div></div></div>
+<div class="band">
+  <span class="sync"><svg viewBox="0 0 16 16"><path d="M4.6 12.6h6.6a2.9 2.9 0 0 0 .4-5.8A4 4 0 0 0 4 7.6a2.5 2.5 0 0 0 .6 5z"/><path d="M6.3 9.9l1.3 1.2 2.3-2.5"/></svg>Sincronizado</span>
+  <span class="gap"></span>
+  <span>Gratuito, sem conta e sem anúncios</span>
+</div>
+</body>
+</html>

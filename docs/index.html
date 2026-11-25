@@ -3,38 +3,37 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cynote: bloco de notas rápido para Windows e Android</title>
-<meta name="description" content="O Cynote mora na bandeja do Windows e aparece na hora com Ctrl+Shift+Space. Sincroniza com o celular pelo Wi-Fi, sem conta. Gratuito e sem anúncios.">
-<meta name="theme-color" content="#37604F" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#10211A" media="(prefers-color-scheme: dark)">
+<title>Cynote: bloco de notas para Windows e Android</title>
+<meta name="description" content="O Cynote fica na bandeja do Windows e aparece na hora com Ctrl+Shift+Space. Edita com os atalhos do VS Code e sincroniza com o celular pela internet, com um código e sem conta. Gratuito e sem anúncios.">
+<meta name="theme-color" content="#e1e8db" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111713" media="(prefers-color-scheme: dark)">
 <link rel="canonical" href="https://cynote.cyberhat.com.br/">
 <meta property="og:type" content="website">
 <meta property="og:locale" content="pt_BR">
 <meta property="og:site_name" content="Cynote">
 <meta property="og:title" content="Cynote: suas notas, a um atalho de distância">
-<meta property="og:description" content="Bloco de notas rápido para Windows e Android. Aparece com Ctrl+Shift+Space e sincroniza sozinho pelo Wi-Fi. Gratuito, sem conta e sem anúncios.">
+<meta property="og:description" content="Bloco de notas para Windows e Android. Aparece com Ctrl+Shift+Space, edita com os atalhos do VS Code e sincroniza com um código, sem conta. Gratuito e sem anúncios.">
 <meta property="og:url" content="https://cynote.cyberhat.com.br/">
 <meta property="og:image" content="https://cynote.cyberhat.com.br/assets/og-image.png">
 <meta property="og:image:width" content="1200">
 <meta property="og:image:height" content="630">
 <meta property="og:image:type" content="image/png">
-<meta property="og:image:alt" content="Medalhão do Cynote sobre ferro verde com o título: suas notas, a um atalho de distância.">
+<meta property="og:image:alt" content="Uma nota do Cynote numa folha pautada verde, com a margem vermelha e a frase: suas notas, a um atalho de distância.">
 <meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="Cynote: suas notas, a um atalho de distância">
-<meta name="twitter:description" content="Bloco de notas rápido para Windows e Android. Gratuito, sem conta e sem anúncios.">
+<meta name="twitter:description" content="Bloco de notas para Windows e Android. Gratuito, sem conta e sem anúncios.">
 <meta name="twitter:image" content="https://cynote.cyberhat.com.br/assets/og-image.png">
-<meta name="twitter:image:alt" content="Medalhão do Cynote sobre ferro verde com o título: suas notas, a um atalho de distância.">
+<meta name="twitter:image:alt" content="Uma nota do Cynote numa folha pautada verde, com a margem vermelha e a frase: suas notas, a um atalho de distância.">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="icon" href="assets/favicon-32.png" sizes="32x32" type="image/png">
 <link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
 <script>
-(function(){var d=document.documentElement;d.classList.add('js');var t=null;try{t=localStorage.getItem('cynote-tema')}catch(e){}if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}d.dataset.theme=t})();
+(function(){var d=document.documentElement;d.classList.add('js');var t=null,q=/[?&]tema=(claro|escuro)/.exec(location.search);try{t=localStorage.getItem('cynote-tema')}catch(e){}if(q){t=q[1]==='escuro'?'dark':'light'}if(t!=='light'&&t!=='dark'){t=matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light'}d.dataset.theme=t})();
 </script>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Marcellus&family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,500;1,7..72,400&family=Jost:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
-<link rel="stylesheet" href="assets/style.css">
+<link rel="preload" href="assets/fonts/jetbrains-mono-latin-400.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="stylesheet" href="assets/site.css">
+<script type="module" src="assets/site.js"></script>
 <script type="application/ld+json">
 {
   "@context": "https://schema.org",
@@ -50,7 +49,7 @@
       "@type": "SoftwareApplication",
       "@id": "https://cynote.cyberhat.com.br/#app",
       "name": "Cynote",
-      "description": "Bloco de notas rápido para Windows e Android. Fica na bandeja do Windows, aparece com Ctrl+Shift+Space e sincroniza com o celular pelo Wi-Fi, sem conta e sem anúncios.",
+      "description": "Bloco de notas para Windows e Android. Fica na bandeja do Windows, aparece com Ctrl+Shift+Space, edita com os atalhos do VS Code e sincroniza com o celular pela internet, com um código e sem conta.",
       "url": "https://cynote.cyberhat.com.br/",
       "image": "https://cynote.cyberhat.com.br/assets/og-image.png",
       "applicationCategory": "UtilitiesApplication",
@@ -62,25 +61,27 @@
       "offers": { "@type": "Offer", "price": "0", "priceCurrency": "BRL" },
       "featureList": [
         "Atalho global Ctrl+Shift+Space",
-        "Sincronização pelo Wi-Fi sem conta",
-        "Vários cursores",
-        "Localizar e substituir",
-        "Guias",
-        "Note Styling: desenhos à mão sobre a nota",
-        "Dashnotes: todas as notas organizadas por pastas",
-        "Temas Dia e Noite"
+        "Atalhos de edição do VS Code: vários cursores, Ctrl+D, seleção em coluna, mover e duplicar linhas",
+        "Localizar e substituir, ir para a linha, quebra de linha com Alt+Z",
+        "Sincronização pela internet com um código, sem conta",
+        "Desenho sobre a nota com caneta, marca-texto e borracha",
+        "Dashnotes: todas as notas do computador organizadas por pastas",
+        "Tema claro e escuro"
       ]
     },
     {
       "@type": "FAQPage",
       "@id": "https://cynote.cyberhat.com.br/#perguntas",
       "mainEntity": [
-        { "@type": "Question", "name": "É grátis mesmo?", "acceptedAnswer": { "@type": "Answer", "text": "É, sim. O Cynote é gratuito, não pede conta e não mostra anúncios." } },
-        { "@type": "Question", "name": "Minhas notas vão para algum servidor?", "acceptedAnswer": { "@type": "Answer", "text": "Não. O Cynote não guarda suas notas em nenhuma nuvem. Pelo Wi-Fi, um aparelho encontra o outro sozinho e as notas vão direto de um para o outro, sem passar por fora da sua rede. E nenhum aparelho recebe nada antes de os dois lados aceitarem o pareamento." } },
-        { "@type": "Question", "name": "Funciona sem internet?", "acceptedAnswer": { "@type": "Answer", "text": "Funciona. As notas ficam salvas no seu computador e no seu celular. A sincronização pelo Wi-Fi acontece dentro da sua rede, então basta os dois aparelhos estarem conectados ao mesmo roteador, mesmo que a internet caia." } },
-        { "@type": "Question", "name": "E se eu editar a mesma nota nos dois aparelhos?", "acceptedAnswer": { "@type": "Answer", "text": "Nada se perde. Se a mesma nota mudar no computador e no celular ao mesmo tempo, o Cynote guarda as duas versões, e uma delas leva o nome do outro aparelho para você saber de onde veio." } },
-        { "@type": "Question", "name": "Tem para iPhone ou Mac?", "acceptedAnswer": { "@type": "Answer", "text": "Ainda não. Por enquanto o Cynote existe para Windows 10 e 11 e para Android." } },
-        { "@type": "Question", "name": "O que é um arquivo .cyte?", "acceptedAnswer": { "@type": "Answer", "text": "É o formato em que o Cynote salva as notas. Por dentro é texto normal: dá para abrir em qualquer editor, como o Bloco de Notas, sem perder nada do que você escreveu." } }
+        { "@type": "Question", "name": "É grátis mesmo?", "acceptedAnswer": { "@type": "Answer", "text": "É. O Cynote é gratuito, não pede conta e não mostra anúncios." } },
+        { "@type": "Question", "name": "Minhas notas vão para algum servidor?", "acceptedAnswer": { "@type": "Answer", "text": "Só se você ligar a sincronização. Aí o título e o texto de cada nota ficam no Firebase Realtime Database, do Google, guardados sob o seu código. As regras do banco não deixam listar os códigos, então só quem tem o código lê ou escreve. Sem código, nenhuma nota sai do aparelho." } },
+        { "@type": "Question", "name": "Funciona sem internet?", "acceptedAnswer": { "@type": "Answer", "text": "Funciona. As notas ficam salvas no computador e no celular, e você escreve normalmente. Só a sincronização precisa de internet: quando a conexão volta, ela acontece sozinha." } },
+        { "@type": "Question", "name": "E se eu editar a mesma nota nos dois aparelhos?", "acceptedAnswer": { "@type": "Answer", "text": "Fica a edição mais recente. O texto do outro aparelho só vira uma nota \"(conflito)\" quando tem linhas que não estão na versão que ficou, e nunca aparece mais de uma cópia." } },
+        { "@type": "Question", "name": "Se eu apagar uma nota, ela some do outro aparelho?", "acceptedAnswer": { "@type": "Answer", "text": "Some. Apagar também sincroniza. A exceção é quando o outro aparelho editou a nota antes de saber da exclusão: uma edição sempre ganha de uma exclusão, e a nota fica." } },
+        { "@type": "Question", "name": "Perdi o código. E agora?", "acceptedAnswer": { "@type": "Answer", "text": "Ele aparece nas Configurações de qualquer aparelho que já está conectado, com um botão para copiar." } },
+        { "@type": "Question", "name": "Eu sincronizava pelo Wi-Fi. O que mudou?", "acceptedAnswer": { "@type": "Answer", "text": "A sincronização pela rede local saiu: agora é só pela internet, com um código. Se você já tinha um código, ele continua valendo, e as notas que estavam na nuvem com ele chegam na primeira sincronização." } },
+        { "@type": "Question", "name": "Tem para iPhone ou Mac?", "acceptedAnswer": { "@type": "Answer", "text": "Ainda não. Por enquanto, o Cynote existe para Windows 10 e 11 e para Android." } },
+        { "@type": "Question", "name": "O que é um arquivo .cyte?", "acceptedAnswer": { "@type": "Answer", "text": "É o formato em que o Cynote salva as notas. Por dentro é texto comum, com um bloco no fim que guarda os desenhos e outros detalhes. Dá para abrir em qualquer editor, como o Bloco de Notas." } }
       ]
     }
   ]
@@ -90,415 +91,289 @@
 <body>
 <a class="skip" href="#conteudo">Pular para o conteúdo</a>
 
-<header class="site-head">
-  <div class="bar">
-    <a class="brand" href="#topo" aria-label="Cynote, início"><span class="medal medal-lg" aria-hidden="true"><span>C</span></span><span class="brand-name">Cynote</span></a>
-    <nav class="nav" aria-label="Seções">
-      <a href="#por-que">Por que</a>
-      <a href="#por-dentro">Por dentro</a>
-      <a href="#atalhos">Atalhos</a>
-      <a href="#perguntas">Perguntas</a>
-    </nav>
-    <span class="sp"></span>
-    <button class="tswitch" type="button" role="switch" aria-checked="false" aria-label="Tema escuro" data-theme-toggle><span class="track"><span class="knob"></span></span><span class="tl lbl"><span class="l-dia">Dia</span><span class="l-noite">Noite</span></span></button>
-    <a class="btn btn-primary btn-sm" href="#baixar">Baixar</a>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <symbol id="i-menu" viewBox="0 0 16 16"><path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 16 16"><circle cx="8" cy="8" r="2.8"/><path d="M8 1.8v1.4M8 12.8v1.4M1.8 8h1.4M12.8 8h1.4M3.6 3.6l1 1M11.4 11.4l1 1M3.6 12.4l1-1M11.4 4.6l1-1"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 16 16"><path d="M13.2 9.6A5.6 5.6 0 0 1 6.4 2.8a5.6 5.6 0 1 0 6.8 6.8z"/></symbol>
+    <symbol id="i-github" viewBox="0 0 16 16"><path d="M6 13.2c-2.6.8-2.6-1.4-3.6-1.7M9.9 14.4v-2.3c0-.7.1-1.1-.3-1.5 1.9-.2 3.6-.9 3.6-3.8a3 3 0 0 0-.8-2.1 2.8 2.8 0 0 0-.1-2.1s-.7-.2-2.2.8a7.6 7.6 0 0 0-4 0C4.6 2.4 3.9 2.6 3.9 2.6a2.8 2.8 0 0 0-.1 2.1 3 3 0 0 0-.8 2.1c0 2.9 1.7 3.6 3.6 3.8-.4.4-.4.8-.3 1.5v2.3"/></symbol>
+    <symbol id="i-cloud" viewBox="0 0 16 16"><path d="M4.6 12.6h6.6a2.9 2.9 0 0 0 .4-5.8A4 4 0 0 0 4 7.6a2.5 2.5 0 0 0 .6 5z"/></symbol>
+    <symbol id="i-cloud-ok" viewBox="0 0 16 16"><path d="M4.6 12.6h6.6a2.9 2.9 0 0 0 .4-5.8A4 4 0 0 0 4 7.6a2.5 2.5 0 0 0 .6 5z"/><path d="M6.3 9.9l1.3 1.2 2.3-2.5"/></symbol>
+    <symbol id="i-cloud-sync" viewBox="0 0 16 16"><path d="M4.6 12.6h6.6a2.9 2.9 0 0 0 .4-5.8A4 4 0 0 0 4 7.6a2.5 2.5 0 0 0 .6 5z"/><path d="M6.2 9.6a1.9 1.9 0 0 1 3.4-.9M9.8 10.4a1.9 1.9 0 0 1-3.4.9"/></symbol>
+    <symbol id="i-windows" viewBox="0 0 16 16"><rect x="2" y="3" width="12" height="8.4" rx="1.2"/><path d="M5.6 13.6h4.8M8 11.4v2.2"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 16 16"><rect x="4.5" y="1.8" width="7" height="12.4" rx="1.6"/><path d="M7 11.8h2"/></symbol>
+    <symbol id="i-download" viewBox="0 0 16 16"><path d="M8 2.5v7.5M4.8 6.8L8 10l3.2-3.2M2.8 11.5v1.7h10.4v-1.7"/></symbol>
+    <symbol id="i-chevron" viewBox="0 0 16 16"><path d="M6 4l4 4-4 4"/></symbol>
+    <symbol id="i-chevron-down" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 16 16"><path d="M6 2.5h4M7 2.5v3.8L4.5 9h7L9 6.3V2.5M8 9v4.5"/></symbol>
+    <symbol id="i-keyboard" viewBox="0 0 16 16"><rect x="1.8" y="4" width="12.4" height="8" rx="1.4"/><path d="M4.5 6.6h.1M7 6.6h.1M9.5 6.6h.1M12 6.6h-.5M4.5 9.4h7"/></symbol>
+    <symbol id="i-tabs" viewBox="0 0 16 16"><path d="M2.5 13.5v-8h4V3.5h7v10z"/><path d="M6.5 5.5v-2"/></symbol>
+    <symbol id="i-folder" viewBox="0 0 16 16"><path d="M2.5 12.5v-8.2a.8.8 0 0 1 .8-.8h3l1.4 1.6h5a.8.8 0 0 1 .8.8v6.6a.8.8 0 0 1-.8.8H3.3a.8.8 0 0 1-.8-.8z"/></symbol>
+    <symbol id="i-contrast" viewBox="0 0 16 16"><circle cx="8" cy="8" r="5.5"/><path d="M8 2.5v11a5.5 5.5 0 0 0 0-11z" fill="currentColor" stroke="none"/></symbol>
+    <symbol id="i-update" viewBox="0 0 16 16"><path d="M13 7.2A5 5 0 0 0 4 4.6L2.8 6"/><path d="M2.8 2.8V6h3.2"/><path d="M3 8.8A5 5 0 0 0 12 11.4L13.2 10"/><path d="M13.2 13.2V10H10"/></symbol>
+    <symbol id="i-reading" viewBox="0 0 16 16"><path d="M8 4.6C6.8 3.6 5 3 2.5 3v9.4c2.5 0 4.3.6 5.5 1.6 1.2-1 3-1.6 5.5-1.6V3C11 3 9.2 3.6 8 4.6z"/><path d="M8 4.6V14"/></symbol>
+    <symbol id="i-wrap" viewBox="0 0 16 16"><path d="M2.5 4h11M2.5 8h8.5a2.2 2.2 0 0 1 0 4.4H8.5"/><path d="M10 10.9l-1.5 1.5 1.5 1.5M2.5 12.4h3"/></symbol>
+    <symbol id="i-pen" viewBox="0 0 16 16"><path d="M2.8 13.2l.9-3.3 7.4-7.4a1.5 1.5 0 0 1 2.1 2.1l-7.4 7.4z"/><path d="M9.9 3.7l2.4 2.4"/></symbol>
+    <symbol id="i-marker" viewBox="0 0 16 16"><path d="M5.2 11.8l-1.6 1.7H1.8l2-2"/><path d="M3.8 11.5l1.7 1.7 7.9-7.9a1.2 1.2 0 0 0 0-1.7l-1.1-1.1a1.2 1.2 0 0 0-1.7 0z"/></symbol>
+    <symbol id="i-eraser" viewBox="0 0 16 16"><path d="M7 13.5h6.5"/><path d="M5.2 13.5L2.6 10.9a1.3 1.3 0 0 1 0-1.8l6.3-6.3a1.3 1.3 0 0 1 1.8 0l2.6 2.6a1.3 1.3 0 0 1 0 1.8l-5.9 6.3z"/><path d="M5.8 6l4.2 4.2"/></symbol>
+    <symbol id="i-trash" viewBox="0 0 16 16"><path d="M2.5 4.5h11M6.3 4.5V2.8h3.4v1.7M4 4.5l.7 8.7h6.6l.7-8.7"/></symbol>
+    <symbol id="i-back" viewBox="0 0 16 16"><path d="M13 8H3M7 4L3 8l4 4"/></symbol>
+    <symbol id="i-undo" viewBox="0 0 16 16"><path d="M5.5 3.5L2.5 6.5l3 3"/><path d="M2.5 6.5h7.2a3.3 3.3 0 0 1 0 6.6H8"/></symbol>
+    <symbol id="i-redo" viewBox="0 0 16 16"><path d="M10.5 3.5l3 3-3 3"/><path d="M13.5 6.5H6.3a3.3 3.3 0 0 0 0 6.6H8"/></symbol>
+    <symbol id="i-copy" viewBox="0 0 16 16"><rect x="5.5" y="5.5" width="8" height="8" rx="1.2"/><path d="M10.5 3.5v-.2a.8.8 0 0 0-.8-.8H3.3a.8.8 0 0 0-.8.8v6.4a.8.8 0 0 0 .8.8h.2"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 16 16"><path d="M2.5 4.5h3.2M9.5 4.5h4M2.5 11.5h6.2M12.5 11.5h1"/><circle cx="7.6" cy="4.5" r="1.9"/><circle cx="10.6" cy="11.5" r="1.9"/></symbol>
+  </defs>
+</svg>
+
+<header class="strip">
+  <a class="brand" href="#inicio">
+    <svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" fill="#2F5240"/><path d="M19 1.8V9.6M25 1.8V9.6M31 1.8V9.6M37 1.8V9.6M43 1.8V9.6M49 1.8V9.6" stroke="#E6EFE4" stroke-opacity=".9" stroke-width="2.6" stroke-linecap="round"/><path d="M22 26H50M22 36H50" stroke="#E6EFE4" stroke-opacity=".62" stroke-width="3.4" stroke-linecap="round"/><path d="M22 46H50" stroke="#9DB8FF" stroke-width="4" stroke-linecap="round"/><path d="M15 17V53" stroke="#E58A80" stroke-width="2.4" stroke-linecap="round"/></svg>
+    <span>Cynote</span>
+  </a>
+  <nav class="tabs" aria-label="Seções">
+    <a class="tab" href="#edicao">Edição</a>
+    <a class="tab" href="#sincronizacao">Sincronização</a>
+    <a class="tab" href="#desenho">Desenho</a>
+    <a class="tab" href="#recursos">Recursos</a>
+    <a class="tab" href="#perguntas">Perguntas</a>
+  </nav>
+  <span class="strip-gap"></span>
+  <button class="icon-btn" type="button" data-theme-toggle aria-pressed="false" aria-label="Tema escuro" title="Tema escuro">
+    <svg class="ico ico-moon"><use href="#i-moon"/></svg><svg class="ico ico-sun"><use href="#i-sun"/></svg>
+  </button>
+  <a class="icon-btn hide-s" href="https://github.com/costanoy/Cynote" aria-label="Cynote no GitHub" title="Cynote no GitHub"><svg class="ico"><use href="#i-github"/></svg></a>
+  <a class="btn btn-primary strip-cta" href="#baixar">Baixar</a>
+  <button class="icon-btn menu-btn" type="button" aria-expanded="false" aria-controls="menu" aria-label="Seções"><svg class="ico"><use href="#i-menu"/></svg></button>
+  <div class="menu" id="menu" hidden>
+    <a class="menu-item" href="#edicao">Edição</a>
+    <a class="menu-item" href="#sincronizacao">Sincronização</a>
+    <a class="menu-item" href="#desenho">Desenho</a>
+    <a class="menu-item" href="#recursos">Recursos</a>
+    <a class="menu-item" href="#baixar">Baixar</a>
+    <a class="menu-item" href="#perguntas">Perguntas</a>
+    <span class="menu-sep" aria-hidden="true"></span>
+    <a class="menu-item" href="https://github.com/costanoy/Cynote">Cynote no GitHub</a>
   </div>
-  <span class="lamp" aria-hidden="true"></span>
 </header>
 
-<main id="conteudo">
+<main id="conteudo" class="page">
 
-<section class="hero" id="topo">
-  <div class="hero-text">
-    <p class="eyebrow" data-reveal style="--i:0">Bloco de notas para Windows e Android</p>
-    <h1 data-reveal style="--i:1">Suas notas, a um atalho de distância.</h1>
-    <p class="lead" data-reveal style="--i:2">O Cynote fica escondido na bandeja do Windows e aparece na hora com <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></span>. Escreva, feche e siga o dia: as notas chegam sozinhas ao seu celular.</p>
-    <div class="dl-buttons" data-reveal style="--i:3">
-      <a class="btn btn-primary btn-lg btn-win" href="https://github.com/costanoy/Cynote/releases/latest"><span class="btn-ico"><i class="i i-computador"></i></span><span><b>Baixar para Windows</b><small>Windows 10 e 11</small></span></a>
-      <a class="btn btn-iron btn-lg btn-android" href="https://github.com/costanoy/Cynote/releases/latest"><span class="btn-ico"><i class="i i-celular"></i></span><span><b>Baixar para Android</b><small>Arquivo .apk</small></span></a>
+<section class="hero" id="inicio" aria-labelledby="titulo">
+  <div class="hero-note">
+    <h1 id="titulo" class="note-text"><span class="row"><span class="ln" aria-hidden="true">1</span>Suas notas,</span><span class="row"><span class="ln" aria-hidden="true">2</span>a um atalho de distância.</span></h1>
+    <div class="row" aria-hidden="true"><span class="ln">3</span></div>
+    <div class="try" data-note="hero" data-from="4" data-placeholder="Escreva aqui. Chega ao celular ao lado." data-label="Nota de demonstração">
+      <div class="row note-text fallback"><span class="ln" aria-hidden="true">4</span><span class="ph">Escreva aqui. Chega ao celular ao lado.</span></div>
     </div>
-    <ul class="facts" data-reveal style="--i:4" aria-label="Destaques"><li>Gratuito</li><li>Sem conta</li><li>Sem anúncios</li></ul>
+    <p class="row hint">Demonstração: nada sai deste navegador.</p>
+    <p class="lead">Fica escondido na bandeja do Windows e aparece na hora com <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></span>. Escreva com os atalhos do VS Code, feche, e a nota já está no celular.</p>
+    <div class="actions">
+      <a class="btn btn-primary btn-lg dl-win" href="https://github.com/costanoy/Cynote/releases/latest"><svg class="ico"><use href="#i-windows"/></svg>Baixar para Windows</a>
+      <a class="btn btn-lg dl-android" href="https://github.com/costanoy/Cynote/releases/latest"><svg class="ico"><use href="#i-phone"/></svg>Baixar para Android</a>
+    </div>
+    <p class="row facts">Gratuito, sem conta e sem anúncios. Windows 10 e 11, Android.</p>
   </div>
 
-  <div class="hero-art" data-reveal style="--i:2">
-    <div class="fit" data-size="main" style="--w:643;--h:523">
-      <div class="win scaled" role="group" aria-label="Janela do Cynote com uma nota de exemplo. Você pode escrever nela e trocar de guia.">
-        <div class="win-head" data-head="main"></div>
-        <div class="win-body">
-          <div class="win-tabs" role="tablist" aria-label="Guias de exemplo">
-            <button class="tab on" type="button" role="tab" aria-selected="true" style="--g:var(--g1)" data-note="0">Estufa<span class="dot" aria-label="não salvo"></span></button>
-            <button class="tab" type="button" role="tab" aria-selected="false" style="--g:var(--g2)" data-note="1">Receitas</button>
-            <button class="tab" type="button" role="tab" aria-selected="false" style="--g:var(--g3)" data-note="2">Leituras 2026</button>
-            <span class="end" aria-hidden="true"><span class="mb mb-t"><i class="i i-todas-as-guias"></i></span><span class="mb mb-t"><i class="i i-nova-guia"></i></span></span>
-          </div>
-          <div class="page"><textarea class="note" id="hero-note" aria-label="Nota de exemplo" spellcheck="false"></textarea></div>
-          <div class="win-status">
-            <span id="hero-pos">Ln 1, Col 1</span>
-            <span id="hero-chars">0 caracteres</span>
-            <span class="sp"></span>
-            <span>100%</span>
-            <i class="i i-modo-leitura" style="color:var(--frame-ink)"></i>
-            <span class="sync ok" id="hero-sync"><i class="i i-sync-ok"></i><span>Sincronizado</span></span>
-          </div>
-        </div>
+  <figure class="device" aria-label="O mesmo texto no celular">
+    <div class="phone" aria-hidden="true">
+      <div class="phone-screen">
+        <div class="phone-status"><span>08:12</span><span class="phone-sig"><i></i><i></i><i></i><i></i></span></div>
+        <div class="phone-bar"><svg class="ico"><use href="#i-back"/></svg><span class="phone-title">Suas notas,</span><svg class="ico dim"><use href="#i-undo"/></svg><svg class="ico dim"><use href="#i-redo"/></svg><svg class="ico"><use href="#i-menu"/></svg></div>
+        <div class="phone-page"><div class="phone-text" data-mirror>Suas notas,
+a um atalho de distância.
+</div></div>
+        <div class="phone-band"><span class="sync" data-sync><svg class="ico"><use href="#i-cloud-ok"/></svg><span data-sync-text>Sincronizado</span></span><span data-mirror-count>37 caracteres</span></div>
       </div>
     </div>
-    <p class="try">Experimente: escreva na nota ou troque de guia</p>
-  </div>
+    <div class="pc" aria-hidden="true">
+      <div class="pc-strip"><span class="pc-tab">Suas notas,</span></div>
+      <div class="pc-page"><div class="pc-text" data-mirror>Suas notas,
+a um atalho de distância.
+</div></div>
+      <div class="pc-band"><span class="sync" data-sync><svg class="ico"><use href="#i-cloud-ok"/></svg><span data-sync-text>Sincronizado</span></span><span data-mirror-count>37 caracteres</span></div>
+    </div>
+    <figcaption class="device-cap">O mesmo texto <span class="cap-phone">no celular</span><span class="cap-pc">no computador</span>.</figcaption>
+  </figure>
 </section>
 
-<section class="section band" id="por-que">
-  <div class="wrap">
-    <div class="sec-head" data-reveal>
-      <p class="eyebrow">Por que o Cynote</p>
-      <h2>Pequeno por fora, completo por dentro</h2>
-      <svg class="vine" viewBox="0 0 160 12" aria-hidden="true"><path d="M1 7 C36 0 62 12 100 6 C120 3 136 4 159 7"></path><path class="lf" d="M100 6 C101 2 104 0 108 0 C107 4 104 6 100 6 Z"></path></svg>
-    </div>
-    <div class="panes">
-      <article class="pane" data-reveal style="--i:0;--g:var(--g1)">
-        <div class="pane-glass"><span class="pane-med"><i class="i i-fixar"></i></span></div>
-        <div class="pane-text"><h3>Sempre à mão</h3><p>Fica quietinho na bandeja e aparece com Ctrl+Shift+Space, de qualquer lugar. Se quiser, fixe a janela por cima das outras.</p></div>
-      </article>
-      <article class="pane" data-reveal style="--i:1;--g:var(--g2)">
-        <div class="pane-glass"><span class="pane-med"><i class="i i-sync-ok"></i></span></div>
-        <div class="pane-text"><h3>Sincroniza sozinho</h3><p>No mesmo Wi-Fi, computador e celular trocam as notas sem conta nenhuma. Longe de casa, use um código de pareamento.</p></div>
-      </article>
-      <article class="pane" data-reveal style="--i:2;--g:var(--g3)">
-        <div class="pane-glass"><span class="pane-med"><i class="i i-buscar"></i></span></div>
-        <div class="pane-text"><h3>Editor de verdade</h3><p>Vários cursores, localizar e substituir, ir para a linha, guias, modo leitura e zoom. Tudo em texto puro.</p></div>
-      </article>
-      <article class="pane" data-reveal style="--i:3;--g:var(--g4)">
-        <div class="pane-glass"><span class="pane-med"><i class="i i-dia-noite"></i></span></div>
-        <div class="pane-text"><h3>Bonito de dia e de noite</h3><p>Dois temas feitos com o mesmo carinho: a estufa de manhã e a estufa à noite, com lampiões acesos.</p></div>
-      </article>
-    </div>
-  </div>
-</section>
+<section class="section" id="edicao" aria-labelledby="h-edicao">
+  <h2 id="h-edicao" class="note-text row">Edita com os atalhos do VS Code.</h2>
+  <p class="body">Quem já usa o VS Code não precisa aprender nada: vários cursores, <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></span>, seleção em coluna, mover e duplicar linhas, localizar e substituir, ir para a linha. O texto continua puro, sem formatação, e cada linha assenta na sua pauta, sempre na mesma altura.</p>
 
-<section class="section" id="por-dentro">
-  <div class="sec-head" data-reveal>
-    <p class="eyebrow">Por dentro</p>
-    <h2>Veja o Cynote trabalhando</h2>
-    <svg class="vine" viewBox="0 0 160 12" aria-hidden="true"><path d="M1 7 C36 0 62 12 100 6 C120 3 136 4 159 7"></path><path class="lf" d="M100 6 C101 2 104 0 108 0 C107 4 104 6 100 6 Z"></path></svg>
-  </div>
+  <div class="edit-grid">
+    <figure class="pad" aria-labelledby="pad-cap">
+      <div class="pad-strip"><span class="pad-tab">Experimente</span><span class="strip-gap"></span><button class="pad-icon" type="button" data-wrap-toggle aria-pressed="true" title="Quebra de linha (Alt+Z)" aria-label="Quebra de linha"><svg class="ico"><use href="#i-wrap"/></svg></button></div>
+      <div class="pad-page" data-note="edit" data-label="Nota para experimentar os atalhos">
+<pre class="fallback">Experimente aqui, com o teclado:
+Ctrl+D em "café" seleciona o próximo "café"
+Alt+↑ e Alt+↓ movem a linha do cursor
+Shift+Alt+↓ duplica a linha
+Alt+clique põe mais um cursor
+Ctrl+F procura, Ctrl+G vai para a linha
+Alt+Z liga e desliga a quebra de linha
 
-  <div class="vitrine" data-reveal>
-    <div class="vit-tabs" role="tablist" aria-label="Recursos do Cynote">
-      <button class="tab" type="button" role="tab" id="t-busca" aria-controls="sc-busca" aria-selected="true" style="--g:var(--g1)"><i class="i i-buscar"></i>Localizar</button>
-      <button class="tab" type="button" role="tab" id="t-cursores" aria-controls="sc-cursores" aria-selected="false" tabindex="-1" style="--g:var(--g2)"><i class="i i-editar" style="-webkit-mask-image:url(assets/icons/editar.svg);mask-image:url(assets/icons/editar.svg)"></i>Vários cursores</button>
-      <button class="tab" type="button" role="tab" id="t-desenho" aria-controls="sc-desenho" aria-selected="false" tabindex="-1" style="--g:var(--g3)"><i class="i i-note-styling"></i>Note Styling</button>
-      <button class="tab" type="button" role="tab" id="t-dash" aria-controls="sc-dash" aria-selected="false" tabindex="-1" style="--g:var(--g4)"><i class="i" style="-webkit-mask-image:url(assets/icons/pasta.svg);mask-image:url(assets/icons/pasta.svg)"></i>Dashnotes</button>
-      <button class="tab" type="button" role="tab" id="t-celular" aria-controls="sc-celular" aria-selected="false" tabindex="-1" style="--g:var(--g1)"><i class="i i-celular"></i>No celular</button>
-    </div>
-
-    <div class="vit-stage">
-      <!-- Localizar -->
-      <div class="scene" id="sc-busca" role="tabpanel" aria-labelledby="t-busca">
-        <div class="scene-text">
-          <h3>Localizar e substituir</h3>
-          <p>Todos os resultados aparecem destacados na nota, e o atual ganha uma moldura dourada. Troque um por um ou tudo de uma vez.</p>
-          <p class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd><span class="plus">&nbsp;·&nbsp;</span><kbd>Ctrl</kbd><span class="plus">+</span><kbd>H</kbd><span class="plus">&nbsp;·&nbsp;</span><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></p>
-        </div>
-        <div class="scene-art">
-          <div class="fit" data-size="main" style="--w:643;--h:523">
-            <div class="win scaled" role="img" aria-label="Janela do Cynote com a barra de busca aberta procurando 'ar'; os resultados estão destacados em verde e o atual em dourado.">
-              <div class="win-head" data-head="main"></div>
-              <div class="win-body">
-                <div class="win-tabs"><span class="tab on" style="--g:var(--g1)">Estufa</span><span class="tab" style="--g:var(--g2)">Receitas</span><span class="tab" style="--g:var(--g3)">Leituras 2026</span></div>
-                <div class="page">
-                  <div class="note" data-hl="ar" data-cur="2"></div>
-                  <div class="findbar">
-                    <div class="fb-row"><span class="fb-b fb-exp"><i class="i i-expandir"></i></span><span class="fb-field">ar</span><span class="fb-aa">Aa</span><span class="fb-count" data-count></span><span class="fb-b"><i class="i i-anterior"></i></span><span class="fb-b"><i class="i i-proximo"></i></span><span class="fb-b"><i class="i i-fechar"></i></span></div>
-                    <div class="fb-row fb-rep"><span class="fb-field ph">Substituir por</span><span class="fb-pill">Substituir</span><span class="fb-pill">Tudo</span></div>
-                  </div>
-                </div>
-                <div class="win-status"><span>Ln 3, Col 6</span><span>318 caracteres</span><span class="sp"></span><span>100%</span><span class="sync"><i class="i i-sync-ok"></i><span>Sincronizado</span></span></div>
-              </div>
-            </div>
-          </div>
-        </div>
+café com leite
+pão de queijo
+café coado
+bolo de fubá
+café gelado</pre>
       </div>
+      <div class="pad-band"><span data-pos="edit">Ln 1, Col 1</span><span class="strip-gap"></span><span data-count="edit">0 caracteres</span></div>
+      <figcaption id="pad-cap" class="cap">O editor do Cynote rodando aqui, com o mesmo teclado do app.</figcaption>
+    </figure>
 
-      <!-- Vários cursores -->
-      <div class="scene" id="sc-cursores" role="tabpanel" aria-labelledby="t-cursores" hidden>
-        <div class="scene-text">
-          <h3>Escreva em vários lugares ao mesmo tempo</h3>
-          <p>Múltiplos cursores, como num editor de código. Crie um cursor com Alt+clique ou selecione a próxima palavra igual com Ctrl+D e edite todas juntas.</p>
-          <p class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>clique</kbd><span class="plus">&nbsp;·&nbsp;</span><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></p>
-        </div>
-        <div class="scene-art">
-          <div class="fit" data-size="main" style="--w:643;--h:523">
-            <div class="win scaled" role="img" aria-label="Janela do Cynote com três cursores piscando no começo de três itens de uma lista e uma palavra selecionada.">
-              <div class="win-head" data-head="main"></div>
-              <div class="win-body">
-                <div class="win-tabs"><span class="tab" style="--g:var(--g1)">Estufa</span><span class="tab on" style="--g:var(--g2)">Compras<span class="dot"></span></span><span class="tab" style="--g:var(--g3)">Leituras 2026</span></div>
-                <div class="page"><div class="note">Compras da semana
-
-• <span class="cur"></span>farinha integral
-• <span class="cur"></span>azeite
-• <span class="cur"></span>limões
-• grão-de-bico
-• <span class="xs">café</span> em grão<span class="cur"></span>
-
-Feira de sábado: mudas de <span class="xs">café</span> e de hortelã.</div></div>
-                <div class="win-status"><span>Ln 3, Col 3</span><span>4 cursores</span><span class="sp"></span><span>100%</span><span class="sync"><i class="i i-sync-ok"></i><span>Sincronizado</span></span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Note Styling -->
-      <div class="scene" id="sc-desenho" role="tabpanel" aria-labelledby="t-desenho" hidden>
-        <div class="scene-text">
-          <h3>Note Styling: desenhe à mão</h3>
-          <p>Faça uma seta, um esquema ou um rabisco e cole o desenho por cima da nota. Depois é só arrastar, redimensionar ou editar.</p>
-          <p class="hint">Pode desenhar aqui ao lado, com o mouse ou o dedo.</p>
-        </div>
-        <div class="scene-art">
-          <div class="fit" data-size="main" style="--w:643;--h:523">
-            <div class="win scaled" role="group" aria-label="Tela de desenho do Note Styling. Desenhe com o mouse ou o dedo.">
-              <div class="win-head" data-head="main" data-on="ns"></div>
-              <div class="win-body">
-                <div class="win-tabs"><span class="tab on" style="--g:var(--g3)">Ideias soltas</span><span class="tab" style="--g:var(--g1)">Estufa</span></div>
-                <div class="page draw">
-                  <div class="ns-head"><b>Note Styling</b><i>caderno de botânica</i></div>
-                  <canvas class="ns-canvas" id="ns-canvas" aria-label="Área de desenho"></canvas>
-                  <div class="ns-bar">
-                    <div style="display:flex;gap:8px" role="radiogroup" aria-label="Cor do traço">
-                      <button class="sw on" type="button" role="radio" aria-checked="true" aria-label="Verde-folha" style="--c:#4E8A4A" data-c="#4E8A4A"></button>
-                      <button class="sw" type="button" role="radio" aria-checked="false" aria-label="Azul-petróleo" style="--c:#2E6F7C" data-c="#2E6F7C"></button>
-                      <button class="sw" type="button" role="radio" aria-checked="false" aria-label="Terracota" style="--c:#A65A3A" data-c="#A65A3A"></button>
-                      <button class="sw" type="button" role="radio" aria-checked="false" aria-label="Âmbar" style="--c:#C98A2E" data-c="#C98A2E"></button>
-                    </div>
-                    <span class="sp"></span>
-                    <button class="ns-btn" type="button" data-ns="clear">Limpar</button>
-                    <button class="ns-btn primary" type="button" data-ns="insert">Inserir no texto</button>
-                  </div>
-                </div>
-                <div class="win-status"><span>Ln 1, Col 1</span><span class="sp"></span><span class="sync"><i class="i i-sync-ok"></i><span>Sincronizado</span></span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Dashnotes -->
-      <div class="scene" id="sc-dash" role="tabpanel" aria-labelledby="t-dash" hidden>
-        <div class="scene-text">
-          <h3>Dashnotes: todas as notas à vista</h3>
-          <p>Uma janela que mostra as notas salvas no computador (.cyte, .txt e .md), organizadas por pastas. Clique numa pasta para entrar e numa nota para abrir no Cynote.</p>
-        </div>
-        <div class="scene-art">
-          <div class="fit" data-size="dash" style="--w:880;--h:600">
-            <div class="win scaled" role="img" aria-label="Janela do Dashnotes mostrando quatro pastas em forma de janelas de vitral e três notas em cartões.">
-              <div class="win-head" data-head="dash"></div>
-              <div class="win-body">
-                <div class="dash-nav"><span class="mb" style="opacity:.4"><i class="i i-voltar"></i></span><div class="crumb"><span class="now">Cynote</span></div><span class="sp"></span><span class="pill-iron"><i class="i i-atualizar-busca" style="width:13px;height:13px"></i>Procurar de novo</span></div>
-                <div class="page dash-page">
-                  <div class="dash-sec">Pastas</div>
-                  <div class="folders">
-                    <div class="folder" style="--g:var(--g1);--b:var(--g2)"><span class="bead"></span><div class="plate"><b>Estufa</b><small>2 notas · 1 pasta</small></div></div>
-                    <div class="folder" style="--g:var(--g2);--b:var(--g3)"><span class="bead"></span><div class="plate"><b>Cozinha</b><small>2 notas</small></div></div>
-                    <div class="folder" style="--g:var(--g4);--b:var(--g1)"><span class="bead"></span><div class="plate"><b>Leituras</b><small>1 nota</small></div></div>
-                    <div class="folder" style="--g:var(--g3);--b:var(--g4)"><span class="bead"></span><div class="plate"><b>Arquivo</b><small>Vazia</small></div></div>
-                  </div>
-                  <div class="dash-sec">Notas</div>
-                  <div class="leaves">
-                    <div class="leafcard"><div class="lc-top"><span class="lf" style="--c:var(--gold)"></span><span class="ext">.txt</span><span class="d">Ontem</span></div><b>Lista rápida</b><p>Pilhas AA, lâmpada da varanda, fita isolante, cola de madeira.</p></div>
-                    <div class="leafcard"><div class="lc-top"><span class="lf" style="--c:var(--accent)"></span><span class="ext">.cyte</span><span class="d">15 set</span></div><b>Ideias soltas</b><p>Um relógio de sol na varanda. Calha que leva a chuva direto para o barril.</p></div>
-                    <div class="leafcard"><div class="lc-top"><span class="lf" style="--c:var(--petrol)"></span><span class="ext">.md</span><span class="d">3 set</span></div><b>Painéis solares</b><p>Três orçamentos até sexta. Medir a área do telhado da garagem.</p></div>
-                  </div>
-                </div>
-                <div class="win-status"><span style="font-family:'JetBrains Mono',monospace;font-size:11px">C:\Users\Vini\Documents\Cynote</span><span class="sp"></span><span>7 itens</span></div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Celular -->
-      <div class="scene" id="sc-celular" role="tabpanel" aria-labelledby="t-celular" hidden>
-        <div class="scene-text">
-          <h3>No bolso, as mesmas notas</h3>
-          <p>O app do Android mostra suas notas como um herbário: cartões com título, horário e o começo do texto. O que você escreve no computador aparece aqui, e vice-versa.</p>
-        </div>
-        <div class="scene-art">
-          <div class="fit fit-phone" style="--w:414;--h:868">
-            <div class="phone scaled" role="img" aria-label="Celular com o Cynote aberto mostrando uma lista de notas em cartões e um botão redondo para nova nota.">
-              <div class="screen">
-                <div class="ph-head">
-                  <div class="ph-status"><span>9:41</span><i><b style="height:5px"></b><b style="height:8px"></b><b style="height:11px"></b><b style="height:14px"></b></i></div>
-                  <div class="ph-row"><span class="medal"><span>C</span></span><h3>Cynote</h3><span class="sp"></span><span class="mb"><i class="i i-configuracoes"></i></span></div>
-                  <span class="lamp"></span>
-                </div>
-                <div class="ph-search"><i class="i i-buscar"></i>Buscar nas notas</div>
-                <p class="ph-label">Suas notas</p>
-                <div class="ph-list">
-                  <div class="hcard"><div class="hc-top"><span class="gl" style="--g:var(--g1)"></span><b>Estufa</b><span>Hoje, 08:12</span></div><p>Regar as samambaias antes das 9h. Trocar o vaso da costela-de-adão.</p></div>
-                  <div class="hcard"><div class="hc-top"><span class="gl" style="--g:var(--g2)"></span><b>Pão de fermentação natural</b><span>Ontem</span></div><p>500 g de farinha, 350 ml de água morna, 100 g de levain ativo.</p></div>
-                  <div class="hcard"><div class="hc-top"><span class="gl" style="--g:var(--g3)"></span><b>Leituras 2026</b><span>Seg</span></div><p>A casa de vidro (em andamento). O jardim secreto. Ecotopia.</p></div>
-                  <div class="hcard"><div class="hc-top"><span class="gl" style="--g:var(--g4)"></span><b>Lista rápida</b><span>15 set</span></div><p>Pilhas AA, lâmpada da varanda, fita isolante, cola de madeira.</p></div>
-                </div>
-                <span class="fab"><i class="i i-nova-guia"></i></span>
-                <span class="ph-home"></span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</section>
-
-<section class="section band" id="dia-e-noite">
-  <div class="dn">
-    <div class="dn-text" data-reveal>
-      <p class="eyebrow">Dia e noite</p>
-      <h2>A estufa de manhã. A estufa à noite.</h2>
-      <p>Os dois temas foram desenhados com o mesmo cuidado. De dia, papel creme e luz dourada; à noite, vidro verde-escuro e lampiões acesos. Troque aqui e veja o site inteiro mudar.</p>
-      <button class="big-switch" type="button" role="switch" aria-checked="false" aria-label="Tema escuro" data-theme-toggle><span class="track"><span class="knob"></span></span><span class="lbl"><span class="l-dia">Estufa de manhã</span><span class="l-noite">Estufa à noite</span></span></button>
-    </div>
-    <div class="dn-art">
-      <figure class="dn-card" data-reveal style="--i:0">
-        <div class="fit" data-size="small" style="--w:420;--h:320" data-theme="light">
-          <div class="win win-compact scaled" role="img" aria-label="Janela do Cynote no tema Dia, com papel creme.">
-            <div class="win-head" data-head="main"></div>
-            <div class="win-body">
-              <div class="win-tabs"><span class="tab on" style="--g:var(--g1);min-width:64px">Estufa</span><span class="tab" style="--g:var(--g2);min-width:64px">Receitas</span></div>
-              <div class="page"><div class="note">Luz da manhã pela janela leste.
-Regar as samambaias.
-Abrir a claraboia às 10h.</div></div>
-              <div class="win-status"><span>Ln 2, Col 9</span><span class="sp"></span><span class="sync"><i class="i i-sync-ok"></i></span></div>
-            </div>
-          </div>
-        </div>
-        <figcaption class="dn-cap">Dia</figcaption>
-      </figure>
-      <figure class="dn-card" data-reveal style="--i:1">
-        <div class="fit" data-size="small" style="--w:420;--h:320" data-theme="dark">
-          <div class="win win-compact scaled" role="img" aria-label="Janela do Cynote no tema Noite, com vidro verde-escuro.">
-            <div class="win-head" data-head="main"></div>
-            <div class="win-body">
-              <div class="win-tabs"><span class="tab on" style="--g:var(--g1);min-width:64px">Estufa</span><span class="tab" style="--g:var(--g2);min-width:64px">Receitas</span></div>
-              <div class="page"><div class="note">Lampiões acesos às 19h.
-Fechar a claraboia.
-Anotar o que floresceu hoje.</div></div>
-              <div class="win-status"><span>Ln 3, Col 1</span><span class="sp"></span><span class="sync"><i class="i i-sync-ok"></i></span></div>
-            </div>
-          </div>
-        </div>
-        <figcaption class="dn-cap">Noite</figcaption>
-      </figure>
-    </div>
-  </div>
-</section>
-
-<section class="section" id="atalhos">
-  <div class="sec-head" data-reveal>
-    <p class="eyebrow">Atalhos</p>
-    <h2>Tudo na ponta dos dedos</h2>
-    <svg class="vine" viewBox="0 0 160 12" aria-hidden="true"><path d="M1 7 C36 0 62 12 100 6 C120 3 136 4 159 7"></path><path class="lf" d="M100 6 C101 2 104 0 108 0 C107 4 104 6 100 6 Z"></path></svg>
-  </div>
-  <div class="board" data-reveal>
-    <div class="board-plate" aria-hidden="true">Quadro de atalhos</div>
-    <dl class="kb">
-      <div class="kb-row"><dt class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></dt><dd>Mostrar ou esconder o Cynote, de qualquer lugar</dd></div>
-      <div class="kb-row"><dt class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd></dt><dd>Localizar na nota</dd></div>
-      <div class="kb-row"><dt class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>H</kbd></dt><dd>Substituir</dd></div>
-      <div class="kb-row"><dt class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></dt><dd>Ir para a linha</dd></div>
-      <div class="kb-row"><dt class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></dt><dd>Selecionar a próxima palavra igual</dd></div>
-      <div class="kb-row"><dt class="keys"><kbd>Alt</kbd><span class="plus">+</span><kbd>clique</kbd></dt><dd>Adicionar mais um cursor</dd></div>
-      <div class="kb-row"><dt class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>S</kbd></dt><dd>Salvar</dd></div>
+    <dl class="keys-list" aria-label="Atalhos do editor">
+      <div><dt><kbd>Ctrl</kbd><span class="plus">+</span><kbd>D</kbd></dt><dd>Seleciona a próxima ocorrência</dd></div>
+      <div><dt><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>L</kbd></dt><dd>Seleciona todas as ocorrências</dd></div>
+      <div><dt><kbd>Alt</kbd><span class="plus">+</span>clique</dt><dd>Adiciona um cursor</dd></div>
+      <div><dt><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>↑</kbd> ou <kbd>↓</kbd></dt><dd>Cursor acima ou abaixo</dd></div>
+      <div><dt><kbd>Shift</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span>arrastar</dt><dd>Seleção em coluna</dd></div>
+      <div><dt><kbd>Alt</kbd><span class="plus">+</span><kbd>↑</kbd> ou <kbd>↓</kbd></dt><dd>Move a linha</dd></div>
+      <div><dt><kbd>Shift</kbd><span class="plus">+</span><kbd>Alt</kbd><span class="plus">+</span><kbd>↑</kbd> ou <kbd>↓</kbd></dt><dd>Duplica a linha</dd></div>
+      <div><dt><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>K</kbd></dt><dd>Apaga a linha</dd></div>
+      <div><dt><kbd>Ctrl</kbd><span class="plus">+</span><kbd>L</kbd></dt><dd>Seleciona a linha</dd></div>
+      <div><dt><kbd>Ctrl</kbd><span class="plus">+</span><kbd>F</kbd> ou <kbd>Ctrl</kbd><span class="plus">+</span><kbd>H</kbd></dt><dd>Localizar e substituir</dd></div>
+      <div><dt><kbd>Ctrl</kbd><span class="plus">+</span><kbd>G</kbd></dt><dd>Ir para a linha</dd></div>
+      <div><dt><kbd>Alt</kbd><span class="plus">+</span><kbd>Z</kbd></dt><dd>Quebra de linha</dd></div>
     </dl>
-    <p class="board-note">E também os atalhos de linha do VS Code, para quem já tem os dedos acostumados.</p>
   </div>
 </section>
 
-<section class="section band" id="baixar">
-  <div class="sec-head" data-reveal>
-    <p class="eyebrow">Baixar</p>
-    <h2>Leve o Cynote com você</h2>
-    <p class="sub">Gratuito, sem conta e sem anúncios. Os dois se atualizam sozinhos.</p>
-    <svg class="vine" viewBox="0 0 160 12" aria-hidden="true"><path d="M1 7 C36 0 62 12 100 6 C120 3 136 4 159 7"></path><path class="lf" d="M100 6 C101 2 104 0 108 0 C107 4 104 6 100 6 Z"></path></svg>
-  </div>
-  <div class="dl-grid">
-    <article class="dl-card dl-win" data-reveal style="--i:0;--g:var(--g1)">
-      <div class="dl-glass"><span class="pane-med"><i class="i i-computador"></i></span></div>
-      <div class="dl-body">
-        <h3>Windows</h3>
-        <p class="meta">Windows 10 e 11 · se atualiza sozinho</p>
-        <a class="btn btn-primary btn-lg" href="https://github.com/costanoy/Cynote/releases/latest"><span class="btn-ico"><i class="i i-computador"></i></span><span><b>Baixar para Windows</b><small>Página de versões no GitHub</small></span></a>
-        <p class="small">Depois de instalar, ele fica na bandeja, perto do relógio. Chame com Ctrl+Shift+Space.</p>
+<section class="section" id="sincronizacao" aria-labelledby="h-sync">
+  <h2 id="h-sync" class="note-text row">Um código, os dois aparelhos.</h2>
+  <p class="body">Crie um código no computador e digite o mesmo código no celular, ou o contrário. Pronto: as notas ficam iguais nos dois, pela internet e sem criar conta.</p>
+
+  <figure class="code-pair">
+    <div class="code-card" aria-hidden="true">
+      <span class="code-title"><svg class="ico"><use href="#i-windows"/></svg>Sincronizar com o celular</span>
+      <span class="code-row"><span class="code">4F2A9-C81D0-77B3E-0A1C5</span><span class="fake-btn">Copiar</span></span>
+      <span class="code-ok"><i></i>Sincronizado às 08:12</span>
+    </div>
+    <div class="code-join" aria-hidden="true"><span>mesmo código</span></div>
+    <div class="code-card" aria-hidden="true">
+      <span class="code-title"><svg class="ico"><use href="#i-phone"/></svg>Sincronizar com o computador</span>
+      <span class="code-row"><span class="code">4F2A9-C81D0-77B3E-0A1C5</span><span class="fake-btn"><svg class="ico"><use href="#i-copy"/></svg>Copiar</span></span>
+      <span class="code-ok"><i></i>Sincronizado às 08:12</span>
+    </div>
+    <figcaption class="cap">O código tem 20 letras e números, como este exemplo. Ele fica nas Configurações dos dois aparelhos.</figcaption>
+  </figure>
+
+  <dl class="facts-list">
+    <div><dt>Só pela internet</dt><dd>Wi-Fi ou dados móveis, de onde estiver. Os aparelhos não precisam estar na mesma rede.</dd></div>
+    <div><dt>Sem conta</dt><dd>O código é o endereço e a única chave. As regras do banco não deixam listar os códigos: quem não tem o código não lê nem escreve.</dd></div>
+    <div><dt>Apagar também vale</dt><dd>Uma nota apagada num aparelho some no outro. Se um lado editou enquanto o outro apagava, a edição fica.</dd></div>
+    <div><dt>Editou nos dois</dt><dd>Fica a edição mais recente. O texto do outro lado vira uma nota “(conflito)” só quando tem linhas que não estão na versão que ficou, e nunca mais de uma cópia.</dd></div>
+    <div><dt>Quando sincroniza</dt><dd>Ao abrir, ao mostrar a janela, depois de salvar e a cada 30 segundos com o app aberto. Com a janela escondida, nada roda.</dd></div>
+    <div><dt>O que viaja</dt><dd>O título e o texto de cada nota. Desenhos e favoritos ficam no computador onde foram feitos.</dd></div>
+    <div><dt>Erros à vista</dt><dd>Sem internet ou com o acesso recusado, a barra de status avisa. Nada falha em silêncio.</dd></div>
+  </dl>
+</section>
+
+<section class="section" id="desenho" aria-labelledby="h-desenho">
+  <h2 id="h-desenho" class="note-text row">Desenhe por cima da nota.</h2>
+  <p class="body">Caneta, marca-texto e borracha direto sobre o texto, com <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>D</kbd></span>. Depois dá para arrastar, redimensionar ou editar o desenho. Ele fica salvo junto com a nota, no arquivo .cyte.</p>
+
+  <figure class="sketch" aria-labelledby="sketch-cap">
+    <div class="sketch-page">
+      <pre class="sketch-text" aria-hidden="true">Reunião de quinta
+- Revisar o orçamento do trimestre
+- Ligar para a gráfica
+- Levar o caderno de anotações
+
+Decisões:
+[ ] Mudar o horário para 9h30
+[x] Avisar a equipe</pre>
+      <canvas class="sketch-canvas" aria-label="Área de desenho sobre a nota de exemplo"></canvas>
+      <div class="dock" role="toolbar" aria-label="Ferramentas de desenho">
+        <button class="dock-btn" type="button" data-tool="pen" aria-pressed="true" title="Caneta" aria-label="Caneta"><svg class="ico"><use href="#i-pen"/></svg></button>
+        <button class="dock-btn" type="button" data-tool="marker" aria-pressed="false" title="Marca-texto" aria-label="Marca-texto"><svg class="ico"><use href="#i-marker"/></svg></button>
+        <button class="dock-btn" type="button" data-tool="eraser" aria-pressed="false" title="Borracha" aria-label="Borracha"><svg class="ico"><use href="#i-eraser"/></svg></button>
+        <span class="dock-sep" aria-hidden="true"></span>
+        <span class="swatches" role="radiogroup" aria-label="Cor">
+          <button class="swatch" type="button" role="radio" aria-checked="true" data-ink="ink" aria-label="Nanquim" title="Nanquim"></button>
+          <button class="swatch" type="button" role="radio" aria-checked="false" data-ink="leaf" aria-label="Verde-folha" title="Verde-folha"></button>
+          <button class="swatch" type="button" role="radio" aria-checked="false" data-ink="petrol" aria-label="Azul-petróleo" title="Azul-petróleo"></button>
+          <button class="swatch" type="button" role="radio" aria-checked="false" data-ink="terracotta" aria-label="Terracota" title="Terracota"></button>
+          <button class="swatch" type="button" role="radio" aria-checked="false" data-ink="amber" aria-label="Âmbar" title="Âmbar"></button>
+        </span>
+        <span class="dock-sep" aria-hidden="true"></span>
+        <button class="dock-btn danger" type="button" data-clear title="Apagar o desenho" aria-label="Apagar o desenho"><svg class="ico"><use href="#i-trash"/></svg></button>
       </div>
-    </article>
-    <article class="dl-card dl-android" data-reveal style="--i:1;--g:var(--g2)">
-      <div class="dl-glass"><span class="pane-med"><i class="i i-celular"></i></span></div>
-      <div class="dl-body">
-        <h3>Android</h3>
-        <p class="meta">Arquivo .apk · se atualiza pelo próprio app</p>
-        <a class="btn btn-iron btn-lg" href="https://github.com/costanoy/Cynote/releases/latest"><span class="btn-ico"><i class="i i-celular"></i></span><span><b>Baixar o APK</b><small>Toque no arquivo que termina em .apk</small></span></a>
-        <ol class="steps">
-          <li>Abra esta página no celular e baixe o arquivo .apk.</li>
-          <li>Quando o Android pedir, permita “instalar apps desconhecidos”.</li>
-          <li>Abra o arquivo e toque em Instalar. Pronto!</li>
-        </ol>
-      </div>
-    </article>
+    </div>
+    <figcaption id="sketch-cap" class="cap">Desenhe aqui com o mouse ou o dedo.</figcaption>
+  </figure>
+</section>
+
+<section class="section" id="recursos" aria-labelledby="h-recursos">
+  <h2 id="h-recursos" class="note-text row">Fica na bandeja, sempre à mão.</h2>
+  <ul class="feature-list">
+    <li><svg class="ico"><use href="#i-keyboard"/></svg><b>Atalho de qualquer lugar</b><span><span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></span> mostra e esconde o Cynote. Fechar só esconde: ele continua na bandeja, perto do relógio.</span></li>
+    <li><svg class="ico"><use href="#i-pin"/></svg><b>Fixo por cima</b><span>A janela pode ficar por cima das outras enquanto você trabalha.</span></li>
+    <li><svg class="ico"><use href="#i-tabs"/></svg><b>Guias</b><span>Várias notas abertas lado a lado. <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>T</kbd></span> reabre a última que você fechou.</span></li>
+    <li><svg class="ico"><use href="#i-folder"/></svg><b>Dashnotes</b><span>Uma janela com todas as notas salvas no computador (.cyte, .txt e .md), organizadas por pastas.</span></li>
+    <li><svg class="ico"><use href="#i-reading"/></svg><b>Modo leitura e zoom</b><span>Uma coluna centralizada para ler, e o zoom aumenta letra e pauta juntas.</span></li>
+    <li><svg class="ico"><use href="#i-contrast"/></svg><b>Claro e escuro</b><span>O mesmo bloco nos dois temas, no computador e no celular. O botão lá em cima troca o tema deste site.</span></li>
+    <li><svg class="ico"><use href="#i-update"/></svg><b>Atualiza sozinho</b><span>No Windows e no Android, as versões novas chegam pelo próprio app.</span></li>
+  </ul>
+</section>
+
+<section class="section" id="baixar" aria-labelledby="h-baixar">
+  <h2 id="h-baixar" class="note-text row">Baixe e comece a escrever.</h2>
+  <div class="get">
+    <div class="get-col">
+      <h3 class="row"><svg class="ico"><use href="#i-windows"/></svg>Windows</h3>
+      <p class="row meta">Windows 10 e 11. Instalador na página de versões do GitHub.</p>
+      <div class="actions"><a class="btn btn-primary btn-lg dl-win" href="https://github.com/costanoy/Cynote/releases/latest"><svg class="ico"><use href="#i-download"/></svg>Baixar para Windows</a></div>
+      <p class="body">Depois de instalar, ele fica na bandeja, perto do relógio. Chame com <span class="keys"><kbd>Ctrl</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>Space</kbd></span>.</p>
+    </div>
+    <div class="get-col get-android">
+      <h3 class="row"><svg class="ico"><use href="#i-phone"/></svg>Android</h3>
+      <p class="row meta">Arquivo .apk, na mesma página de versões.</p>
+      <div class="actions"><a class="btn btn-lg dl-android" href="https://github.com/costanoy/Cynote/releases/latest"><svg class="ico"><use href="#i-download"/></svg>Baixar para Android</a></div>
+      <ol class="steps">
+        <li>Abra esta página no celular e baixe o arquivo que termina em .apk.</li>
+        <li>Quando o Android pedir, permita instalar apps desta fonte.</li>
+        <li>Abra o arquivo e toque em Instalar.</li>
+      </ol>
+    </div>
   </div>
-  <div class="first-sync" data-reveal>
-    <h3>Primeira sincronização</h3>
-    <ol class="fs-steps">
-      <li><span class="pane-med"><i class="i i-computador"></i></span>Abra o Cynote no computador e no celular.</li>
-      <li aria-hidden="true"><svg class="fs-link" viewBox="0 0 72 12"><path d="M2 6 C18 0 30 12 46 6 C56 2 64 4 70 6"></path></svg></li>
-      <li><span class="pane-med"><i class="i i-wifi"></i></span>Deixe os dois na mesma rede Wi-Fi.</li>
-      <li aria-hidden="true"><svg class="fs-link" viewBox="0 0 72 12"><path d="M2 6 C18 0 30 12 46 6 C56 2 64 4 70 6"></path></svg></li>
-      <li><span class="pane-med"><i class="i i-sync-ok"></i></span>Toque em “Conectar”. As notas já começam a ir e vir.</li>
-    </ol>
+  <h3 class="row first-sync">Primeira sincronização</h3>
+  <ol class="steps steps-wide">
+    <li>No computador, abra as Configurações e clique em Criar código.</li>
+    <li>No celular, abra as Configurações, cole ou digite o mesmo código e toque em Conectar.</li>
+    <li>Pronto: as notas dos dois aparelhos se juntam e, daqui em diante, ficam iguais. Também dá para começar pelo celular.</li>
+  </ol>
+</section>
+
+<section class="section" id="perguntas" aria-labelledby="h-perguntas">
+  <h2 id="h-perguntas" class="note-text row">Perguntas frequentes.</h2>
+  <div class="faq">
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>É grátis mesmo?</summary><p>É. O Cynote é gratuito, não pede conta e não mostra anúncios.</p></details>
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>Minhas notas vão para algum servidor?</summary><p>Só se você ligar a sincronização. Aí o título e o texto de cada nota ficam no Firebase Realtime Database, do Google, guardados sob o seu código. As regras do banco não deixam listar os códigos, então só quem tem o código lê ou escreve. Sem código, nenhuma nota sai do aparelho.</p></details>
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>Funciona sem internet?</summary><p>Funciona. As notas ficam salvas no computador e no celular, e você escreve normalmente. Só a sincronização precisa de internet: quando a conexão volta, ela acontece sozinha.</p></details>
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>E se eu editar a mesma nota nos dois aparelhos?</summary><p>Fica a edição mais recente. O texto do outro aparelho só vira uma nota “(conflito)” quando tem linhas que não estão na versão que ficou, e nunca aparece mais de uma cópia.</p></details>
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>Se eu apagar uma nota, ela some do outro aparelho?</summary><p>Some. Apagar também sincroniza. A exceção é quando o outro aparelho editou a nota antes de saber da exclusão: uma edição sempre ganha de uma exclusão, e a nota fica.</p></details>
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>Perdi o código. E agora?</summary><p>Ele aparece nas Configurações de qualquer aparelho que já está conectado, com um botão para copiar.</p></details>
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>Eu sincronizava pelo Wi-Fi. O que mudou?</summary><p>A sincronização pela rede local saiu: agora é só pela internet, com um código. Se você já tinha um código, ele continua valendo, e as notas que estavam na nuvem com ele chegam na primeira sincronização.</p></details>
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>Tem para iPhone ou Mac?</summary><p>Ainda não. Por enquanto, o Cynote existe para Windows 10 e 11 e para Android.</p></details>
+    <details><summary><svg class="ico"><use href="#i-chevron"/></svg>O que é um arquivo .cyte?</summary><p>É o formato em que o Cynote salva as notas. Por dentro é texto comum, com um bloco no fim que guarda os desenhos e outros detalhes. Dá para abrir em qualquer editor, como o Bloco de Notas.</p></details>
   </div>
 </section>
 
-<section class="section" id="perguntas">
-  <div class="sec-head" data-reveal>
-    <p class="eyebrow">Perguntas frequentes</p>
-    <h2>Ficou alguma dúvida?</h2>
-    <svg class="vine" viewBox="0 0 160 12" aria-hidden="true"><path d="M1 7 C36 0 62 12 100 6 C120 3 136 4 159 7"></path><path class="lf" d="M100 6 C101 2 104 0 108 0 C107 4 104 6 100 6 Z"></path></svg>
-  </div>
-  <div class="faq" data-reveal>
-    <details><summary>É grátis mesmo?</summary><p class="ans">É, sim. O Cynote é gratuito, não pede conta e não mostra anúncios.</p></details>
-    <details><summary>Minhas notas vão para algum servidor?</summary><p class="ans">Não. O Cynote não guarda suas notas em nenhuma nuvem. Pelo Wi-Fi, um aparelho encontra o outro sozinho e as notas vão direto de um para o outro, sem passar por fora da sua rede. E nenhum aparelho recebe nada antes de os dois lados aceitarem o pareamento.</p></details>
-    <details><summary>Funciona sem internet?</summary><p class="ans">Funciona. As notas ficam salvas no seu computador e no seu celular. A sincronização pelo Wi-Fi acontece dentro da sua rede, então basta os dois aparelhos estarem conectados ao mesmo roteador, mesmo que a internet caia.</p></details>
-    <details><summary>E se eu editar a mesma nota nos dois aparelhos?</summary><p class="ans">Nada se perde. Se a mesma nota mudar no computador e no celular ao mesmo tempo, o Cynote guarda as duas versões, e uma delas leva o nome do outro aparelho para você saber de onde veio.</p></details>
-    <details><summary>Tem para iPhone ou Mac?</summary><p class="ans">Ainda não. Por enquanto o Cynote existe para Windows 10 e 11 e para Android.</p></details>
-    <details><summary>O que é um arquivo .cyte?</summary><p class="ans">É o formato em que o Cynote salva as notas. Por dentro é texto normal: dá para abrir em qualquer editor, como o Bloco de Notas, sem perder nada do que você escreveu.</p></details>
-  </div>
-</section>
+<footer class="foot">
+  <p class="row foot-brand"><svg class="mark" viewBox="0 0 64 64" aria-hidden="true"><rect x="4" y="4" width="56" height="56" rx="14" fill="#2F5240"/><path d="M19 1.8V9.6M25 1.8V9.6M31 1.8V9.6M37 1.8V9.6M43 1.8V9.6M49 1.8V9.6" stroke="#E6EFE4" stroke-opacity=".9" stroke-width="2.6" stroke-linecap="round"/><path d="M22 26H50M22 36H50" stroke="#E6EFE4" stroke-opacity=".62" stroke-width="3.4" stroke-linecap="round"/><path d="M22 46H50" stroke="#9DB8FF" stroke-width="4" stroke-linecap="round"/><path d="M15 17V53" stroke="#E58A80" stroke-width="2.4" stroke-linecap="round"/></svg>Cynote, bloco de notas para Windows e Android.</p>
+  <p class="row foot-links"><a href="https://github.com/costanoy/Cynote">Código no GitHub</a><a href="https://github.com/costanoy/Cynote/releases">Todas as versões</a><a href="https://cyberhat.com.br">Cyberhat</a></p>
+  <p class="row foot-small">Feito por <a href="https://portfolio.cyberhat.com.br">Vinícius Costa Magalhães</a>. © 2026 Cynote.</p>
+</footer>
 
 </main>
 
-<footer class="site-foot">
-  <div class="foot-arch"><span class="lamp" aria-hidden="true"></span></div>
-  <div class="foot-body">
-    <div class="foot-brand"><span class="medal medal-lg" aria-hidden="true"><span>C</span></span>Cynote</div>
-    <p>Bloco de notas rápido para Windows e Android.</p>
-    <div class="foot-links">
-      <a href="https://github.com/costanoy/Cynote"><i class="i i-github" style="width:16px;height:16px"></i>Cynote no GitHub</a>
-      <a href="#baixar"><i class="i i-computador" style="width:16px;height:16px"></i>Baixar</a>
-    </div>
-    <svg class="foot-vine" viewBox="0 0 760 40" aria-hidden="true">
-      <path d="M2 24 C80 4 140 38 220 22 S360 4 440 22 S600 40 680 20 C710 13 735 16 758 22"></path>
-      <path class="lf" d="M150 24 C152 16 158 12 166 12 C164 20 158 24 150 24 Z"></path>
-      <path class="lf" d="M300 12 C298 4 292 0 284 0 C286 8 292 12 300 12 Z"></path>
-      <path class="lf" d="M470 26 C472 18 478 14 486 14 C484 22 478 26 470 26 Z"></path>
-      <path class="lf" d="M640 28 C638 20 632 16 624 16 C626 24 632 28 640 28 Z"></path>
-    </svg>
-    <small>© 2026 Cynote</small>
-  </div>
-</footer>
+<div class="band" role="status" aria-live="off">
+  <span class="sync" data-sync><svg class="ico"><use href="#i-cloud-ok"/></svg><span data-sync-text>Sincronizado</span></span>
+  <span class="strip-gap"></span>
+  <span class="band-pos" data-band-pos>Ln 4, Col 1</span>
+  <span data-band-count>37 caracteres</span>
+</div>
 
-<template id="tpl-head-main"><span class="lamp"></span><div class="win-row"><span class="medal"><span>C</span></span><span class="win-name">Cynote</span><span class="mb"><i class="i i-menu"></i></span><span class="sp"></span><span class="mb" data-k="ns"><i class="i i-note-styling"></i></span><span class="mb"><i class="i i-configuracoes"></i></span><span class="mb hide-c"><i class="i i-fixar"></i></span><span class="vsep"></span><span class="mb mb-s"><i class="i i-minimizar"></i></span><span class="mb mb-s"><i class="i i-maximizar"></i></span><span class="mb mb-s"><i class="i i-fechar"></i></span></div></template>
-<template id="tpl-head-dash"><span class="lamp"></span><div class="win-row"><span class="medal"><span>C</span></span><span class="win-name">Dashnotes</span><span class="sp"></span><span class="mb mb-s"><i class="i i-minimizar"></i></span><span class="mb mb-s"><i class="i i-maximizar"></i></span><span class="mb mb-s"><i class="i i-fechar"></i></span></div></template>
-
-<script src="assets/main.js"></script>
 </body>
 </html>

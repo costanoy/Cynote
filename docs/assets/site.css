@@ -1,0 +1,1628 @@
+/* Cynote site: the browser window is a Cynote window.
+   A card strip on top (its tabs are the sections), one steno page ruled at a
+   single pitch down the whole document with the red margin, and the
+   cover-green band at the foot. Tokens are the app's (desktop/src/theme.css):
+   ballpoint blue only marks where you are, margin red is also the danger
+   colour, cover green is the band and the one primary action.
+   Every block on the page is a whole number of rows tall (--p). */
+
+/* Note text at page scale: JetBrains Mono with a line box narrowed so that
+   the glyphs rest on the rule of their row instead of floating in it. */
+@font-face {
+  font-family: "Cynote Note";
+  src: url("fonts/jetbrains-mono-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  ascent-override: 62%;
+  descent-override: 38%;
+  line-gap-override: 0%;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "Cynote Note";
+  src: url("fonts/jetbrains-mono-latin-ext-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  ascent-override: 62%;
+  descent-override: 38%;
+  line-gap-override: 0%;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+/* The app's own note face, its own metrics: for the app-scale demos. */
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/jetbrains-mono-latin-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: "JetBrains Mono";
+  src: url("fonts/jetbrains-mono-latin-ext-400.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* ---------------------------------------------------------------- tokens */
+
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+  --page: #edf2e8;
+  --page-2: #e1e8db;
+  --page-3: #d6dfd0;
+  --rule: #cbd9c6;
+  --edge: #c3cfbe;
+  --ink: #262b27;
+  --ink-soft: #59625a;
+  --ink-faint: #67716a;
+  --accent: #2350c0;
+  --on-accent: #ffffff;
+  --selection: rgba(35, 80, 192, 0.2);
+  --margin: #c9463d;
+  --margin-ink: #b23a31;
+  --match: rgba(214, 160, 52, 0.32);
+  --match-current: rgba(214, 160, 52, 0.62);
+  --cover: #2f5240;
+  --cover-ink: #e6efe4;
+  --cover-hover: rgba(230, 239, 228, 0.14);
+  --hover: rgba(38, 43, 39, 0.06);
+  --pressed: rgba(38, 43, 39, 0.11);
+  --shadow: rgba(30, 44, 34, 0.18);
+  --scroll-thumb: rgba(38, 43, 39, 0.2);
+  --ok: #3f8a5c;
+  --bezel: #1f2520;
+}
+[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #18201b;
+  --page-2: #111713;
+  --page-3: #0c110e;
+  --rule: #26312a;
+  --edge: #2d3a31;
+  --ink: #dce5da;
+  --ink-soft: #9aa79b;
+  --ink-faint: #7c8a7f;
+  --accent: #7fa2ff;
+  --on-accent: #0b1430;
+  --selection: rgba(127, 162, 255, 0.28);
+  --margin: #e0766c;
+  --margin-ink: #e98a81;
+  --match: rgba(217, 164, 65, 0.26);
+  --match-current: rgba(217, 164, 65, 0.55);
+  --cover: #2b4d3b;
+  --cover-ink: #cfe0d2;
+  --cover-hover: rgba(207, 224, 210, 0.12);
+  --hover: rgba(220, 229, 218, 0.07);
+  --pressed: rgba(220, 229, 218, 0.12);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --scroll-thumb: rgba(220, 229, 218, 0.18);
+  --ok: #5fae7c;
+  --bezel: #060907;
+}
+
+:root {
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-note: "Cynote Note", Consolas, ui-monospace, monospace;
+  --font-mono: "JetBrains Mono", Consolas, ui-monospace, monospace;
+  /* The page: one pitch, the rule a twelfth of it up from the row's foot. */
+  --p: 40px;
+  --off: -5px;
+  /* The red margin and the text 16px past it. */
+  --mx: max(72px, calc(50vw - 600px));
+  --tx: calc(var(--mx) + 17px);
+  --right: max(40px, calc(100vw - var(--tx) - 1180px));
+  /* Two interface sizes, and the note's own. */
+  --fs-body: 18px;
+  --fs-ui: 14px;
+  --fs-note: 34px;
+  --strip: 48px;
+  --band: 28px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+}
+@media (max-width: 899px) {
+  :root {
+    --p: 32px;
+    --off: -4px;
+    --mx: 20px;
+    --right: 18px;
+    --fs-body: 16px;
+    --fs-note: 26px;
+  }
+}
+
+/* ------------------------------------------------------------------ base */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+html {
+  scroll-padding-top: calc(var(--strip) + var(--p));
+  scrollbar-color: var(--scroll-thumb) transparent;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-body);
+  line-height: var(--p);
+  caret-color: var(--accent);
+  -webkit-font-smoothing: antialiased;
+}
+::selection {
+  background: var(--selection);
+}
+h1,
+h2,
+h3,
+p,
+dl,
+dd,
+ol,
+ul,
+figure,
+pre {
+  margin: 0;
+}
+a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, currentColor 35%, transparent);
+  text-underline-offset: 4px;
+  text-decoration-thickness: 1px;
+}
+a:hover {
+  text-decoration-color: currentColor;
+}
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+.ico {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+kbd {
+  display: inline-block;
+  min-width: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--page-2);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-ui);
+  line-height: 22px;
+  text-align: center;
+  vertical-align: 1px;
+  white-space: nowrap;
+}
+.keys {
+  white-space: nowrap;
+}
+.plus {
+  margin: 0 4px;
+  color: var(--ink-soft);
+}
+.skip {
+  position: fixed;
+  left: 8px;
+  top: 8px;
+  z-index: 100;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: var(--ink);
+  color: var(--page);
+  font-size: var(--fs-ui);
+  line-height: 32px;
+  transform: translateY(-200%);
+}
+.skip:focus {
+  transform: none;
+}
+
+/* --------------------------------------------------------------- buttons */
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 32px;
+  padding: 0 14px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--page-2);
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-ui);
+  line-height: 1;
+  text-decoration: none;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--t);
+}
+.btn:hover {
+  background: var(--page-3);
+}
+.btn:active {
+  background: var(--pressed);
+}
+.btn-primary {
+  background: var(--cover);
+  color: var(--cover-ink);
+  font-weight: 600;
+}
+.btn-primary:hover {
+  background: color-mix(in oklab, var(--cover) 86%, var(--ink));
+}
+.btn-primary:active {
+  background: color-mix(in oklab, var(--cover) 74%, var(--ink));
+}
+.btn-lg {
+  height: 48px;
+  padding: 0 20px;
+  font-size: var(--fs-body);
+}
+.icon-btn {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: var(--t);
+}
+.icon-btn:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.icon-btn:active {
+  background: var(--pressed);
+}
+
+/* ----------------------------------------------------------------- strip */
+
+/* The pad's card: one tone darker than the page, tabs cut from the page. */
+.strip {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: var(--strip);
+  padding: 0 var(--right) 0 calc(var(--mx) - 52px);
+  border-bottom: 1px solid var(--edge);
+  background: var(--page-2);
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 100%;
+  padding: 0 14px 0 4px;
+  color: var(--ink);
+  font-size: var(--fs-body);
+  font-weight: 600;
+  text-decoration: none;
+}
+.brand .mark {
+  width: 28px;
+  height: 28px;
+}
+.tabs {
+  display: flex;
+  align-self: stretch;
+  margin-left: 8px;
+}
+.tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  border-right: 1px solid var(--edge);
+  color: var(--ink-soft);
+  font-size: var(--fs-ui);
+  text-decoration: none;
+  transition: var(--t);
+}
+.tab:first-child {
+  border-left: 1px solid var(--edge);
+}
+.tab:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+/* The section you are in: cut from the page, a ballpoint rule on top. */
+.tab[aria-current] {
+  background: var(--page);
+  color: var(--ink);
+}
+.tab[aria-current]::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--accent);
+}
+.tab[aria-current]::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--page);
+}
+.strip-gap {
+  flex: 1;
+}
+.strip-cta {
+  margin-left: 8px;
+  transition: opacity 0.16s ease, visibility 0.16s;
+}
+/* One primary action per view: while a cover download button is on screen,
+   the strip's Baixar steps aside (site.js toggles this). */
+.strip-cta.aside {
+  visibility: hidden;
+  opacity: 0;
+}
+[data-theme="dark"] .ico-moon,
+[data-theme="light"] .ico-sun,
+:root:not([data-theme]) .ico-sun {
+  display: none;
+}
+.menu-btn {
+  display: none;
+}
+.menu {
+  position: absolute;
+  top: calc(var(--strip) - 4px);
+  right: 8px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  min-width: 220px;
+  padding: 4px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--page);
+  box-shadow: 0 8px 24px var(--shadow), 0 1px 3px var(--shadow);
+}
+.menu[hidden] {
+  display: none;
+}
+.menu-item {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  padding: 0 12px;
+  border-radius: 4px;
+  color: var(--ink);
+  font-size: var(--fs-ui);
+  text-decoration: none;
+}
+.menu-item:hover,
+.menu-item:focus-visible {
+  outline: none;
+  background: var(--accent);
+  color: var(--on-accent);
+}
+.menu-sep {
+  height: 1px;
+  margin: 4px 8px;
+  background: var(--edge);
+}
+
+/* ------------------------------------------------------------------ page */
+
+/* The steno page: rules at one pitch from edge to edge, the margin rule. */
+.page {
+  display: flow-root;
+  min-height: calc(100vh - var(--strip));
+  padding-bottom: calc(var(--p) * 2 + var(--band));
+  background-color: var(--page);
+  background-image:
+    linear-gradient(to right, transparent var(--mx), var(--margin) var(--mx), var(--margin) calc(var(--mx) + 1px), transparent calc(var(--mx) + 1px)),
+    linear-gradient(to bottom, transparent calc(var(--p) - 1px), var(--rule) calc(var(--p) - 1px));
+  background-size: 100% 100%, 100% var(--p);
+  background-position: 0 0, 0 var(--off);
+  background-repeat: no-repeat, repeat-y;
+}
+.row {
+  display: block;
+  min-height: var(--p);
+  line-height: var(--p);
+}
+.note-text {
+  font-family: var(--font-note);
+  font-size: var(--fs-note);
+  font-weight: 400;
+  line-height: var(--p);
+  letter-spacing: 0;
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+.section {
+  position: relative;
+  padding: calc(var(--p) * 3) var(--right) 0 var(--tx);
+}
+.section > h2 {
+  max-width: 24em;
+  text-wrap: balance;
+}
+.body {
+  max-width: 68ch;
+  margin-top: var(--p);
+}
+.cap,
+.hint,
+.facts,
+.meta {
+  color: var(--ink-soft);
+  font-size: var(--fs-ui);
+}
+
+/* ------------------------------------------------------------------ hero */
+
+.hero {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  column-gap: 64px;
+  padding: calc(var(--p) * 2) var(--right) 0 var(--tx);
+}
+.hero-note {
+  position: relative;
+  min-width: 0;
+}
+/* Line numbers in the gutter, right-aligned against the margin rule. */
+.ln {
+  position: absolute;
+  left: calc(-1 * var(--tx));
+  width: var(--mx);
+  padding-right: 12px;
+  color: var(--ink-faint);
+  font-family: var(--font-ui);
+  font-size: var(--fs-ui);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.hero h1 .row {
+  position: relative;
+}
+.hero .row {
+  position: relative;
+}
+.try {
+  position: relative;
+  min-height: var(--p);
+}
+.try .fallback .ph {
+  color: var(--ink-faint);
+}
+.lead {
+  max-width: 34em;
+  margin-top: var(--p);
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  min-height: calc(var(--p) * 2);
+  margin-top: var(--p);
+}
+.facts {
+  margin-top: 0;
+}
+
+/* The other device: an Android phone lying beside the page. */
+.device {
+  position: relative;
+  grid-column: 2;
+  grid-row: 1 / span 20;
+  align-self: start;
+}
+.phone {
+  width: 300px;
+  height: calc(var(--p) * 15);
+  padding: 9px;
+  border-radius: 40px;
+  background: var(--bezel);
+  box-shadow: 0 18px 48px var(--shadow), 0 2px 6px var(--shadow);
+}
+.phone-screen {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 31px;
+  background: var(--page);
+}
+.phone-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 2px 22px 0;
+  background: var(--page-2);
+  color: var(--ink);
+  font-family: Roboto, var(--font-ui);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+}
+.phone-sig {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 10px;
+}
+.phone-sig i {
+  width: 3px;
+  border-radius: 1px;
+  background: currentColor;
+}
+.phone-sig i:nth-child(1) { height: 4px; }
+.phone-sig i:nth-child(2) { height: 6px; }
+.phone-sig i:nth-child(3) { height: 8px; }
+.phone-sig i:nth-child(4) { height: 10px; }
+.phone-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  height: 40px;
+  padding: 0 14px;
+  background: var(--page-2);
+  color: var(--ink);
+}
+.phone-bar .ico {
+  width: 18px;
+  height: 18px;
+}
+.phone-bar .dim {
+  color: var(--ink-faint);
+}
+.phone-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  font-family: Roboto, var(--font-ui);
+  font-size: 17px;
+  line-height: 1;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.phone-page,
+.pc-page,
+.pad-page,
+.sketch-page {
+  --pp: 22px;
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  background-color: var(--page);
+  background-image:
+    linear-gradient(to right, transparent var(--pm), var(--margin) var(--pm), var(--margin) calc(var(--pm) + 1px), transparent calc(var(--pm) + 1px)),
+    linear-gradient(to bottom, transparent calc(var(--pp) - 1px), var(--rule) calc(var(--pp) - 1px));
+  background-size: 100% 100%, 100% var(--pp);
+  background-position: 0 0, 0 -2px;
+  background-repeat: no-repeat, repeat-y;
+}
+.phone-page {
+  --pm: 18px;
+  flex: none;
+  height: calc(var(--pp) * 22);
+}
+.phone-text,
+.pc-text {
+  padding: 0 12px 0 28px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: var(--pp);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-variant-ligatures: none;
+}
+.phone-band,
+.pc-band,
+.pad-band {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: none;
+  height: 30px;
+  padding: 0 14px;
+  background: var(--cover);
+  color: var(--cover-ink);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.sync {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.device-cap {
+  margin-top: var(--p);
+  color: var(--ink-soft);
+  font-size: var(--fs-ui);
+  line-height: var(--p);
+}
+.pc,
+.cap-pc {
+  display: none;
+}
+
+/* ------------------------------------------------------- the note editors */
+
+/* CodeMirror on the page: transparent, so the page's own rules and margin
+   show through, at the page's pitch and the note size. */
+.try .cm-editor,
+.pad-page .cm-editor {
+  --cy-pitch: var(--p);
+  height: 100%;
+  outline: none;
+  color: var(--ink);
+  background: transparent;
+  font-family: var(--font-note);
+  font-size: var(--fs-note);
+  line-height: var(--cy-pitch);
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+}
+.try .cm-editor {
+  margin-left: calc(-1 * var(--tx));
+}
+.try .cm-editor.cm-focused,
+.pad-page .cm-editor.cm-focused {
+  outline: none;
+}
+.try .cm-scroller,
+.pad-page .cm-scroller {
+  font-family: inherit;
+  line-height: inherit;
+  overflow: visible;
+}
+.try .cm-content,
+.pad-page .cm-content {
+  padding: 0;
+  font: inherit;
+  line-height: var(--cy-pitch);
+  caret-color: var(--accent);
+}
+.try .cm-line,
+.pad-page .cm-line {
+  padding: 0 4px 0 16px;
+  line-height: var(--cy-pitch);
+}
+.try .cm-gutters,
+.pad-page .cm-gutters {
+  border: none;
+  background: transparent;
+  color: var(--ink-faint);
+  user-select: none;
+  -webkit-user-select: none;
+}
+.try .cm-gutters {
+  width: calc(var(--mx) + 1px);
+}
+.try .cm-gutter,
+.pad-page .cm-gutter {
+  line-height: var(--cy-pitch);
+}
+.try .cm-lineNumbers {
+  width: var(--mx);
+}
+.try .cm-gutterElement {
+  padding: 0 12px 0 0;
+  font-family: var(--font-ui);
+  font-size: var(--fs-ui);
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.try .cm-activeLineGutter,
+.pad-page .cm-activeLineGutter {
+  background: transparent;
+  color: var(--ink);
+}
+.cy-cursor-rule {
+  background: var(--accent);
+}
+/* The editor places that rule a twelfth of a pitch up (3px here); the page's
+   rules sit at --off, so the blue one follows them. */
+.try .cy-cursor-rule {
+  translate: 0 calc(var(--off) + 3px);
+}
+.cm-editor:not(.cm-focused) .cy-cursor-rules {
+  visibility: hidden;
+}
+.cm-editor .cm-cursor,
+.cm-editor .cm-dropCursor {
+  border-left: 2px solid var(--accent);
+  margin-left: -1px;
+}
+.cm-editor .cm-selectionBackground,
+.cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: var(--selection) !important;
+}
+.cm-editor .cm-content ::selection {
+  background: transparent;
+}
+.cm-editor .cm-selectionMatch {
+  background-color: var(--match);
+}
+.cm-editor .cm-selectionMatch-main {
+  background-color: transparent;
+}
+.cm-editor .cm-searchMatch {
+  background-color: var(--match);
+  outline: none;
+}
+.cm-editor .cm-searchMatch.cm-searchMatch-selected {
+  background-color: transparent;
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+.cm-editor .cm-placeholder {
+  color: var(--ink-faint);
+}
+/* Before the note has focus, a resting ballpoint caret says where to write. */
+.try .cm-editor:not(.cm-focused) .cm-placeholder::before {
+  content: "";
+  display: inline-block;
+  width: 2px;
+  height: 0.9em;
+  margin: 0 2px 0 -1px;
+  vertical-align: -0.12em;
+  background: var(--accent);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .try .cm-editor:not(.cm-focused) .cm-placeholder::before {
+    animation: rest-caret 1.06s steps(1) infinite;
+  }
+}
+@keyframes rest-caret {
+  50% {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cm-editor .cm-cursorLayer {
+    animation: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------- edição */
+
+.edit-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 600px) minmax(0, 1fr);
+  column-gap: 56px;
+  margin-top: var(--p);
+}
+/* An app-scale note: the pad's card strip, the page at 14 on 24, the band. */
+.pad {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.pad > .pad-strip,
+.pad > .pad-page,
+.pad > .pad-band {
+  margin: 0;
+}
+.pad-frame {
+  display: flex;
+  flex-direction: column;
+}
+.pad-strip {
+  display: flex;
+  align-items: stretch;
+  height: 34px;
+  border: 1px solid var(--edge);
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  overflow: hidden;
+  background: var(--page-2);
+}
+.pad-tab {
+  position: relative;
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  border-right: 1px solid var(--edge);
+  background: var(--page);
+  color: var(--ink);
+  font-size: 13px;
+}
+.pad:focus-within .pad-tab::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--accent);
+}
+.pad-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  margin: 4px 4px 4px 0;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.pad-icon:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.pad-icon[aria-pressed="true"] {
+  background: var(--pressed);
+  color: var(--ink);
+}
+.pad-page {
+  --pp: 24px;
+  --pm: 48px;
+  height: 336px;
+  flex: none;
+  overflow: auto;
+  border-left: 1px solid var(--edge);
+  border-right: 1px solid var(--edge);
+  background-attachment: local;
+  background-position: 0 0, 0 -2px;
+}
+.pad-page .cm-editor {
+  --cy-pitch: 24px;
+  min-height: 100%;
+  font-family: var(--font-mono);
+  font-size: 14px;
+}
+.pad-page .cm-gutters {
+  border-right: 1px solid var(--margin);
+}
+.pad-page .cm-lineNumbers .cm-gutterElement {
+  min-width: 47px;
+  padding: 0 12px 0 8px;
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.pad-page .cm-line {
+  background-image: linear-gradient(to bottom, transparent 23px, var(--rule) 23px);
+  background-size: 100% 24px;
+  background-position: 0 -2px;
+}
+.pad-page .cm-line {
+  padding-right: 12px;
+}
+.pad-page .fallback {
+  padding: 0 0 0 64px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 24px;
+  white-space: pre-wrap;
+}
+.pad-band {
+  border-radius: 0 0 8px 8px;
+}
+.pad + .cap,
+.pad .cap {
+  margin-top: 0;
+}
+.pad .cap {
+  line-height: var(--p);
+}
+
+/* The find widget hangs from the top edge of the page. */
+.cm-panels {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  height: 0;
+  overflow: visible;
+  border: none !important;
+  background: transparent !important;
+  color: inherit;
+}
+.cy-find-host {
+  position: relative;
+  height: 0;
+}
+.find-bar {
+  position: absolute;
+  right: 14px;
+  top: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-width: calc(100% - 28px);
+  padding: 5px 6px;
+  border: 1px solid var(--edge);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: var(--page-2);
+  box-shadow: 0 6px 18px var(--shadow);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  line-height: 1.2;
+}
+.find-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+.find-row[hidden] {
+  display: none;
+}
+.find-row.replace {
+  padding-left: 23px;
+}
+.find-input {
+  width: 170px;
+  min-width: 60px;
+  height: 26px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  outline: none;
+  background: var(--page);
+  color: var(--ink);
+  caret-color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: 13px;
+}
+.find-input::placeholder {
+  color: var(--ink-faint);
+}
+.find-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.find-btn {
+  display: grid;
+  place-items: center;
+  flex: none;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 4px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  cursor: pointer;
+}
+.find-btn:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.find-btn:active {
+  background: var(--pressed);
+}
+.find-btn.text {
+  padding: 0 8px;
+}
+.find-btn.case {
+  font-weight: 600;
+}
+.find-btn[aria-pressed="true"] {
+  background: var(--pressed);
+  color: var(--ink);
+  box-shadow: inset 0 0 0 1px var(--ink-soft);
+}
+.find-btn.toggle {
+  width: 20px;
+  min-width: 20px;
+  height: 26px;
+}
+.find-btn.toggle .ico {
+  transition: transform 0.12s ease;
+}
+.find-btn.toggle[aria-expanded="true"] .ico {
+  transform: rotate(90deg);
+}
+.find-status {
+  flex: none;
+  min-width: 70px;
+  padding: 0 6px;
+  color: var(--ink-soft);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.find-status.none {
+  color: var(--margin-ink);
+}
+
+/* The shortcuts: one per ruled row. */
+.keys-list > div {
+  display: grid;
+  grid-template-columns: 11em minmax(0, 1fr);
+  column-gap: 16px;
+  min-height: var(--p);
+}
+.keys-list dt {
+  white-space: nowrap;
+  font-size: var(--fs-ui);
+}
+.keys-list dd {
+  color: var(--ink-soft);
+}
+
+/* --------------------------------------------------------- sincronização */
+
+.code-pair {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  column-gap: 32px;
+  max-width: 1020px;
+  margin-top: var(--p);
+}
+.code-card {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+.code-card > span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: var(--p);
+}
+.code-title {
+  font-weight: 600;
+}
+.code-row {
+  justify-content: space-between;
+}
+.code {
+  flex: 1;
+  min-width: 0;
+  height: 32px;
+  padding: 0 10px;
+  border-radius: 4px;
+  background: var(--page-2);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 15px;
+  line-height: 32px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fake-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 12px;
+  border-radius: 4px;
+  background: var(--page-2);
+  font-size: var(--fs-ui);
+}
+.code-ok {
+  color: var(--ink-soft);
+  font-size: var(--fs-ui);
+}
+.code-ok i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.code-join {
+  display: flex;
+  align-items: center;
+  padding-top: calc(var(--p) * 2);
+  height: calc(var(--p) * 3);
+  color: var(--ink-soft);
+  font-size: var(--fs-ui);
+}
+.code-join span {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+.code-join span::before,
+.code-join span::after {
+  content: "";
+  width: 18px;
+  height: 1px;
+  background: var(--ink-faint);
+}
+.code-pair .cap {
+  grid-column: 1 / -1;
+  line-height: var(--p);
+}
+.facts-list {
+  max-width: 1020px;
+  margin-top: var(--p);
+}
+.facts-list > div {
+  display: grid;
+  grid-template-columns: 13em minmax(0, 1fr);
+  column-gap: 16px;
+}
+.facts-list dt {
+  font-weight: 600;
+}
+.facts-list dd {
+  max-width: 62ch;
+  color: var(--ink-soft);
+}
+
+/* ---------------------------------------------------------------- desenho */
+
+.sketch {
+  max-width: 720px;
+  margin-top: var(--p);
+}
+.sketch-page {
+  --pp: 24px;
+  --pm: 24px;
+  height: calc(var(--p) * 9);
+  border-radius: 8px;
+  box-shadow: inset 0 0 0 2px var(--cover);
+  background-position: 0 0, 0 calc(12px - 2px);
+}
+.sketch-text {
+  position: absolute;
+  inset: 12px 0 0 0;
+  padding-left: 40px;
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: 14px;
+  line-height: 24px;
+  white-space: pre-wrap;
+  pointer-events: none;
+}
+.sketch-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  cursor: crosshair;
+}
+.sketch-canvas.drawing {
+  touch-action: none;
+}
+.dock {
+  position: absolute;
+  left: 50%;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  max-width: calc(100% - 20px);
+  padding: 4px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--page-2);
+  box-shadow: 0 8px 22px var(--shadow);
+  transform: translateX(-50%);
+}
+.dock-btn {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.dock-btn:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.dock-btn[aria-pressed="true"] {
+  background: var(--pressed);
+  color: var(--ink);
+}
+.dock-btn.danger {
+  color: var(--margin-ink);
+}
+.dock-btn.danger:hover {
+  background: color-mix(in oklab, var(--margin) 14%, var(--page-2));
+}
+.dock-sep {
+  width: 1px;
+  height: 20px;
+  margin: 0 2px;
+  background: var(--edge);
+}
+.swatches {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.swatch {
+  width: 22px;
+  height: 22px;
+  margin: 0 2px;
+  padding: 0;
+  border: 2px solid var(--page-2);
+  border-radius: 50%;
+  background: var(--c, var(--ink));
+  box-shadow: 0 0 0 1px var(--edge);
+  cursor: pointer;
+}
+.swatch:hover {
+  box-shadow: 0 0 0 1px var(--ink-soft);
+}
+.swatch[aria-checked="true"] {
+  box-shadow: 0 0 0 2px var(--ink);
+}
+.sketch .cap {
+  line-height: var(--p);
+}
+
+/* --------------------------------------------------------------- recursos */
+
+.feature-list {
+  max-width: 1020px;
+  margin-top: var(--p);
+  padding: 0;
+  list-style: none;
+}
+.feature-list li {
+  display: grid;
+  grid-template-columns: 28px 13em minmax(0, 1fr);
+  column-gap: 12px;
+}
+.feature-list .ico {
+  margin-top: calc((var(--p) - 16px) / 2 - 2px);
+  color: var(--ink-soft);
+}
+.feature-list b {
+  font-weight: 600;
+}
+.feature-list span {
+  max-width: 62ch;
+  color: var(--ink-soft);
+}
+
+/* ----------------------------------------------------------------- baixar */
+
+.get {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 520px));
+  column-gap: 64px;
+  margin-top: var(--p);
+}
+.get h3,
+.first-sync {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--fs-body);
+  font-weight: 600;
+}
+.get .actions {
+  margin-top: 0;
+}
+.get .body {
+  margin-top: 0;
+}
+.steps {
+  margin: 0;
+  padding-left: 1.4em;
+}
+.steps li {
+  padding-left: 4px;
+  color: var(--ink-soft);
+}
+.steps li::marker {
+  color: var(--ink-faint);
+  font-variant-numeric: tabular-nums;
+}
+.first-sync {
+  margin-top: calc(var(--p) * 2);
+}
+.steps-wide {
+  max-width: 68ch;
+}
+
+/* -------------------------------------------------------------- perguntas */
+
+.faq {
+  max-width: 820px;
+  margin-top: var(--p);
+}
+.faq summary {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  min-height: var(--p);
+  cursor: pointer;
+  list-style: none;
+}
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+.faq summary .ico {
+  margin-top: calc((var(--p) - 16px) / 2 + 1px);
+  color: var(--ink-soft);
+  transition: transform 0.14s var(--ease);
+}
+.faq details[open] summary .ico {
+  transform: rotate(90deg);
+}
+.faq summary:hover {
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--ink) 35%, transparent);
+  text-underline-offset: 4px;
+}
+.faq details p {
+  max-width: 66ch;
+  padding-left: 26px;
+  color: var(--ink-soft);
+}
+.faq details[open] {
+  padding-bottom: var(--p);
+}
+
+/* ----------------------------------------------------------------- footer */
+
+.foot {
+  padding: calc(var(--p) * 3) var(--right) 0 var(--tx);
+}
+.foot-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.foot-brand .mark {
+  width: 22px;
+  height: 22px;
+}
+.foot-links {
+  display: flex;
+  flex-wrap: wrap;
+  column-gap: 24px;
+  font-size: var(--fs-ui);
+}
+.foot-small {
+  color: var(--ink-soft);
+  font-size: var(--fs-ui);
+}
+
+/* ------------------------------------------------------------------- band */
+
+/* The pad's cover, held at the foot of the window: the note's facts. */
+.band {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  height: var(--band);
+  padding: 0 var(--right) 0 calc(var(--mx) - 52px + 12px);
+  background: var(--cover);
+  color: var(--cover-ink);
+  font-size: var(--fs-ui);
+  font-variant-numeric: tabular-nums;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+/* ------------------------------------------------------------------ small */
+
+@media (max-width: 1180px) {
+  .tab {
+    padding: 0 12px;
+  }
+  .edit-grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .keys-list {
+    margin-top: var(--p);
+  }
+}
+@media (max-width: 1023px) {
+  .hide-s {
+    display: none;
+  }
+}
+@media (max-width: 899px) {
+  .strip {
+    padding: 0 8px 0 4px;
+  }
+  .tabs {
+    display: none;
+  }
+  .menu-btn {
+    display: inline-grid;
+  }
+  .strip-cta {
+    height: 32px;
+    margin: 0 4px;
+  }
+  .hero {
+    display: block;
+    padding-top: var(--p);
+  }
+  .actions {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+    min-height: calc(var(--p) * 4);
+    padding: 0;
+  }
+  .actions .btn-lg {
+    height: 48px;
+  }
+  /* On a phone the Android download is the one primary action. */
+  .actions .dl-android {
+    order: -1;
+    background: var(--cover);
+    color: var(--cover-ink);
+    font-weight: 600;
+  }
+  .actions .dl-android:hover {
+    background: color-mix(in oklab, var(--cover) 86%, var(--ink));
+  }
+  .actions .dl-win {
+    background: var(--page-2);
+    color: var(--ink);
+    font-weight: 400;
+  }
+  .actions .dl-win:hover {
+    background: var(--page-3);
+  }
+  .get-android {
+    order: -1;
+  }
+  .get .actions {
+    min-height: calc(var(--p) * 2);
+  }
+  .device {
+    margin-top: var(--p);
+  }
+  .phone,
+  .cap-phone {
+    display: none;
+  }
+  .pc {
+    display: flex;
+    flex-direction: column;
+    height: calc(var(--p) * 6);
+    overflow: hidden;
+    border: 1px solid var(--edge);
+    border-radius: 8px;
+    box-shadow: 0 8px 22px var(--shadow);
+  }
+  .cap-pc {
+    display: inline;
+  }
+  .pc-strip {
+    display: flex;
+    align-items: stretch;
+    flex: none;
+    height: 30px;
+    background: var(--page-2);
+  }
+  .pc-tab {
+    position: relative;
+    display: flex;
+    align-items: center;
+    padding: 0 14px;
+    border-right: 1px solid var(--edge);
+    background: var(--page);
+    color: var(--ink);
+    font-size: 12px;
+  }
+  .pc-tab::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: 2px;
+    background: var(--accent);
+  }
+  .pc-page {
+    --pp: 20px;
+    --pm: 34px;
+  }
+  .pc-text {
+    padding-left: 44px;
+    font-size: 11px;
+  }
+  .pc-band {
+    height: 22px;
+    font-size: 11px;
+  }
+  /* 34 + 12 x 24 + 30 = 11 rows of 32. */
+  .pad-page {
+    height: 288px;
+  }
+  .device-cap {
+    margin-top: 0;
+  }
+  .section > h2 {
+    max-width: none;
+  }
+  .keys-list > div,
+  .facts-list > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .keys-list dd,
+  .facts-list dd {
+    margin-bottom: 0;
+  }
+  .code-pair {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .code-join {
+    height: var(--p);
+    padding-top: 0;
+  }
+  .feature-list li {
+    grid-template-columns: 24px minmax(0, 1fr);
+  }
+  .feature-list span {
+    grid-column: 2;
+  }
+  .get {
+    grid-template-columns: minmax(0, 1fr);
+    row-gap: var(--p);
+  }
+  .sketch-page {
+    height: calc(var(--p) * 9);
+  }
+  .band {
+    padding: 0 16px;
+  }
+  .band-pos {
+    display: none;
+  }
+  /* The phone's page has no line numbers, like the Android app. */
+  .ln,
+  .try .cm-lineNumbers .cm-gutterElement {
+    visibility: hidden;
+  }
+}
