@@ -194,7 +194,8 @@ export function buildExtensions(host: EditorHost, cfg: EditorConfig, c: EditorCo
     EditorState.tabSize.of(4),
     indentUnit.of("\t"),
     historyExtension,
-    drawSelection({ cursorBlinkRate: 1060 }),
+    // A steady cursor: 0 turns the blink off.
+    drawSelection({ cursorBlinkRate: 0 }),
     dropCursor(),
     highlightActiveLineGutter(),
     cursorRules,
