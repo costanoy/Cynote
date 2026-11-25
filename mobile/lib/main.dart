@@ -25,6 +25,9 @@ const _updateCheckDelay = Duration(seconds: 4);
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
+  // A steady cursor in every text field, like the desktop editor. Despite the
+  // name this is a plain static flag that also holds in release builds.
+  EditableText.debugDeterministicCursor = true;
   // Edge to edge: the app draws under the status and navigation bars and
   // keeps its content out of them with the window insets.
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);

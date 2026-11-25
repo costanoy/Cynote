@@ -810,21 +810,6 @@ kbd {
   vertical-align: -0.12em;
   background: var(--accent);
 }
-@media (prefers-reduced-motion: no-preference) {
-  .try .cm-editor:not(.cm-focused) .cm-placeholder::before {
-    animation: rest-caret 1.06s steps(1) infinite;
-  }
-}
-@keyframes rest-caret {
-  50% {
-    opacity: 0;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
-  .cm-editor .cm-cursorLayer {
-    animation: none !important;
-  }
-}
 
 /* ---------------------------------------------------------------- edição */
 
