@@ -3,26 +3,27 @@ import '../icons.dart';
 import '../models/note.dart';
 import '../note_sort.dart';
 import '../theme.dart';
-import '../widgets/greenhouse.dart';
-import 'home_screen.dart' show NoteCardFrame, flattenNoteText;
+import 'home_screen.dart' show NoteRow, flattenNoteText;
 
 // How much of the note is shown around the search term.
-const _snippetBefore = 30;
+const _snippetBefore = 24;
 const _snippetAfter = 60;
 const _snippetPlain = 90;
 
 class SearchScreen extends StatefulWidget {
-  final CyColors t;
   final List<Note> notes;
   final void Function(Note) onOpenNote;
   final VoidCallback onBack;
 
+  /// What the field starts with (the web preview uses it).
+  final String initialQuery;
+
   const SearchScreen({
     super.key,
-    required this.t,
     required this.notes,
     required this.onOpenNote,
     required this.onBack,
+    this.initialQuery = '',
   });
 
   @override
@@ -30,135 +31,106 @@ class SearchScreen extends StatefulWidget {
 }
 
 class _SearchScreenState extends State<SearchScreen> {
-  final _controller = TextEditingController();
-  final _focusNode = FocusNode();
-  String _query = '';
-
-  @override
-  void initState() {
-    super.initState();
-    _focusNode.addListener(() => setState(() {}));
-    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
-  }
+  late final _controller = TextEditingController(text: widget.initialQuery);
+  late String _query = widget.initialQuery;
 
   @override
   void dispose() {
     _controller.dispose();
-    _focusNode.dispose();
     super.dispose();
   }
 
   void _clear() {
     _controller.clear();
     setState(() => _query = '');
-    _focusNode.requestFocus();
   }
 
   @override
   Widget build(BuildContext context) {
-    final t = widget.t;
+    final c = CyColors.of(context);
+    final text = Theme.of(context).textTheme;
     final query = _query.trim();
     final lower = query.toLowerCase();
     final filtered = widget.notes
         .where((n) => lower.isEmpty || n.title.toLowerCase().contains(lower) || n.body.toLowerCase().contains(lower))
         .toList();
-    final focused = _focusNode.hasFocus;
+    final now = DateTime.now();
 
-    return GreenhouseScreen(
-      t: t,
-      header: [
-        Medallion(t: t, onTap: widget.onBack, child: BackChevronIcon(color: t.frameInk)),
-        const SizedBox(width: 6),
-        Expanded(
-          child: AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: kTouchTarget,
-            padding: const EdgeInsets.only(left: 14, right: 6),
-            decoration: BoxDecoration(
-              color: t.field,
-              border: Border.all(color: focused ? t.gold : t.fieldBorder),
-              borderRadius: BorderRadius.circular(999),
-              boxShadow: focused ? [BoxShadow(color: t.goldSoft, spreadRadius: 3)] : null,
-            ),
-            child: Row(
-              children: [
-                SearchIcon(size: 16, color: t.inkFaint),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: TextField(
-                    controller: _controller,
-                    focusNode: _focusNode,
-                    onChanged: (v) => setState(() => _query = v),
-                    cursorColor: t.accent,
-                    style: CyType.ui(15, t.fieldInk),
-                    decoration: InputDecoration(
-                      isDense: true,
-                      border: InputBorder.none,
-                      hintText: 'Buscar nas notas',
-                      hintStyle: CyType.ui(15, t.inkFaint),
-                    ),
-                  ),
-                ),
-                if (_query.isNotEmpty)
-                  Pressable(
-                    onTap: _clear,
-                    pressedScale: 0.88,
-                    builder: (context, pressed) => Container(
-                      width: 32,
-                      height: 32,
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(shape: BoxShape.circle, color: pressed ? t.paper2 : null),
-                      child: ClearIcon(color: t.inkSoft),
-                    ),
-                  ),
-              ],
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(tooltip: 'Voltar', onPressed: widget.onBack, icon: const BackChevronIcon()),
+        titleSpacing: 0,
+        title: TextField(
+          controller: _controller,
+          autofocus: true,
+          onChanged: (v) => setState(() => _query = v),
+          textInputAction: TextInputAction.search,
+          style: text.bodyLarge,
+          decoration: InputDecoration(
+            border: InputBorder.none,
+            enabledBorder: InputBorder.none,
+            focusedBorder: InputBorder.none,
+            hintText: 'Buscar nas notas',
+            hintStyle: text.bodyLarge!.copyWith(color: c.inkSoft),
           ),
         ),
-        const SizedBox(width: 2),
-      ],
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        color: t.paper2,
-        child: filtered.isEmpty
-            ? SingleChildScrollView(
-                padding: const EdgeInsets.only(top: ArchHeader.overhang),
-                child: Center(
-                  child: EmptyState(t: t, title: 'Nenhuma nota encontrada', hint: 'Tente outra palavra.'),
-                ),
-              )
-            : ListView.separated(
-                padding: const EdgeInsets.fromLTRB(16, ArchHeader.overhang + 8, 16, 60),
-                itemCount: filtered.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 10),
-                itemBuilder: (context, i) => _ResultCard(
-                  t: t,
-                  note: filtered[i],
-                  query: query,
-                  onTap: () => widget.onOpenNote(filtered[i]),
+        actions: [
+          if (_query.isNotEmpty) IconButton(tooltip: 'Limpar', onPressed: _clear, icon: const ClearIcon()),
+          const SizedBox(width: 4),
+        ],
+      ),
+      body: filtered.isEmpty
+          ? Align(
+              alignment: const Alignment(0, -0.35),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('Nenhuma nota encontrada', style: text.titleMedium, textAlign: TextAlign.center),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Tente outra palavra.',
+                      style: text.bodyMedium!.copyWith(color: c.inkSoft),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
               ),
-      ),
+            )
+          : ListView.builder(
+              padding: EdgeInsets.only(top: 4, bottom: 24 + MediaQuery.paddingOf(context).bottom),
+              itemCount: filtered.length,
+              itemBuilder: (context, i) {
+                final note = filtered[i];
+                return _ResultRow(
+                  note: note,
+                  query: query,
+                  time: editedLabel(note.updatedAt, now),
+                  onTap: () => widget.onOpenNote(note),
+                );
+              },
+            ),
     );
   }
 }
 
-class _ResultCard extends StatelessWidget {
-  final CyColors t;
+class _ResultRow extends StatelessWidget {
   final Note note;
   final String query;
+  final String time;
   final VoidCallback onTap;
-  const _ResultCard({required this.t, required this.note, required this.query, required this.onTap});
+  const _ResultRow({required this.note, required this.query, required this.time, required this.onTap});
 
-  /// [text] with the first occurrence of the query highlighted.
-  List<InlineSpan> _highlight(String text, Color background, Color? foreground) {
+  /// [text] with the first occurrence of the query marked.
+  List<InlineSpan> _highlight(String text, Color mark, Color ink) {
     final at = query.isEmpty ? -1 : text.toLowerCase().indexOf(query.toLowerCase());
     if (at < 0) return [TextSpan(text: text)];
     return [
       TextSpan(text: text.substring(0, at)),
       TextSpan(
         text: text.substring(at, at + query.length),
-        style: TextStyle(backgroundColor: background, color: foreground),
+        style: TextStyle(backgroundColor: mark, color: ink),
       ),
       TextSpan(text: text.substring(at + query.length)),
     ];
@@ -180,40 +152,26 @@ class _ResultCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final c = CyColors.of(context);
     final snippet = _snippet();
-    return NoteCardFrame(
-      t: t,
-      onTap: onTap,
-      innerRule: false,
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
-            children: [
-              Expanded(
-                child: Text.rich(
-                  TextSpan(
-                    children: _highlight(note.title.isEmpty ? 'Sem título' : note.title, t.matchCur, const Color(0xFF1B261F)),
-                  ),
-                  style: CyType.display(16.5, t.ink),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Text(editedLabel(note.updatedAt, DateTime.now()), style: CyType.ui(12, t.inkFaint)),
-            ],
-          ),
-          if (snippet.isNotEmpty) ...[
-            const SizedBox(height: 5),
-            Text.rich(
-              TextSpan(children: _highlight(snippet, t.match, t.ink)),
-              style: CyType.body(13.5, t.inkSoft, height: 1.5),
-            ),
-          ],
-        ],
+    final title = note.title.trim().isEmpty ? 'Sem título' : note.title;
+    return NoteRow(
+      title: Text.rich(
+        TextSpan(children: _highlight(title, c.amber.withValues(alpha: 0.3), c.ink)),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: NoteRow.titleStyle(context),
       ),
+      preview: snippet.isEmpty
+          ? NoteRow.previewText(context, null)
+          : Text.rich(
+              TextSpan(children: _highlight(snippet, c.amber.withValues(alpha: 0.3), c.ink)),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: NoteRow.previewStyle(context),
+            ),
+      time: time,
+      onTap: onTap,
     );
   }
 }

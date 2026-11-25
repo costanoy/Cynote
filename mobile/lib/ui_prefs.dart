@@ -38,3 +38,20 @@ Future<void> saveNoteSort(NoteSort sort) async {
     // best-effort
   }
 }
+
+/// Null until the person picks a theme in settings: until then the app
+/// follows the system.
+Future<bool?> loadDarkMode() async {
+  final saved = (await _read())['darkMode'];
+  return saved is bool ? saved : null;
+}
+
+Future<void> saveDarkMode(bool dark) async {
+  try {
+    final prefs = await _read();
+    prefs['darkMode'] = dark;
+    await (await _prefsFile()).writeAsString(jsonEncode(prefs));
+  } catch (_) {
+    // best-effort
+  }
+}

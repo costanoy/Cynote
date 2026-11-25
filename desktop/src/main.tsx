@@ -1,11 +1,5 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import "@fontsource/marcellus/400.css";
-import "@fontsource-variable/literata/opsz.css";
-import "@fontsource-variable/literata/opsz-italic.css";
-import "@fontsource/jost/400.css";
-import "@fontsource/jost/500.css";
-import "@fontsource/jost/600.css";
 import "@fontsource/jetbrains-mono/400.css";
 import App from "./App";
 import Dashboard from "./Dashboard";

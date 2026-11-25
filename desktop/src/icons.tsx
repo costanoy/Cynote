@@ -1,20 +1,9 @@
 import type { ReactNode } from "react";
-import type { SyncStatus } from "./types";
 
 type IconProps = { size?: number };
 
-// Interface icons: 16x16 grid, rounded line ends, drawn in currentColor.
-function Stroke({
-  size,
-  width,
-  join,
-  children,
-}: {
-  size: number;
-  width: number;
-  join?: boolean;
-  children: ReactNode;
-}) {
+// Interface icons: 16x16 grid, one 1.5 stroke, rounded ends, currentColor.
+function Stroke({ size, width = 1.5, children }: { size: number; width?: number; children: ReactNode }) {
   return (
     <svg
       width={size}
@@ -24,219 +13,233 @@ function Stroke({
       stroke="currentColor"
       strokeWidth={width}
       strokeLinecap="round"
-      strokeLinejoin={join ? "round" : undefined}
+      strokeLinejoin="round"
+      aria-hidden="true"
     >
       {children}
     </svg>
   );
 }
 
-export function MenuIcon({ size = 14 }: IconProps) {
+export function MenuIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={1.5}>
-      <path d="M3 5h10M3 8h10M3 11h6" />
+    <Stroke size={size}>
+      <path d="M2.5 4.5h11M2.5 8h11M2.5 11.5h11" />
     </Stroke>
   );
 }
 
-/** Note Styling: a quill. */
-export function DrawIcon({ size = 14, width = 1.5 }: IconProps & { width?: number }) {
-  return (
-    <Stroke size={size} width={width} join>
-      <path d="M13.5 2.5C8 2.5 4.5 6.5 3 13.5" />
-      <path d="M13.5 2.5C13.5 7 10.5 10 6 10.5" />
-    </Stroke>
-  );
-}
-
-/** Note Styling's marker: a chisel-tip highlighter over a streak of its ink. */
-export function MarkerIcon({ size = 15 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.35} join>
-      <path d="M11.2 2.3l2.5 2.5-6.3 6.3-3.6 1.1 1.1-3.6z" />
-      <path d="M9.6 3.9l2.5 2.5" />
-      <path d="M2.5 14.2h6" strokeWidth={2.4} opacity={0.45} />
-    </Stroke>
-  );
-}
-
-export function EraserIcon({ size = 15 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.35} join>
-      <path d="M2.8 10.1l6.4-6.4 4.1 4.1-5.2 5.2H5.8z" />
-      <path d="M5.9 7l4.1 4.1M8.1 13h5.4" />
-    </Stroke>
-  );
-}
-
-export function UndoIcon({ size = 14 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.5} join>
-      <path d="M5.8 3.4l-3 3 3 3" />
-      <path d="M2.8 6.4h6.6a3.7 3.7 0 0 1 0 7.4H7.2" />
-    </Stroke>
-  );
-}
-
-export function RedoIcon({ size = 14 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.5} join>
-      <path d="M10.2 3.4l3 3-3 3" />
-      <path d="M13.2 6.4H6.6a3.7 3.7 0 0 0 0 7.4h2.2" />
-    </Stroke>
-  );
-}
-
-export function SettingsIcon({ size = 15 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.4}>
-      <path d="M2 4h6.2M11.8 4H14M2 8h1.2M6.8 8H14M2 12h7.2M12.8 12H14" />
-      <circle cx="10" cy="4" r="1.8" />
-      <circle cx="5" cy="8" r="1.8" />
-      <circle cx="11" cy="12" r="1.8" />
-    </Stroke>
-  );
-}
-
-export function PinIcon({ size = 14 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.5} join>
-      <path d="M6 2h4l-.8 4 2.8 3H4l2.8-3z" />
-      <path d="M8 9v5" />
-    </Stroke>
-  );
-}
-
-export function MinimizeIcon({ size = 10 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.8}>
-      <path d="M4 8.5h8" />
-    </Stroke>
-  );
-}
-
-/** Maximize: an arched window. */
-export function MaximizeIcon({ size = 10 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.6} join>
-      <path d="M4 13.5V7.5a4 4 0 0 1 8 0v6z" />
-    </Stroke>
-  );
-}
-
-export function CloseIcon({ size = 10, width = 1.8 }: IconProps & { width?: number }) {
+export function DrawIcon({ size = 16, width = 1.5 }: IconProps & { width?: number }) {
   return (
     <Stroke size={size} width={width}>
-      <path d="M4.5 4.5l7 7M11.5 4.5l-7 7" />
+      <path d="M2.8 13.2l.9-3.3 7.4-7.4a1.5 1.5 0 0 1 2.1 2.1l-7.4 7.4z" />
+      <path d="M9.9 3.7l2.4 2.4" />
     </Stroke>
   );
 }
 
-export function PlusIcon({ size = 11 }: IconProps) {
+export function MarkerIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={2}>
+    <Stroke size={size}>
+      <path d="M5.2 11.8l-1.6 1.7H1.8l2-2" />
+      <path d="M3.8 11.5l1.7 1.7 7.9-7.9a1.2 1.2 0 0 0 0-1.7l-1.1-1.1a1.2 1.2 0 0 0-1.7 0z" />
+    </Stroke>
+  );
+}
+
+export function EraserIcon({ size = 16 }: IconProps) {
+  return (
+    <Stroke size={size}>
+      <path d="M7 13.5h6.5" />
+      <path d="M5.2 13.5L2.6 10.9a1.3 1.3 0 0 1 0-1.8l6.3-6.3a1.3 1.3 0 0 1 1.8 0l2.6 2.6a1.3 1.3 0 0 1 0 1.8l-5.9 6.3z" />
+      <path d="M5.8 6l4.2 4.2" />
+    </Stroke>
+  );
+}
+
+export function UndoIcon({ size = 16 }: IconProps) {
+  return (
+    <Stroke size={size}>
+      <path d="M5.5 3.5L2.5 6.5l3 3" />
+      <path d="M2.5 6.5h7.2a3.3 3.3 0 0 1 0 6.6H8" />
+    </Stroke>
+  );
+}
+
+export function RedoIcon({ size = 16 }: IconProps) {
+  return (
+    <Stroke size={size}>
+      <path d="M10.5 3.5l3 3-3 3" />
+      <path d="M13.5 6.5H6.3a3.3 3.3 0 0 0 0 6.6H8" />
+    </Stroke>
+  );
+}
+
+export function SettingsIcon({ size = 16 }: IconProps) {
+  return (
+    <Stroke size={size}>
+      <path d="M2.5 4.5h3.2M9.5 4.5h4M2.5 11.5h6.2M12.5 11.5h1" />
+      <circle cx="7.6" cy="4.5" r="1.9" />
+      <circle cx="10.6" cy="11.5" r="1.9" />
+    </Stroke>
+  );
+}
+
+export function PinIcon({ size = 16 }: IconProps) {
+  return (
+    <Stroke size={size}>
+      <path d="M6 2.5h4M7 2.5v3.8L4.5 9h7L9 6.3V2.5M8 9v4.5" />
+    </Stroke>
+  );
+}
+
+/** Windows caption glyphs: drawn on a 10px grid with a 1px stroke, like the system's. */
+function Caption({ children }: { children: ReactNode }) {
+  return (
+    <svg width="10" height="10" viewBox="0 0 10 10" fill="none" stroke="currentColor" strokeWidth="1" aria-hidden="true">
+      {children}
+    </svg>
+  );
+}
+export function MinimizeIcon(_: IconProps) {
+  return (
+    <Caption>
+      <path d="M0 5.5h10" />
+    </Caption>
+  );
+}
+export function MaximizeIcon(_: IconProps) {
+  return (
+    <Caption>
+      <rect x="0.5" y="0.5" width="9" height="9" rx="1" />
+    </Caption>
+  );
+}
+export function CaptionCloseIcon(_: IconProps) {
+  return (
+    <Caption>
+      <path d="M0.5 0.5l9 9M9.5 0.5l-9 9" />
+    </Caption>
+  );
+}
+
+export function CloseIcon({ size = 16, width = 1.5 }: IconProps & { width?: number }) {
+  return (
+    <Stroke size={size} width={width}>
+      <path d="M4 4l8 8M12 4l-8 8" />
+    </Stroke>
+  );
+}
+
+export function PlusIcon({ size = 16 }: IconProps) {
+  return (
+    <Stroke size={size}>
       <path d="M8 3v10M3 8h10" />
     </Stroke>
   );
 }
 
-export function ChevronDownIcon({ size = 10 }: IconProps) {
+export function ChevronDownIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={2} join>
-      <path d="M3.5 6l4.5 4.5L12.5 6" />
+    <Stroke size={size}>
+      <path d="M4 6l4 4 4-4" />
     </Stroke>
   );
 }
 
-export function ChevronRightIcon({ size = 10 }: IconProps) {
+export function ChevronRightIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={2} join>
-      <path d="M6 3.5l4.5 4.5L6 12.5" />
+    <Stroke size={size}>
+      <path d="M6 4l4 4-4 4" />
     </Stroke>
   );
 }
 
-export function ArrowUpIcon({ size = 11 }: IconProps) {
+export function ArrowUpIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={1.8} join>
+    <Stroke size={size}>
       <path d="M8 13V3M4 7l4-4 4 4" />
     </Stroke>
   );
 }
 
-export function ArrowDownIcon({ size = 11 }: IconProps) {
+export function ArrowDownIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={1.8} join>
+    <Stroke size={size}>
       <path d="M8 3v10M4 9l4 4 4-4" />
     </Stroke>
   );
 }
 
-export function BackIcon({ size = 12, width = 1.8 }: IconProps & { width?: number }) {
+export function BackIcon({ size = 16, width = 1.5 }: IconProps & { width?: number }) {
   return (
-    <Stroke size={size} width={width} join>
+    <Stroke size={size} width={width}>
       <path d="M13 8H3M7 4L3 8l4 4" />
     </Stroke>
   );
 }
 
-export function ReadingIcon({ size = 14 }: IconProps) {
+export function ReadingIcon({ size = 16 }: IconProps) {
   return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round">
-      <path d="M1.5 3.8c2.3-1 4.5-.8 6.5 1 2-1.8 4.2-2 6.5-1v8.4c-2.3-1-4.5-.8-6.5 1-2-1.8-4.2-2-6.5-1z" />
-      <path d="M8 4.8v8.4" />
-    </svg>
-  );
-}
-
-export function EditIcon({ size = 11 }: IconProps) {
-  return (
-    <Stroke size={size} width={1.6} join>
-      <path d="M10.5 2.5l3 3-8 8H2.5v-3z" />
+    <Stroke size={size}>
+      <path d="M8 4.6C6.8 3.6 5 3 2.5 3v9.4c2.5 0 4.3.6 5.5 1.6 1.2-1 3-1.6 5.5-1.6V3C11 3 9.2 3.6 8 4.6z" />
+      <path d="M8 4.6V14" />
     </Stroke>
   );
 }
 
-export function TrashIcon({ size = 11 }: IconProps) {
+export function WrapIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={1.6} join>
-      <path d="M3 4.5h10M6.5 4.5V3h3v1.5M4.5 4.5l.7 8.5h5.6l.7-8.5" />
+    <Stroke size={size}>
+      <path d="M2.5 4h11M2.5 8h8.5a2.2 2.2 0 0 1 0 4.4H8.5" />
+      <path d="M10 10.9l-1.5 1.5 1.5 1.5M2.5 12.4h3" />
     </Stroke>
   );
 }
 
-export function RefreshIcon({ size = 13 }: IconProps) {
+export function EditIcon({ size = 14 }: IconProps) {
+  return <DrawIcon size={size} />;
+}
+
+export function TrashIcon({ size = 14 }: IconProps) {
   return (
-    <Stroke size={size} width={1.6} join>
-      <path d="M13 8a5 5 0 1 1-1.5-3.6" />
-      <path d="M13 2.5v2.8h-2.8" />
+    <Stroke size={size}>
+      <path d="M2.5 4.5h11M6.3 4.5V2.8h3.4v1.7M4 4.5l.7 8.7h6.6l.7-8.7" />
     </Stroke>
   );
 }
 
-export function PhoneIcon({ size = 20 }: IconProps) {
+export function RefreshIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={1.3} join>
-      <rect x="4.5" y="1.5" width="7" height="13" rx="1.8" />
-      <path d="M7 12.2h2" />
+    <Stroke size={size}>
+      <path d="M13 7.2A5 5 0 0 0 4 4.6L2.8 6" />
+      <path d="M2.8 2.8V6h3.2" />
+      <path d="M3 8.8A5 5 0 0 0 12 11.4L13.2 10" />
+      <path d="M13.2 13.2V10H10" />
     </Stroke>
   );
 }
 
-export function UpdateIcon({ size = 20 }: IconProps) {
+export function PhoneIcon({ size = 16 }: IconProps) {
   return (
-    <Stroke size={size} width={1.3} join>
-      <path d="M2 12.5h12" />
-      <path d="M4.5 12.5a3.5 3.5 0 0 1 7 0" />
-      <path d="M8 2v5M5.8 4.2L8 2l2.2 2.2" />
+    <Stroke size={size}>
+      <rect x="4.5" y="1.8" width="7" height="12.4" rx="1.6" />
+      <path d="M7 11.8h2" />
     </Stroke>
   );
 }
 
-/** Drag handle: six dots. */
+export function UpdateIcon({ size = 16 }: IconProps) {
+  return (
+    <Stroke size={size}>
+      <path d="M8 2.5v7.5M4.8 6.8L8 10l3.2-3.2M2.8 11.5v1.7h10.4v-1.7" />
+    </Stroke>
+  );
+}
+
 export function GripIcon() {
   return (
-    <svg width="6" height="12" viewBox="0 0 6 12" fill="currentColor">
+    <svg width="6" height="12" viewBox="0 0 6 12" fill="currentColor" aria-hidden="true">
       <circle cx="1.5" cy="2" r="1" />
       <circle cx="4.5" cy="2" r="1" />
       <circle cx="1.5" cy="6" r="1" />
@@ -247,171 +250,72 @@ export function GripIcon() {
   );
 }
 
-// ------------------------------------------------------------ ornaments
+/** Sync state as a cloud: a check when synced, turning arrows while syncing,
+ * a slash offline, an exclamation when something is wrong, outline when off. */
+export function SyncGlyph({ phase, size = 14 }: { phase: string; size?: number }) {
+  const cloud = "M4.6 12.6h6.6a2.9 2.9 0 0 0 .4-5.8A4 4 0 0 0 4 7.6a2.5 2.5 0 0 0 .6 5z";
+  return (
+    <Stroke size={size}>
+      <path d={cloud} opacity={phase === "off" ? 0.7 : 1} />
+      {phase === "synced" && <path d="M6.3 9.9l1.3 1.2 2.3-2.5" />}
+      {phase === "syncing" && <path className="sync-turn" d="M6.2 9.6a1.9 1.9 0 0 1 3.4-.9M9.8 10.4a1.9 1.9 0 0 1-3.4.9" />}
+      {phase === "offline" && <path d="M2.5 2.5l11 11" />}
+      {(phase === "error" || phase === "denied") && <path d="M8 8.2v1.6M8 11.4v.1" />}
+    </Stroke>
+  );
+}
 
-/** The in-app mark: a gold "C" in a double ring, with a leaf. (The full logo
- * is only used for the app/tray icon, never inside the interface.) */
+/** The Cynote mark: a steno pad on its cover, two rules and the ballpoint's. */
+export function AppMark({ size = 18 }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true">
+      <rect x="1.5" y="1.5" width="15" height="15" rx="3.5" fill="var(--cover)" />
+      <path d="M5 6.5h8.5M5 9.5h8.5" stroke="var(--cover-ink)" strokeOpacity="0.55" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M5 12.5h8.5" stroke="#9db8ff" strokeWidth="1.4" strokeLinecap="round" />
+      <path d="M3.9 4v11" stroke="#e58a80" strokeWidth="1" />
+    </svg>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Names kept from the retired greenhouse look so screens not yet rebuilt still
+// compile. They draw nothing ornamental anymore.
+
 export function LogoMedallion() {
-  return (
-    <div className="cy-logo">
-      <span>C</span>
-      <svg width="8" height="8" viewBox="-4 -4 8 8">
-        <path
-          d="M0 -3.5 C2.6 -1.8 2.6 1.8 0 3.5 C-2.6 1.8 -2.6 -1.8 0 -3.5 Z"
-          fill="var(--accent)"
-          transform="rotate(35)"
-        />
-      </svg>
-    </div>
-  );
+  return <AppMark />;
 }
-
-/** The arched iron header shape, shared by the main window and Dashnotes. */
 export function ArchShape() {
-  return (
-    <svg className="cy-arch-shape" viewBox="0 0 600 56" preserveAspectRatio="none">
-      <path
-        className="iron"
-        d="M0 56 V22 Q0 11 14 11 H190 C245 11 262 1 300 1 C338 1 355 11 410 11 H586 Q600 11 600 22 V56 Z"
-      />
-      <path
-        className="fillet"
-        d="M14 14.5 H190 C245 14.5 262 4.5 300 4.5 C338 4.5 355 14.5 410 14.5 H586"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
-  );
+  return null;
 }
-
 export function ArchVines() {
+  return null;
+}
+export function CornerVignette(_: { corner: "tl" | "tr" | "bl" | "br" }) {
+  return null;
+}
+export function Sprout(_: IconProps) {
+  return null;
+}
+export function Leaf({ size = 8, color = "var(--accent)" }: IconProps & { color?: string; rotate?: number }) {
   return (
-    <svg className="cy-arch-vines" width="132" height="16" viewBox="0 0 132 16">
-      <path
-        d="M58 8 C50 2 40 13 30 8 C24 5 21 10 25 11.5 M74 8 C82 2 92 13 102 8 C108 5 111 10 107 11.5"
-        fill="none"
-        stroke="var(--gold)"
-        strokeWidth="1"
-        strokeLinecap="round"
-        opacity=".85"
-      />
-      <path
-        d="M40 9.5 C37 6.5 33 7 32 9 C35 10.5 38 10.5 40 9.5 Z M92 9.5 C95 6.5 99 7 100 9 C97 10.5 94 10.5 92 9.5 Z"
-        fill="var(--gold)"
-        opacity=".7"
-      />
+    <svg width={size} height={size} viewBox="0 0 8 8" aria-hidden="true">
+      <circle cx="4" cy="4" r="3" fill={color} />
     </svg>
   );
 }
-
-export function CornerVignette({ corner }: { corner: "tl" | "tr" | "bl" | "br" }) {
+export function OpenLeaves(_: IconProps & { color?: string }) {
+  return null;
+}
+export function Bud({ size = 8, color = "var(--accent)", outline }: IconProps & { color?: string; outline?: boolean }) {
   return (
-    <svg className={"cy-vignette " + corner} width="22" height="22" viewBox="0 0 22 22">
-      <path d="M3 21 V11 C3 6.5 6.5 3 11 3 H21 M3 14 C6.5 14 8.5 11 7.5 8.8 C6.8 7.4 5 7.8 5.4 9.3" />
+    <svg width={size} height={size} viewBox="0 0 8 8" aria-hidden="true">
+      <circle cx="4" cy="4" r="3" fill={outline ? "none" : color} stroke={color} strokeWidth={outline ? 1.2 : 0} />
     </svg>
   );
 }
-
-export function Sprout({ size = 44 }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 40 40">
-      <path d="M20 35 C20 28 20 22 20 15" fill="none" stroke="var(--accent)" strokeWidth="1.4" strokeLinecap="round" />
-      <path
-        d="M20 23 C13 23 8.5 18 8.5 13 C14.5 13 20 17 20 23 Z M20 18.5 C26 18.5 31.5 13.5 31.5 8.5 C25 8.5 20 12.5 20 18.5 Z"
-        fill="var(--accent)"
-        opacity=".75"
-      />
-      <path d="M9 35.5 C15 33 25 33 31 35.5" fill="none" stroke="var(--gold)" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
+export function SyncFlower({ status, size = 14 }: { status: string; size?: number }) {
+  return <SyncGlyph phase={status} size={size} />;
 }
-
-/** A single leaf, used as a marker (line under the mouse, favorite, file type). */
-export function Leaf({ size = 12, color = "var(--accent)", rotate = 0 }: IconProps & { color?: string; rotate?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="-6 -6 12 12">
-      <path d="M0 -5 C2.6 -2.4 2.6 2.4 0 5 C-2.6 2.4 -2.6 -2.4 0 -5 Z" transform={`rotate(${rotate})`} fill={color} />
-    </svg>
-  );
-}
-
-const OPEN_LEAVES =
-  "M0 4 C-1.5 -1.5 -6 -4 -9.5 -3 C-8 2 -4 4.5 0 4 Z M0 4 C1.5 -1.5 6 -4 9.5 -3 C8 2 4 4.5 0 4 Z M0 4 C-2 -1 -1.4 -6 0 -9 C1.4 -6 2 -1 0 4 Z";
-
-/** Three open leaves - "synced". */
-export function OpenLeaves({ size = 14, color = "var(--accent)" }: IconProps & { color?: string }) {
-  return (
-    <svg width={size} height={size} viewBox="-10 -10 20 20">
-      <path d={OPEN_LEAVES} fill={color} />
-    </svg>
-  );
-}
-
-/** A closed bud - "looking" / "waiting". */
-export function Bud({ size = 14, color = "var(--gold)", outline }: IconProps & { color?: string; outline?: boolean }) {
-  return (
-    <svg width={size * (16 / 18)} height={size} viewBox="-8 -9 16 18">
-      <path
-        d="M0 -7 C4 -3 4 3 0 5 C-4 3 -4 -3 0 -7 Z"
-        fill={outline ? "none" : color}
-        stroke={outline ? color : undefined}
-        strokeWidth={outline ? 1.3 : undefined}
-      />
-      {outline && <path d="M0 5 V9" stroke={color} strokeWidth="1.3" />}
-    </svg>
-  );
-}
-
-/** The sync indicator: open in three gold leaves when synced, a pulsing bud
- * while syncing, a wilted bud on error. */
-export function SyncFlower({ status, size = 18 }: { status: SyncStatus; size?: number }) {
-  return (
-    <svg width={size} height={size} viewBox="-10 -10 20 20" style={{ overflow: "visible" }}>
-      {status === "synced" && (
-        <g className="sync-bloom">
-          <path d={OPEN_LEAVES} fill="var(--gold)" />
-          <path d="M0 4 V9.5" stroke="var(--gold)" strokeWidth="1.3" strokeLinecap="round" />
-        </g>
-      )}
-      {status === "syncing" && (
-        <g className="sync-bud">
-          <path d="M0 -8 C4.5 -3.5 4.5 2.5 0 5 C-4.5 2.5 -4.5 -3.5 0 -8 Z" fill="var(--gold)" />
-          <path
-            d="M0 5 C-2.5 3 -5 4.5 -5.5 7 M0 5 C2.5 3 5 4.5 5.5 7 M0 5 V9.5"
-            fill="none"
-            stroke="var(--frame-ink-soft)"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-        </g>
-      )}
-      {status === "error" && (
-        <g className="sync-droop">
-          <path d="M0 -7 C4 -3 4 2 0 4.5 C-4 2 -4 -3 0 -7 Z" fill="var(--alert)" />
-          <path
-            d="M0 4.5 V9.5 M0 7 C-2 6 -4 7 -4.5 8.5"
-            fill="none"
-            stroke="var(--alert)"
-            strokeWidth="1.2"
-            strokeLinecap="round"
-          />
-        </g>
-      )}
-    </svg>
-  );
-}
-
-/** Section divider: a gold leaf between two curls. */
 export function LeafDivider() {
-  return (
-    <svg width="30" height="10" viewBox="0 0 30 10">
-      <path d="M15 1 C19 3.5 19 6.5 15 9 C11 6.5 11 3.5 15 1 Z" fill="var(--gold)" />
-      <path
-        d="M2 5 C6 2 9 8 12 5 M28 5 C24 2 21 8 18 5"
-        fill="none"
-        stroke="var(--gold)"
-        strokeWidth="1"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
+  return <span className="divider" role="separator" />;
 }

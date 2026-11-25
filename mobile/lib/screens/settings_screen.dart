@@ -1,132 +1,145 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../icons.dart';
+import '../sync/cloud_sync.dart';
 import '../theme.dart';
-import '../widgets/greenhouse.dart';
 
 class SettingsScreen extends StatelessWidget {
-  final CyColors t;
   final bool darkMode;
+
+  /// True while the theme still follows the system (nothing picked here yet).
+  final bool followsSystem;
   final VoidCallback onBack;
-  final VoidCallback onToggleDarkMode;
-  final String? cloudSyncId;
-  final Future<String> Function() onGenerateCloudCode;
-  final Future<bool> Function(String code) onJoinCloudCode;
-  final Future<void> Function() onClearCloudCode;
+  final ValueChanged<bool> onDarkModeChanged;
+  final String? syncCode;
+  final SyncStatus syncStatus;
+  final Future<String> Function() onCreateSyncCode;
+  final Future<bool> Function(String code) onJoinSyncCode;
+  final Future<void> Function() onLeaveSync;
+
+  /// "0.1.31", or null while unknown.
+  final String? version;
 
   const SettingsScreen({
     super.key,
-    required this.t,
     required this.darkMode,
+    this.followsSystem = false,
     required this.onBack,
-    required this.onToggleDarkMode,
-    required this.cloudSyncId,
-    required this.onGenerateCloudCode,
-    required this.onJoinCloudCode,
-    required this.onClearCloudCode,
+    required this.onDarkModeChanged,
+    required this.syncCode,
+    required this.syncStatus,
+    required this.onCreateSyncCode,
+    required this.onJoinSyncCode,
+    required this.onLeaveSync,
+    this.version,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GreenhouseScreen(
-      t: t,
-      header: [
-        Medallion(t: t, onTap: onBack, child: BackChevronIcon(color: t.frameInk)),
-        const SizedBox(width: 12),
-        Expanded(child: Text('Configurações', style: CyType.display(21, t.frameInk, letterSpacing: 0.63))),
-      ],
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        color: t.paper,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(22, ArchHeader.overhang + 14, 22, 50),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text('Tema escuro', style: CyType.ui(15.5, t.ink, weight: FontWeight.w500)),
-                        const SizedBox(height: 2),
-                        Text('A estufa à noite', style: CyType.ui(13, t.inkSoft, height: 1.45)),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  CySwitch(t: t, on: darkMode, onTap: onToggleDarkMode),
-                ],
-              ),
-              const SizedBox(height: 12),
-              LeafDivider(t: t),
-              const SizedBox(height: 18),
-              _CloudSyncSection(
-                t: t,
-                syncId: cloudSyncId,
-                onGenerate: onGenerateCloudCode,
-                onJoin: onJoinCloudCode,
-                onClear: onClearCloudCode,
-              ),
-            ],
+    final c = CyColors.of(context);
+    final text = Theme.of(context).textTheme;
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(tooltip: 'Voltar', onPressed: onBack, icon: const BackChevronIcon()),
+        title: const Text('Configurações'),
+      ),
+      body: ListView(
+        padding: EdgeInsets.only(top: 8, bottom: 24 + MediaQuery.paddingOf(context).bottom),
+        children: [
+          SwitchListTile(
+            value: darkMode,
+            onChanged: onDarkModeChanged,
+            title: const Text('Tema escuro'),
+            subtitle: followsSystem ? const Text('Segue o tema do sistema') : null,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 16),
           ),
-        ),
+          const SizedBox(height: 8),
+          const Divider(),
+          const SizedBox(height: 16),
+          _SyncSection(
+            code: syncCode,
+            status: syncStatus,
+            onCreate: onCreateSyncCode,
+            onJoin: onJoinSyncCode,
+            onLeave: onLeaveSync,
+          ),
+          if (version != null) ...[
+            const SizedBox(height: 32),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Text('Versão $version', style: tabular(text.bodyMedium!.copyWith(color: c.inkSoft))),
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
-class _CloudSyncSection extends StatefulWidget {
-  final CyColors t;
-  final String? syncId;
-  final Future<String> Function() onGenerate;
-  final Future<bool> Function(String code) onJoin;
-  final Future<void> Function() onClear;
+String _two(int n) => n.toString().padLeft(2, '0');
 
-  const _CloudSyncSection({
-    required this.t,
-    required this.syncId,
-    required this.onGenerate,
+/// The status line under the code, the same texts as the desktop.
+String syncStatusText(SyncStatus s) {
+  switch (s.phase) {
+    case SyncPhase.off:
+      return '';
+    case SyncPhase.syncing:
+      return 'Sincronizando…';
+    case SyncPhase.synced:
+      final at = s.lastSync;
+      return at == null ? 'Sincronizado' : 'Sincronizado às ${_two(at.hour)}:${_two(at.minute)}';
+    case SyncPhase.offline:
+      return 'Sem conexão. Tento de novo sozinho.';
+    case SyncPhase.denied:
+      return 'O servidor recusou o acesso. As regras do banco precisam ser publicadas (veja SYNC.md).';
+    case SyncPhase.error:
+      return 'Não deu para sincronizar: ${s.message ?? 'erro inesperado'}';
+  }
+}
+
+const _invalidCodeText = 'Esse código não parece certo. Ele tem 20 letras e números, como 4F2A9-C81D0-77B3E-0A1C5.';
+
+class _SyncSection extends StatefulWidget {
+  final String? code;
+  final SyncStatus status;
+  final Future<String> Function() onCreate;
+  final Future<bool> Function(String code) onJoin;
+  final Future<void> Function() onLeave;
+
+  const _SyncSection({
+    required this.code,
+    required this.status,
+    required this.onCreate,
     required this.onJoin,
-    required this.onClear,
+    required this.onLeave,
   });
 
   @override
-  State<_CloudSyncSection> createState() => _CloudSyncSectionState();
+  State<_SyncSection> createState() => _SyncSectionState();
 }
 
-class _CloudSyncSectionState extends State<_CloudSyncSection> {
+class _SyncSectionState extends State<_SyncSection> {
   final _controller = TextEditingController();
-  final _focus = FocusNode();
-  bool _generating = false;
-  bool _joining = false;
+  bool _busy = false;
   bool _copied = false;
   bool _invalidCode = false;
 
   @override
-  void initState() {
-    super.initState();
-    _focus.addListener(() => setState(() {}));
-  }
-
-  @override
   void dispose() {
-    _focus.dispose();
     _controller.dispose();
     super.dispose();
   }
 
-  Future<void> _generate() async {
-    setState(() => _generating = true);
-    await widget.onGenerate();
-    if (mounted) setState(() => _generating = false);
+  Future<void> _create() async {
+    setState(() => _busy = true);
+    await widget.onCreate();
+    if (mounted) setState(() => _busy = false);
   }
 
   Future<void> _copy() async {
-    final id = widget.syncId;
-    if (id == null) return;
-    await Clipboard.setData(ClipboardData(text: id));
+    final code = widget.code;
+    if (code == null) return;
+    await Clipboard.setData(ClipboardData(text: code));
     if (!mounted) return;
     setState(() => _copied = true);
     Future.delayed(const Duration(milliseconds: 1500), () {
@@ -136,125 +149,160 @@ class _CloudSyncSectionState extends State<_CloudSyncSection> {
 
   Future<void> _join() async {
     final code = _controller.text.trim();
-    if (code.isEmpty) return;
+    if (code.isEmpty || _busy) return;
     setState(() {
-      _joining = true;
+      _busy = true;
       _invalidCode = false;
     });
     final ok = await widget.onJoin(code);
     if (!mounted) return;
     setState(() {
-      _joining = false;
+      _busy = false;
       _invalidCode = !ok;
     });
     if (ok) _controller.clear();
   }
 
+  Future<void> _leave() async {
+    setState(() => _busy = true);
+    await widget.onLeave();
+    if (mounted) setState(() => _busy = false);
+  }
+
   @override
   Widget build(BuildContext context) {
-    final t = widget.t;
-    final id = widget.syncId;
-    final hint = CyType.ui(13, t.inkSoft, height: 1.45);
+    final c = CyColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final code = widget.code;
+    final soft = text.bodyMedium!.copyWith(color: c.inkSoft);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Sincronização pela internet', style: CyType.display(17, t.ink, letterSpacing: 0.5)),
-        const SizedBox(height: 4),
-        Text('Sincronize com outro dispositivo em qualquer rede, usando um código de pareamento', style: hint),
-        const SizedBox(height: 12),
-        if (id != null) ...[
-          Container(
-            padding: const EdgeInsets.fromLTRB(14, 8, 8, 8),
-            decoration: BoxDecoration(
-              color: t.paper2,
-              border: Border.all(color: t.goldLine),
-              borderRadius: BorderRadius.circular(14),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Sincronizar com o computador', style: text.titleMedium),
+          const SizedBox(height: 4),
+          Text('As notas ficam iguais no celular e no computador. Use o mesmo código nos dois.', style: soft),
+          const SizedBox(height: 16),
+          if (code != null) ...[
+            Container(
+              padding: const EdgeInsets.only(left: 16),
+              decoration: BoxDecoration(color: c.page2, borderRadius: BorderRadius.circular(12)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SelectableText(
+                      code,
+                      maxLines: 1,
+                      style: tabular(text.bodyLarge!.copyWith(letterSpacing: 0.6)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(4),
+                    child: TextButton.icon(
+                      onPressed: _copy,
+                      icon: _copied ? const CheckIcon(size: 18) : const CopyIcon(size: 18),
+                      label: Text(_copied ? 'Copiado' : 'Copiar'),
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: Row(
+            const SizedBox(height: 12),
+            _StatusLine(status: widget.status),
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: _busy ? null : _leave,
+              // Flush with the text above; the button keeps its 48 dp height.
+              style: TextButton.styleFrom(
+                foregroundColor: c.marginInk,
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(48, 48),
+              ),
+              child: const Text('Desconectar este celular'),
+            ),
+          ] else ...[
+            FilledButton(onPressed: _busy ? null : _create, child: const Text('Criar código')),
+            const SizedBox(height: 16),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Expanded(
-                  child: Text(
-                    id,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: CyType.mono(13, t.ink, letterSpacing: 0.4),
+                  child: TextField(
+                    controller: _controller,
+                    onChanged: (_) => setState(() => _invalidCode = false),
+                    onSubmitted: (_) => _join(),
+                    textInputAction: TextInputAction.go,
+                    textCapitalization: TextCapitalization.characters,
+                    autocorrect: false,
+                    enableSuggestions: false,
+                    style: tabular(text.bodyLarge!),
+                    decoration: InputDecoration(
+                      hintText: 'Colar código',
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                      errorText: _invalidCode ? _invalidCodeText : null,
+                      errorMaxLines: 3,
+                      // The caret's field is where you are: the ballpoint edge.
+                      focusedBorder: OutlineInputBorder(borderSide: BorderSide(color: c.accent, width: 2)),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
-                PillButton(
-                  t: t,
-                  label: _copied ? 'Copiado!' : 'Copiar',
-                  kind: PillKind.primary,
-                  height: 40,
-                  horizontalPadding: 14,
-                  fontSize: 13.5,
-                  onTap: _copy,
+                OutlinedButton(
+                  onPressed: _busy || _controller.text.trim().isEmpty ? null : _join,
+                  style: OutlinedButton.styleFrom(minimumSize: const Size(64, 48)),
+                  child: const Text('Conectar'),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 10),
-          Text('Digite esse código no outro dispositivo para conectá-lo', style: hint),
-          PillButton(
-            t: t,
-            label: 'Desativar sincronização pela internet',
-            kind: PillKind.danger,
-            fontSize: 13.5,
-            onTap: widget.onClear,
-          ),
-        ] else ...[
-          PillButton(
-            t: t,
-            label: _generating ? 'Gerando…' : 'Gerar código',
-            kind: PillKind.primary,
-            enabled: !_generating,
-            onTap: _generate,
-          ),
-          const SizedBox(height: 12),
-          Text('Ou cole um código gerado em outro dispositivo:', style: hint),
-          const SizedBox(height: 12),
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 200),
-            height: kTouchTarget,
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            decoration: BoxDecoration(
-              color: t.field,
-              border: Border.all(color: _focus.hasFocus ? t.gold : t.fieldBorder),
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: _focus.hasFocus ? [BoxShadow(color: t.goldSoft, spreadRadius: 3)] : null,
-            ),
-            child: TextField(
-              controller: _controller,
-              focusNode: _focus,
-              onChanged: (_) => setState(() => _invalidCode = false),
-              cursorColor: t.accent,
-              style: CyType.mono(14, t.fieldInk),
-              decoration: InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                hintText: 'Código de pareamento',
-                hintStyle: CyType.mono(14, t.inkFaint),
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          PillButton(
-            t: t,
-            label: _joining ? 'Conectando…' : 'Conectar',
-            enabled: !_joining && _controller.text.trim().isNotEmpty,
-            onTap: _join,
-          ),
-          if (_invalidCode) ...[
-            const SizedBox(height: 10),
-            Text(
-              'Código inválido. Ele tem 4 grupos de 5 letras e números, como 4F2A9-C81D0-77B3E-0A1C5.',
-              style: CyType.ui(13, t.danger, height: 1.45),
-            ),
           ],
         ],
-      ],
+      ),
+    );
+  }
+}
+
+/// How the sync is going, with a small mark in the state's color.
+class _StatusLine extends StatelessWidget {
+  final SyncStatus status;
+  const _StatusLine({required this.status});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = CyColors.of(context);
+    final text = Theme.of(context).textTheme;
+    final phase = status.phase;
+    final problem = phase == SyncPhase.denied || phase == SyncPhase.error;
+    final mark = switch (phase) {
+      SyncPhase.synced => c.cover,
+      SyncPhase.syncing || SyncPhase.off => c.inkFaint,
+      SyncPhase.offline => c.amber,
+      SyncPhase.denied || SyncPhase.error => c.margin,
+    };
+    final markColor = phase == SyncPhase.synced && Theme.of(context).brightness == Brightness.dark ? c.inkSoft : mark;
+    return Semantics(
+      liveRegion: true,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 6, right: 10),
+            child: Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(color: markColor, shape: BoxShape.circle),
+            ),
+          ),
+          Expanded(
+            child: Text(
+              syncStatusText(status),
+              style: tabular(text.bodyMedium!.copyWith(color: problem ? c.marginInk : c.inkSoft)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

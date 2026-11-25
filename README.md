@@ -13,18 +13,22 @@ Bloco de notas para Windows e Android. O Cynote fica escondido na bandeja do Win
 ## Recursos
 
 - **Sempre à mão**: aparece com <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Space</kbd> de qualquer lugar e pode ficar fixo por cima das outras janelas.
-- **Sincroniza sozinho**: no mesmo Wi-Fi, computador e celular trocam as notas sem conta nenhuma. Longe de casa, um código de pareamento liga a sincronização pela nuvem.
-- **Editor de verdade**: vários cursores (<kbd>Alt</kbd>+clique e <kbd>Ctrl</kbd>+<kbd>D</kbd>), localizar e substituir (<kbd>Ctrl</kbd>+<kbd>F</kbd> e <kbd>Ctrl</kbd>+<kbd>H</kbd>), ir para a linha (<kbd>Ctrl</kbd>+<kbd>G</kbd>), guias, modo leitura e zoom. Tudo em texto puro.
-- **Note Styling**: desenhe à mão por cima da nota, com pena, marca-texto e borracha, e depois arraste, redimensione ou edite o desenho.
+- **Edição do VS Code**: vários cursores (<kbd>Alt</kbd>+clique, <kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>), <kbd>Ctrl</kbd>+<kbd>D</kbd> e <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>L</kbd>, seleção em coluna, mover e duplicar linhas (<kbd>Alt</kbd>/<kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>↑</kbd>/<kbd>↓</kbd>), localizar e substituir, ir para a linha, quebra de linha (<kbd>Alt</kbd>+<kbd>Z</kbd>), números de linha e zoom. O editor é o CodeMirror 6, e o texto continua puro.
+- **Folha pautada**: cada linha tem exatamente a mesma altura e assenta numa pauta; a pauta da linha do cursor fica azul.
+- **Sincroniza sozinho**: com o mesmo código no computador e no celular, as notas ficam iguais pela internet, sem conta.
+- **Desenho na nota**: caneta, marca-texto e borracha por cima do texto; depois dá para arrastar, redimensionar ou editar o desenho.
 - **Dashnotes**: uma janela com todas as notas salvas no computador (`.cyte`, `.txt` e `.md`), organizadas por pastas.
-- **Dia e noite**: dois temas, a estufa de manhã e a estufa à noite.
+- **Claro e escuro**, com o mesmo bloco nos dois aparelhos.
 - **Atualiza sozinho** no Windows e no Android.
 
 ## Como a sincronização funciona
 
-- **Na rede local**, os aparelhos se encontram sozinhos por mDNS (Bonjour/Zeroconf) e conversam por HTTP, sem servidor externo. Nenhum aparelho é confiável até os dois lados aceitarem o pareamento.
-- **Pela nuvem**, um código de pareamento de 80 bits (`4F2A9-C81D0-77B3E-0A1C5`) dá acesso ao espaço daquele par de aparelhos no Firebase Realtime Database. As regras do banco não deixam listar os códigos, só quem tem o código lê ou escreve.
-- **O merge nunca sobrescreve em silêncio**: se a mesma nota mudar em dois aparelhos ao mesmo tempo, as duas versões ficam, uma delas com o nome do outro aparelho. O mesmo protocolo foi implementado em Rust (desktop) e em Dart (celular), com testes para os casos delicados, como eco de alterações e cópias repetidas.
+- Um código de 80 bits (`4F2A9-C81D0-77B3E-0A1C5`), criado em qualquer um dos aparelhos e digitado no outro, abre o mesmo caderno no Firebase Realtime Database. As regras do banco não deixam listar os códigos: só quem tem o código lê ou escreve.
+- Cada nota é uma entrada própria. Criar, editar e apagar chega ao outro aparelho; uma edição sempre ganha de uma exclusão.
+- Se a mesma nota mudar nos dois aparelhos antes de sincronizar, fica a edição mais recente, e o texto do outro lado vira uma nota "(conflito)" só quando tem linhas que não estão na versão que ficou.
+- A sincronização roda ao abrir, ao mostrar a janela, depois de salvar e a cada 30 segundos com o app aberto. Com a janela escondida, nada roda. Os erros aparecem na barra de status.
+- A mesma regra está em TypeScript (`desktop/src/sync/reconcile.ts`) e em Dart (`mobile/lib/sync/reconcile.dart`); as duas passam pelos mesmos casos (`sync-spec/vectors.json`) e por um teste ponta a ponta no emulador do Firebase (`sync-spec/e2e/`). Detalhes em [SYNC.md](SYNC.md).
+- As regras do banco estão em `firebase/database.rules.json`. Para publicar: `firebase deploy --only database` dentro de `firebase/`, ou cole o arquivo no console do Firebase (Realtime Database, Regras).
 
 ## Estrutura
 

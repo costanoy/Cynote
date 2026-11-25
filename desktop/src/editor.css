@@ -1,0 +1,211 @@
+/*
+ * The note editor (CodeMirror 6) as a ruled steno page.
+ *
+ * Every line sits on one rule at one integer pitch: the font size and the
+ * line height come from --text-size and --pitch (App sets both on
+ * .content-wrap), the rules are CSS backgrounds sized to --pitch, and nothing
+ * here may make a row a fractional height. Colors are the theme's tokens only:
+ * --page --page-2 --rule --ink --ink-soft --ink-faint --accent --accent-soft
+ * --selection --margin, plus --font-mono for the type.
+ *
+ * --rule-offset moves every rule down (positive) or up (negative) inside its
+ * row; the default 0px puts the rule on the row's bottom edge.
+ */
+
+/* ------------------------------------------------------------ the frame */
+
+.note-body-row {
+  display: flex;
+  align-items: stretch;
+}
+.cy-editor-host {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+}
+.note-body-row .cm-editor {
+  --cy-pitch: var(--pitch, 24px);
+  /* One printed rule at the foot of a row, in the rule color or - on the
+     line that holds a cursor - in the accent. */
+  --cy-rule-tile: linear-gradient(to bottom, transparent calc(var(--cy-pitch) - 1px), var(--rule) calc(var(--cy-pitch) - 1px));
+  flex: 1;
+  min-width: 0;
+  outline: none;
+  color: var(--ink);
+  background: transparent;
+  font-family: var(--font-mono);
+  font-size: var(--text-size, 14px);
+  line-height: var(--cy-pitch);
+  font-weight: 400;
+  font-style: normal;
+  /* Plain text: no ligatures, no optical sizing, no variable axes. */
+  font-variant-ligatures: none;
+  font-feature-settings: "liga" 0, "calt" 0;
+  font-optical-sizing: none;
+  font-variation-settings: normal;
+  letter-spacing: 0;
+}
+.note-body-row .cm-editor.cm-focused {
+  outline: none;
+}
+
+/* The editor grows to its content and the page scrolls (.content-wrap), so
+   CodeMirror reads its viewport from that ancestor. The scroller stretches to
+   at least the visible height, so the rules run down to the bottom edge. */
+.note-body-row .cm-editor .cm-scroller {
+  flex: 1 1 auto;
+  align-items: stretch !important;
+  overflow: visible;
+  font-family: inherit;
+  font-size: inherit;
+  line-height: inherit;
+  background-color: var(--page);
+  background-image: var(--cy-rule-tile);
+  background-repeat: repeat-y;
+  background-size: 100% var(--cy-pitch);
+  background-position: 0 var(--rule-offset, 0px);
+}
+.note-body-row .cm-editor .cm-content {
+  padding: 0;
+  font: inherit;
+  line-height: var(--cy-pitch);
+  tab-size: 4;
+  -moz-tab-size: 4;
+  caret-color: var(--accent);
+}
+.note-body-row .cm-editor .cm-line {
+  padding: 0 4px 0 16px;
+  line-height: var(--cy-pitch);
+  background-image: var(--cy-rule-tile);
+  background-repeat: repeat-y;
+  background-size: 100% var(--cy-pitch);
+  background-position: 0 var(--rule-offset, 0px);
+}
+/* Without wrapping a row is exactly one pitch, whatever glyphs it holds. */
+.note-body-row .cm-editor.cy-nowrap .cm-line {
+  height: var(--cy-pitch);
+  white-space: pre;
+}
+/* No wrapping means a long line scrolls sideways: the page itself does. */
+.content-wrap:has(.cm-editor.cy-nowrap) {
+  overflow-x: auto;
+}
+.note-body-row .cm-editor.cy-nowrap .cm-scroller {
+  min-width: max-content;
+}
+
+/* ------------------------------------------------------ the current line */
+
+/* The rule under the cursor's row is a layer (cursorRules in extensions.ts):
+   one visual row, blue, only while the note has focus. */
+.note-body-row .cm-editor .cy-cursor-rule {
+  background: var(--accent);
+}
+.note-body-row .cm-editor:not(.cm-focused) .cy-cursor-rules {
+  visibility: hidden;
+}
+
+/* --------------------------------------------------------------- margin */
+
+.note-body-row .cm-editor .cm-gutters {
+  flex: none;
+  background: transparent;
+  color: var(--ink-faint);
+  font: inherit;
+  line-height: var(--cy-pitch);
+  border: none;
+  border-right: 1px solid var(--margin);
+  user-select: none;
+  -webkit-user-select: none;
+  /* Pressing and dragging in the margin selects whole lines: the pointer
+     turns into a mirrored arrow, pointing at the text. */
+  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='22'%3E%3Cpath d='M18.5 1.5 V17.5 L14.5 13.7 L11.8 19.8 L9.6 18.8 L12.2 12.8 H6.8 Z' fill='white' stroke='black' stroke-width='1.1' stroke-linejoin='round'/%3E%3C/svg%3E")
+      18 1,
+    default;
+}
+.note-body-row .cm-editor .cm-gutter {
+  font: inherit;
+  line-height: var(--cy-pitch);
+}
+.note-body-row .cm-editor .cm-gutterElement {
+  box-sizing: border-box;
+  line-height: var(--cy-pitch);
+  background-image: none;
+}
+/* 48px with the numbers (47 + the margin rule), 24px without them. */
+.note-body-row .cm-editor .cm-lineNumbers .cm-gutterElement {
+  min-width: 47px;
+  padding: 0 12px 0 8px;
+  text-align: right;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.note-body-row .cm-editor.cy-no-numbers .cm-lineNumbers .cm-gutterElement {
+  min-width: 23px;
+  padding: 0;
+}
+.note-body-row .cm-editor .cm-activeLineGutter {
+  background-color: transparent;
+  color: var(--ink);
+}
+/* Over a drawing's ink the note shows the drawing's cursors instead. */
+.note-body-row.over-ink .cm-gutters,
+.note-body-row.move-sketch .cm-gutters,
+.note-body-row.resize-sketch .cm-gutters {
+  cursor: inherit;
+}
+
+/* ---------------------------------------------------- cursors, selection */
+
+.note-body-row .cm-editor .cm-cursor,
+.note-body-row .cm-editor .cm-dropCursor {
+  border-left: 2px solid var(--accent);
+  margin-left: -1px;
+}
+.note-body-row .cm-editor .cm-selectionBackground,
+.note-body-row .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: var(--selection) !important;
+}
+.note-body-row .cm-editor .cm-content ::selection {
+  background: transparent;
+}
+/* Other occurrences of the selected word. */
+/* Other occurrences are found things, not where you are: highlighter amber. */
+.note-body-row .cm-editor .cm-selectionMatch {
+  background-color: var(--match);
+}
+.note-body-row .cm-editor .cm-selectionMatch-main {
+  background-color: transparent;
+}
+
+/* ---------------------------------------------------------------- search */
+
+.note-body-row .cm-editor .cm-searchMatch {
+  background-color: var(--match);
+  outline: none;
+}
+/* The match the next Enter would land on is also the selection: ring it. */
+.note-body-row .cm-editor .cm-searchMatch.cm-searchMatch-selected {
+  background-color: transparent;
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+/* The find bar floats at the top of the page, over the first rows, and stays
+   there while the note scrolls. Its look is .find-bar's own. */
+.note-body-row .cm-editor .cm-panels {
+  position: sticky;
+  top: 0;
+  height: 0;
+  z-index: 20;
+  overflow: visible;
+  background: transparent;
+  color: inherit;
+  border: none;
+}
+.note-body-row .cm-editor .cm-panels-top {
+  border: none;
+}
+.cy-find-host {
+  position: relative;
+  height: 0;
+}

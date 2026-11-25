@@ -17,11 +17,28 @@ enum NoteSort {
 }
 
 const _plain = {
-  'á': 'a', 'à': 'a', 'â': 'a', 'ã': 'a', 'ä': 'a',
-  'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e',
-  'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i',
-  'ó': 'o', 'ò': 'o', 'ô': 'o', 'õ': 'o', 'ö': 'o',
-  'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u',
+  'á': 'a',
+  'à': 'a',
+  'â': 'a',
+  'ã': 'a',
+  'ä': 'a',
+  'é': 'e',
+  'è': 'e',
+  'ê': 'e',
+  'ë': 'e',
+  'í': 'i',
+  'ì': 'i',
+  'î': 'i',
+  'ï': 'i',
+  'ó': 'o',
+  'ò': 'o',
+  'ô': 'o',
+  'õ': 'o',
+  'ö': 'o',
+  'ú': 'u',
+  'ù': 'u',
+  'û': 'u',
+  'ü': 'u',
   'ç': 'c',
 };
 
@@ -74,7 +91,11 @@ String editedLabel(int updatedAt, DateTime now) {
   if (elapsed.inMinutes < 1 && elapsed > const Duration(minutes: -5)) return 'agora';
   if (!elapsed.isNegative && elapsed.inMinutes < 60) return 'há ${elapsed.inMinutes} min';
   // Calendar days, counted in UTC so a daylight saving change doesn't shift them.
-  final days = DateTime.utc(now.year, now.month, now.day).difference(DateTime.utc(when.year, when.month, when.day)).inDays;
+  final days = DateTime.utc(
+    now.year,
+    now.month,
+    now.day,
+  ).difference(DateTime.utc(when.year, when.month, when.day)).inDays;
   String two(int v) => v.toString().padLeft(2, '0');
   if (days == 0) return '${two(when.hour)}:${two(when.minute)}';
   if (days == 1) return 'ontem';

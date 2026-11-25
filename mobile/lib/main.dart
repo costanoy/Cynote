@@ -1,23 +1,20 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'models/note.dart';
 import 'note_sort.dart';
 import 'notes_store.dart' as notes_store;
 import 'ui_prefs.dart';
 import 'device_identity.dart';
 import 'mobile_updater.dart';
-import 'sync/sync_service.dart';
-import 'sync/cloud_sync_service.dart';
-import 'sync/bookkeeping_store.dart';
-import 'sync/merge.dart' show dropDuplicateCopies, tidyNotes;
-import 'sync/deleted_notes_store.dart';
-import 'sync/peer_info.dart';
+import 'sync/cloud_sync.dart';
+import 'sync/sync_state_store.dart';
+import 'sync/tidy.dart';
 import 'icons.dart';
 import 'theme.dart';
-import 'widgets/greenhouse.dart';
-import 'screens/sync_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/search_screen.dart';
 import 'screens/editor_screen.dart';
@@ -27,75 +24,180 @@ const _autosaveDelay = Duration(milliseconds: 1500);
 const _updateCheckDelay = Duration(seconds: 4);
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
+  // Edge to edge: the app draws under the status and navigation bars and
+  // keeps its content out of them with the window insets.
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+  registerFontLicense();
   runApp(const CynoteApp());
 }
 
-class CynoteApp extends StatelessWidget {
-  /// Only ever populated by tests - a real launch always starts empty and
-  /// fills in from notes_store/sync, so nobody ever sees leftover demo notes.
+/// JetBrains Mono ships with the app under the SIL Open Font License.
+void registerFontLicense() {
+  LicenseRegistry.addLicense(() async* {
+    final text = await rootBundle.loadString('assets/fonts/JetBrainsMono-OFL.txt');
+    yield LicenseEntryWithLineBreaks(const ['JetBrains Mono'], text);
+  });
+}
+
+enum CyScreen { home, search, editor, settings }
+
+/// Starts the app on a given screen with given state. Only the web preview
+/// (tool/preview_main.dart) uses it, to capture each screen; a real launch
+/// never passes one.
+class CynotePreview {
+  final CyScreen screen;
+  final String? noteId;
+
+  /// Caret offset in the open note's body; the body gets focus when set.
+  final int? caret;
+  final String searchQuery;
+  final bool? darkMode;
+  final String? syncCode;
+  final SyncStatus syncStatus;
+  final String? version;
+
+  const CynotePreview({
+    this.screen = CyScreen.home,
+    this.noteId,
+    this.caret,
+    this.searchQuery = '',
+    this.darkMode,
+    this.syncCode,
+    this.syncStatus = SyncStatus.off,
+    this.version,
+  });
+}
+
+class CynoteApp extends StatefulWidget {
+  /// Only ever populated by tests and the web preview: a real launch always
+  /// starts empty and fills in from notes_store and sync.
   final List<Note> initialNotes;
-  const CynoteApp({super.key, this.initialNotes = const []});
+  final CynotePreview? preview;
+  const CynoteApp({super.key, this.initialNotes = const [], this.preview});
+
+  @override
+  State<CynoteApp> createState() => _CynoteAppState();
+}
+
+class _CynoteAppState extends State<CynoteApp> {
+  /// Null while the theme follows the system.
+  bool? _darkPref;
+
+  @override
+  void initState() {
+    super.initState();
+    final preview = widget.preview;
+    if (preview != null) {
+      _darkPref = preview.darkMode;
+    } else {
+      loadDarkMode().then((dark) {
+        if (mounted && dark != null && _darkPref == null) setState(() => _darkPref = dark);
+      });
+    }
+  }
+
+  void _setDarkMode(bool dark) {
+    setState(() => _darkPref = dark);
+    if (widget.preview == null) saveDarkMode(dark);
+  }
 
   @override
   Widget build(BuildContext context) {
+    final still = WidgetsBinding.instance.platformDispatcher.accessibilityFeatures.disableAnimations;
     return MaterialApp(
       title: 'Cynote',
       debugShowCheckedModeBanner: false,
-      home: CynoteRoot(initialNotes: initialNotes),
+      theme: cynoteTheme(Brightness.light),
+      darkTheme: cynoteTheme(Brightness.dark),
+      themeMode: switch (_darkPref) {
+        null => ThemeMode.system,
+        true => ThemeMode.dark,
+        false => ThemeMode.light,
+      },
+      themeAnimationStyle: still ? AnimationStyle.noAnimation : null,
+      home: CynoteRoot(
+        initialNotes: widget.initialNotes,
+        preview: widget.preview,
+        followsSystemTheme: _darkPref == null,
+        onDarkModeChanged: _setDarkMode,
+      ),
     );
   }
 }
 
-enum CyScreen { sync, home, search, editor, settings }
-
 class CynoteRoot extends StatefulWidget {
   final List<Note> initialNotes;
-  const CynoteRoot({super.key, this.initialNotes = const []});
+  final CynotePreview? preview;
+  final bool followsSystemTheme;
+  final ValueChanged<bool> onDarkModeChanged;
+
+  const CynoteRoot({
+    super.key,
+    this.initialNotes = const [],
+    this.preview,
+    this.followsSystemTheme = true,
+    required this.onDarkModeChanged,
+  });
 
   @override
   State<CynoteRoot> createState() => _CynoteRootState();
 }
 
-class _CynoteRootState extends State<CynoteRoot> {
-  CyScreen _screen = CyScreen.sync;
+class _CynoteRootState extends State<CynoteRoot> with WidgetsBindingObserver {
+  late CyScreen _screen = widget.preview?.screen ?? CyScreen.home;
   CyScreen _returnScreen = CyScreen.home;
-  bool _darkMode = true;
+  CyScreen _settingsReturn = CyScreen.home;
   late List<Note> _notes = widget.initialNotes;
   NoteSort _sort = NoteSort.recent;
-  SyncState _syncStatus = SyncState.synced;
-  String? _activeNoteId;
+  late String? _activeNoteId = widget.preview?.noteId;
+
+  /// The note just created: it opens with the caret in its body.
+  String? _newNoteId;
   Timer? _saveDebounce;
   DeviceIdentity? _identity;
-  SyncService? _syncService;
-  CloudSyncService? _cloudSyncService;
-  String? _connectingToDeviceId;
-  bool _pairingDialogShowing = false;
-  final DeletedNotesStore _deleted = DeletedNotesStore();
+  SyncController? _sync;
+  final List<String> _droppedDuplicates = [];
   MobileUpdate? _availableUpdate;
   bool _downloadingUpdate = false;
   Timer? _updateCheckTimer;
+  late String? _version = widget.preview?.version;
+
+  bool get _isPreview => widget.preview != null;
 
   @override
   void initState() {
     super.initState();
-    // Checked once, a few seconds after launch - no need to race notes/sync
-    // startup, and a silent miss (offline, already up to date) is fine since
-    // this only ever surfaces something when there's actually a new build.
-    // A real Timer (not a bare Future.delayed) so dispose() can cancel it -
-    // otherwise it outlives a widget test's tear-down and fails the run.
+    WidgetsBinding.instance.addObserver(this);
+    if (_isPreview) return;
+
+    // Checked once, a few seconds after launch: no need to race notes or
+    // sync startup, and a silent miss (offline, already up to date) is fine.
+    // A real Timer so dispose() can cancel it.
     _updateCheckTimer = Timer(_updateCheckDelay, () async {
       final update = await checkForMobileUpdate();
       if (!mounted || update == null) return;
       setState(() => _availableUpdate = update);
       _showUpdateDialog();
     });
+    PackageInfo.fromPlatform().then((info) {
+      if (mounted) setState(() => _version = info.version);
+    }, onError: (Object _) {});
     loadNoteSort().then((sort) {
       if (mounted && sort != _sort) setState(() => _sort = sort);
     });
     final notesLoaded = notes_store.loadNotes().then((saved) {
       if (!mounted) return;
       if (saved != null && saved.isNotEmpty) {
+        // Clears the piles of identical copies the first versions left
+        // behind. They are announced as deleted below, like any deletion, so
+        // the old per-device slots cannot bring them back.
         final deduped = dropDuplicateCopies(saved);
+        final kept = {for (final n in deduped) n.id};
+        _droppedDuplicates.addAll([
+          for (final n in saved)
+            if (!kept.contains(n.id)) n.id,
+        ]);
         setState(() => _notes = deduped);
         if (deduped.length != saved.length) _scheduleSave();
       }
@@ -103,154 +205,128 @@ class _CynoteRootState extends State<CynoteRoot> {
     getDeviceIdentity().then((identity) async {
       if (!mounted) return;
       setState(() => _identity = identity);
-      final bookkeeping = BookkeepingStore();
-      final service = SyncService(identity, bookkeeping, _deleted);
-      service.notesProvider = () => _notes;
-      service.onNotesMerged = _onNotesMerged;
-      service.addListener(_onSyncChanged);
-      _syncService = service;
-
-      final cloudService = CloudSyncService(identity, bookkeeping, _deleted);
-      cloudService.notesProvider = () => _notes;
-      cloudService.onNotesMerged = _onNotesMerged;
-      cloudService.addListener(_onCloudSyncChanged);
-      _cloudSyncService = cloudService;
-
-      // Merging before the saved notes are in would treat every note as
+      // Syncing before the saved notes are in would treat every note as
       // missing here, and the load landing afterwards would then overwrite
-      // whatever the merge brought in.
+      // whatever the sync brought in.
       await notesLoaded;
-      await _deleted.load();
       if (!mounted) return;
-      // Clears what older versions left behind (exact duplicate copies, empty
-      // notes from other devices) - recorded as deleted, so sync can't
-      // bring them back.
-      final tidy = tidyNotes(_notes, identity.deviceId);
-      if (tidy.length != _notes.length) {
-        final kept = {for (final n in tidy) n.id};
-        await _deleted.addAll(_notes.where((n) => !kept.contains(n.id)).map((n) => n.id));
-        if (!mounted) return;
-        setState(() => _notes = tidy);
-        _scheduleSave();
-      }
-      service.start();
-      cloudService.start();
+      final sync = SyncController(
+        deviceId: identity.deviceId,
+        store: SyncStateStore(),
+        notesProvider: () => _notes,
+        onApply: _onSyncApply,
+      );
+      sync.addListener(_onSyncChanged);
+      _sync = sync;
+      await sync.start();
+      _droppedDuplicates.forEach(sync.noteDeleted);
     });
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _saveDebounce?.cancel();
     _updateCheckTimer?.cancel();
-    _syncService?.removeListener(_onSyncChanged);
-    _syncService?.dispose();
-    _cloudSyncService?.removeListener(_onCloudSyncChanged);
-    _cloudSyncService?.dispose();
+    _sync?.removeListener(_onSyncChanged);
+    _sync?.dispose();
     super.dispose();
   }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) => _sync?.onAppLifecycle(state);
 
   void _onSyncChanged() {
     if (!mounted) return;
     setState(() {});
-    _maybeShowPairingDialog();
   }
 
-  void _onCloudSyncChanged() {
+  /// Called by the sync controller, synchronously, with what the cloud changed.
+  void _onSyncApply(List<Note> upserts, List<String> removedIds) {
     if (!mounted) return;
-    setState(() {});
-  }
-
-  void _onNotesMerged(List<Note> notes) {
-    if (!mounted) return;
-    setState(() => _notes = notes);
-    _scheduleSave();
-  }
-
-  void _maybeShowPairingDialog() {
-    final service = _syncService;
-    if (service == null || _pairingDialogShowing || service.incomingRequests.isEmpty) return;
-    final peer = service.incomingRequests.values.first;
-    _pairingDialogShowing = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-      void respond(BuildContext ctx, bool accept) {
-        service.respondToPairing(peer.deviceId, accept);
-        Navigator.of(ctx).pop();
-        _pairingDialogShowing = false;
-        _maybeShowPairingDialog();
+    final incoming = {for (final n in upserts) n.id: n};
+    final removed = removedIds.toSet();
+    setState(() {
+      final next = <Note>[];
+      for (final n in _notes) {
+        if (removed.contains(n.id)) continue;
+        next.add(incoming.remove(n.id) ?? n);
       }
-
-      final t = _colors;
-      showCyDialog(
-        context,
-        t,
-        (ctx) => CyDialog(
-          t: t,
-          icon: ComputerIcon(size: 22, color: t.gold),
-          title: 'Sincronizar dispositivo',
-          body: 'Sincronizar com “${peer.deviceName}”?',
-          actions: [
-            CyDialogAction('Recusar', () => respond(ctx, false)),
-            CyDialogAction('Aceitar', () => respond(ctx, true), primary: true),
-          ],
-        ),
-      );
+      // What is left is new here.
+      _notes = [...incoming.values, ...next];
+      if (_activeNoteId != null && removed.contains(_activeNoteId)) {
+        _activeNoteId = null;
+        if (_screen == CyScreen.editor) _screen = CyScreen.home;
+      }
     });
+    _scheduleSave();
   }
 
   void _showUpdateDialog() {
     final update = _availableUpdate;
     if (update == null) return;
-    final t = _colors;
-    showCyDialog(
-      context,
-      t,
-      (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => CyDialog(
-          t: t,
-          icon: UpdateIcon(color: t.gold),
-          title: 'Atualização disponível',
-          body: _downloadingUpdate
-              ? 'Baixando a versão ${update.version}… O instalador do Android vai abrir em instantes.'
-              : 'O Cynote ${update.version} está disponível. Atualizar agora?',
-          progress: _downloadingUpdate,
-          actions: _downloadingUpdate
-              ? const []
-              : [
-                  CyDialogAction('Agora não', () => Navigator.of(ctx).pop()),
-                  CyDialogAction('Atualizar', () async {
-                    setDialogState(() => _downloadingUpdate = true);
-                    setState(() => _downloadingUpdate = true);
-                    try {
-                      await downloadAndInstallMobileUpdate(update);
-                    } finally {
-                      if (mounted) setState(() => _downloadingUpdate = false);
-                    }
-                    if (ctx.mounted) Navigator.of(ctx).pop();
-                  }, primary: true),
-                ],
+    showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => PopScope(
+          canPop: !_downloadingUpdate,
+          child: AlertDialog(
+            icon: const UpdateIcon(),
+            title: const Text('Atualização disponível'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  _downloadingUpdate
+                      ? 'Baixando a versão ${update.version}… O instalador do Android vai abrir em instantes.'
+                      : 'O Cynote ${update.version} está disponível. Atualizar agora?',
+                ),
+                if (_downloadingUpdate) ...[const SizedBox(height: 16), const LinearProgressIndicator()],
+              ],
+            ),
+            actions: _downloadingUpdate
+                ? null
+                : [
+                    TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Agora não')),
+                    TextButton(
+                      onPressed: () async {
+                        setDialogState(() => _downloadingUpdate = true);
+                        setState(() => _downloadingUpdate = true);
+                        var failed = false;
+                        try {
+                          await downloadAndInstallMobileUpdate(update);
+                        } catch (_) {
+                          failed = true;
+                        } finally {
+                          if (mounted) setState(() => _downloadingUpdate = false);
+                        }
+                        if (ctx.mounted) Navigator.of(ctx).pop();
+                        if (failed && mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Não deu para baixar a atualização. Tente de novo mais tarde.'),
+                            ),
+                          );
+                        }
+                      },
+                      child: const Text('Atualizar'),
+                    ),
+                  ],
+          ),
         ),
       ),
     );
   }
 
-  Future<void> _connectToDevice(PeerInfo peer) async {
-    final service = _syncService;
-    if (service == null) return;
-    setState(() => _connectingToDeviceId = peer.deviceId);
-    final accepted = await service.requestPairing(peer);
-    if (!mounted) return;
-    setState(() => _connectingToDeviceId = null);
-    if (accepted) _goHome();
-  }
-
   void _scheduleSave() {
-    setState(() => _syncStatus = SyncState.syncing);
+    if (_isPreview) return;
     _saveDebounce?.cancel();
     _saveDebounce = Timer(_autosaveDelay, () async {
       await notes_store.saveNotes(_notes);
       if (!mounted) return;
-      setState(() => _syncStatus = SyncState.synced);
+      _sync?.notesSaved();
     });
   }
 
@@ -264,17 +340,29 @@ class _CynoteRootState extends State<CynoteRoot> {
 
   void _goHome() => setState(() => _screen = CyScreen.home);
   void _goSearch() => setState(() => _screen = CyScreen.search);
-  void _goSettings() => setState(() => _screen = CyScreen.settings);
+
+  void _goSettings({CyScreen from = CyScreen.home}) => setState(() {
+    _settingsReturn = from;
+    _screen = CyScreen.settings;
+  });
+
+  void _closeSettings() => setState(() {
+    _screen = _settingsReturn == CyScreen.editor && _activeNote != null ? CyScreen.editor : CyScreen.home;
+  });
 
   void _openNote(Note note, CyScreen from) {
     setState(() {
       _activeNoteId = note.id;
+      _newNoteId = null;
       _returnScreen = from;
       _screen = CyScreen.editor;
     });
   }
 
-  void _closeEditor() => setState(() => _screen = _returnScreen);
+  void _closeEditor() => setState(() {
+    _newNoteId = null;
+    _screen = _returnScreen;
+  });
 
   void _addNote() {
     final note = Note(
@@ -287,6 +375,7 @@ class _CynoteRootState extends State<CynoteRoot> {
     setState(() {
       _notes = [note, ..._notes];
       _activeNoteId = note.id;
+      _newNoteId = note.id;
       _returnScreen = CyScreen.home;
       _screen = CyScreen.editor;
     });
@@ -294,28 +383,32 @@ class _CynoteRootState extends State<CynoteRoot> {
   }
 
   void _confirmDeleteNote(Note note) {
-    final t = _colors;
     final name = note.title.trim().isEmpty ? 'Sem título' : note.title.trim();
-    showCyDialog(
-      context,
-      t,
-      (ctx) => CyDialog(
-        t: t,
-        icon: TrashIcon(size: 22, color: t.gold),
-        title: 'Excluir nota',
-        body: 'Excluir “$name” deste celular? Se ela também estiver aberta no computador, lá ela continua.',
-        actions: [
-          CyDialogAction('Cancelar', () => Navigator.of(ctx).pop()),
-          CyDialogAction('Excluir', () {
-            Navigator.of(ctx).pop();
-            _deleteNote(note);
-          }, danger: true),
-        ],
-      ),
+    showDialog<void>(
+      context: context,
+      builder: (ctx) {
+        final c = CyColors.of(ctx);
+        return AlertDialog(
+          title: const Text('Excluir nota'),
+          content: Text('Excluir “$name”? Ela também some do computador se a sincronização estiver ligada.'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(ctx).pop(), child: const Text('Cancelar')),
+            TextButton(
+              style: TextButton.styleFrom(foregroundColor: c.marginInk),
+              onPressed: () {
+                Navigator.of(ctx).pop();
+                _deleteNote(note);
+              },
+              child: const Text('Excluir'),
+            ),
+          ],
+        );
+      },
     );
   }
 
   void _deleteNote(Note note) {
+    final index = _notes.indexWhere((n) => n.id == note.id);
     setState(() {
       _notes = _notes.where((n) => n.id != note.id).toList();
       if (_activeNoteId == note.id) {
@@ -323,8 +416,39 @@ class _CynoteRootState extends State<CynoteRoot> {
         _screen = CyScreen.home;
       }
     });
-    // Sync must not bring it back from a device that still has its own copy.
-    _deleted.addAll([note.id]);
+    // Goes away everywhere, and sync must not bring it back.
+    // Before the sync controller exists the id waits with the dropped copies.
+    final sync = _sync;
+    if (sync != null) {
+      sync.noteDeleted(note.id);
+    } else {
+      _droppedDuplicates.add(note.id);
+    }
+    _scheduleSave();
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        SnackBar(
+          content: const Text('Nota excluída'),
+          persist: false,
+          duration: const Duration(seconds: 6),
+          action: SnackBarAction(label: 'Desfazer', onPressed: () => _restoreNote(note, index)),
+        ),
+      );
+  }
+
+  /// Undo of a delete: the note goes back where it was.
+  void _restoreNote(Note note, int index) {
+    if (!mounted || _notes.any((n) => n.id == note.id)) return;
+    setState(() {
+      _notes = [..._notes]..insert(index.clamp(0, _notes.length), note);
+    });
+    final sync = _sync;
+    if (sync != null) {
+      sync.noteRestored(note.id);
+    } else {
+      _droppedDuplicates.remove(note.id);
+    }
     _scheduleSave();
   }
 
@@ -342,154 +466,132 @@ class _CynoteRootState extends State<CynoteRoot> {
     _scheduleSave();
   }
 
-  CyColors get _colors => _darkMode ? CyColors.dark : CyColors.light;
+  String? get _syncCode => widget.preview?.syncCode ?? _sync?.code;
+  SyncStatus get _syncStatus => widget.preview?.syncStatus ?? _sync?.status ?? SyncStatus.off;
 
-  // Tapping the sync pill: write to disk now instead of waiting out the
-  // autosave delay.
-  Future<void> _saveNow() async {
-    _saveDebounce?.cancel();
-    setState(() => _syncStatus = SyncState.syncing);
-    await notes_store.saveNotes(_notes);
-    if (!mounted) return;
-    setState(() => _syncStatus = SyncState.synced);
+  /// The sync state in the editor was tapped: with sync off, open the
+  /// settings where it is turned on; otherwise save now and sync.
+  void _onSyncTap() {
+    if (_isPreview) return;
+    if (_syncCode == null) {
+      _goSettings(from: CyScreen.editor);
+    } else {
+      _saveNow();
+    }
   }
 
-  void _toggleDarkMode() => setState(() => _darkMode = !_darkMode);
+  Future<void> _saveNow() async {
+    _saveDebounce?.cancel();
+    await notes_store.saveNotes(_notes);
+    if (!mounted) return;
+    final sync = _sync;
+    if (sync != null) unawaited(sync.syncNow());
+  }
 
   void _setSort(NoteSort sort) {
     setState(() => _sort = sort);
-    saveNoteSort(sort);
+    if (!_isPreview) saveNoteSort(sort);
   }
 
-  Future<String> _generateCloudCode() async {
-    final service = _cloudSyncService;
-    if (service == null) return '';
-    return service.generateSyncId();
-  }
+  Future<String> _createSyncCode() async => await _sync?.createCode() ?? '';
 
-  Future<bool> _joinCloudCode(String code) async {
-    return await _cloudSyncService?.setSyncId(code) ?? false;
-  }
+  Future<bool> _joinSyncCode(String code) async => await _sync?.joinCode(code) ?? false;
 
-  Future<void> _clearCloudCode() async {
-    await _cloudSyncService?.clearSyncId();
-  }
+  Future<void> _leaveSync() async => _sync?.leave();
 
   @override
   Widget build(BuildContext context) {
-    final t = _colors;
+    final c = CyColors.of(context);
+    final dark = Theme.of(context).brightness == Brightness.dark;
     // Search lists its results in the same order as the home screen.
     final ordered = sortNotes(_notes, _sort);
+    final active = _activeNote;
+    final screen = _screen == CyScreen.editor && active == null ? CyScreen.home : _screen;
 
-    Widget content;
-    switch (_screen) {
-      case CyScreen.sync:
-        content = SyncScreen(
-          t: t,
-          discovered: _syncService?.connectableDevices ?? [],
-          connectingToDeviceId: _connectingToDeviceId,
-          onConnect: _connectToDevice,
-          onContinueWithoutSync: _goHome,
-        );
-        break;
-      case CyScreen.home:
-        content = HomeScreen(
-          t: t,
-          notes: ordered,
-          sort: _sort,
-          onSortChanged: _setSort,
-          onOpenNote: (n) => _openNote(n, CyScreen.home),
-          onSearch: _goSearch,
-          onSettings: _goSettings,
-          onAddNote: _addNote,
-          onLongPressNote: _confirmDeleteNote,
-        );
-        break;
-      case CyScreen.search:
-        content = SearchScreen(
-          t: t,
-          notes: ordered,
-          onOpenNote: (n) => _openNote(n, CyScreen.search),
-          onBack: _goHome,
-        );
-        break;
-      case CyScreen.editor:
-        content = EditorScreen(
-          key: ValueKey(_activeNoteId),
-          t: t,
-          note: _activeNote!,
-          syncStatus: _syncStatus,
-          onBack: _closeEditor,
-          onTitleChanged: _onTitleChanged,
-          onBodyChanged: _onBodyChanged,
-          onRetrySync: _saveNow,
-        );
-        break;
-      case CyScreen.settings:
-        content = SettingsScreen(
-          t: t,
-          darkMode: _darkMode,
-          onBack: _goHome,
-          onToggleDarkMode: _toggleDarkMode,
-          cloudSyncId: _cloudSyncService?.syncId,
-          onGenerateCloudCode: _generateCloudCode,
-          onJoinCloudCode: _joinCloudCode,
-          onClearCloudCode: _clearCloudCode,
-        );
-        break;
-    }
+    final Widget content = switch (screen) {
+      CyScreen.home => HomeScreen(
+        notes: ordered,
+        sort: _sort,
+        onSortChanged: _setSort,
+        onOpenNote: (n) => _openNote(n, CyScreen.home),
+        onSearch: _goSearch,
+        onSettings: _goSettings,
+        onAddNote: _addNote,
+        onLongPressNote: _confirmDeleteNote,
+      ),
+      CyScreen.search => SearchScreen(
+        notes: ordered,
+        initialQuery: widget.preview?.searchQuery ?? '',
+        onOpenNote: (n) => _openNote(n, CyScreen.search),
+        onBack: _goHome,
+      ),
+      CyScreen.editor => EditorScreen(
+        key: ValueKey(active!.id),
+        note: active,
+        syncStatus: _syncStatus,
+        onBack: _closeEditor,
+        onTitleChanged: _onTitleChanged,
+        onBodyChanged: _onBodyChanged,
+        onSyncTap: _onSyncTap,
+        autofocusBody: _newNoteId == active.id || widget.preview?.caret != null,
+        initialCaret: widget.preview?.caret,
+      ),
+      CyScreen.settings => SettingsScreen(
+        darkMode: dark,
+        followsSystem: widget.followsSystemTheme,
+        onBack: _closeSettings,
+        onDarkModeChanged: widget.onDarkModeChanged,
+        syncCode: _syncCode,
+        syncStatus: _syncStatus,
+        onCreateSyncCode: _createSyncCode,
+        onJoinSyncCode: _joinSyncCode,
+        onLeaveSync: _leaveSync,
+        version: _version,
+      ),
+    };
 
-    // Whether the system back gesture/button should be handled by us
-    // instead of the OS default (which would exit the app, since this
-    // screen stack has no Navigator routes to pop) - only sync/home have
-    // nowhere of ours left to go back to.
-    final canSystemPop = _screen == CyScreen.home || _screen == CyScreen.sync;
+    // The system back gesture or button goes back a screen; only home leaves
+    // the app (this screen stack has no Navigator routes of its own).
+    final canSystemPop = screen == CyScreen.home;
 
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      // The status bar sits on the iron header, dark green in both themes,
-      // so its icons stay light - except on the sync screen, which is plain
-      // paper all the way up.
-      value: _screen == CyScreen.sync && !_darkMode ? SystemUiOverlayStyle.dark : SystemUiOverlayStyle.light,
+      value: SystemUiOverlayStyle(
+        statusBarColor: const Color(0x00000000),
+        statusBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: dark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor: const Color(0x00000000),
+        systemNavigationBarIconBrightness: dark ? Brightness.light : Brightness.dark,
+        systemNavigationBarContrastEnforced: false,
+      ),
       child: PopScope(
         canPop: canSystemPop,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
-          if (_screen == CyScreen.editor) {
-            _closeEditor();
-          } else {
-            _goHome();
+          switch (screen) {
+            case CyScreen.editor:
+              _closeEditor();
+            case CyScreen.settings:
+              _closeSettings();
+            case CyScreen.search:
+            case CyScreen.home:
+              _goHome();
           }
         },
-        child: Scaffold(
-          backgroundColor: t.paper,
-          body: LayoutBuilder(
-            builder: (context, constraints) {
-              final isPhoneSized = constraints.maxWidth <= 430;
-              final screenCard = ClipRRect(
-                borderRadius: BorderRadius.circular(isPhoneSized ? 0 : 20),
-                child: content,
-              );
-
-              if (isPhoneSized) {
-                return screenCard;
-              }
-
-              return Container(
-                color: _darkMode ? const Color(0xFF070F0C) : const Color(0xFFE4DECB),
-                child: Center(
-                  child: Container(
-                    width: 390,
-                    height: 844,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: t.rule),
-                      boxShadow: [BoxShadow(color: t.shadow, blurRadius: 50, offset: const Offset(0, 24))],
-                    ),
-                    child: screenCard,
-                  ),
+        // On a tablet or a wide window the screens keep a phone-like measure,
+        // centred on the page.
+        child: ColoredBox(
+          color: c.page,
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 720),
+              child: AnimatedSwitcher(
+                duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : Durations.short4,
+                child: KeyedSubtree(
+                  key: ValueKey(screen == CyScreen.editor ? 'editor:${active!.id}' : screen.name),
+                  child: content,
                 ),
-              );
-            },
+              ),
+            ),
           ),
         ),
       ),

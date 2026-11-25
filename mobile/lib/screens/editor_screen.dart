@@ -1,31 +1,47 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
 import '../icons.dart';
 import '../models/note.dart';
+import '../sync/cloud_sync.dart';
 import '../theme.dart';
-import '../widgets/greenhouse.dart';
 
-export '../widgets/greenhouse.dart' show SyncState;
+// The page's geometry, in logical pixels. The red margin rule runs at
+// [_marginX]; the text starts [_textLeft] from the edge.
+const _marginX = 24.0;
+const _textLeft = 36.0;
+const _textRight = 16.0;
+const _topPad = 12.0;
+const _bottomPad = 12.0;
 
 class EditorScreen extends StatefulWidget {
-  final CyColors t;
   final Note note;
-  final SyncState syncStatus;
+  final SyncStatus syncStatus;
   final VoidCallback onBack;
   final void Function(String title) onTitleChanged;
   final void Function(String body) onBodyChanged;
 
-  /// Tapping the sync pill: save (and so sync) right away.
-  final VoidCallback onRetrySync;
+  /// The sync state in the status bar was tapped: save and sync now.
+  final VoidCallback onSyncTap;
+
+  /// Put the caret in the body on open (a new note).
+  final bool autofocusBody;
+
+  /// Where the caret goes when [autofocusBody] is set (end of the text by default).
+  final int? initialCaret;
 
   const EditorScreen({
     super.key,
-    required this.t,
     required this.note,
     required this.syncStatus,
     required this.onBack,
     required this.onTitleChanged,
     required this.onBodyChanged,
-    required this.onRetrySync,
+    required this.onSyncTap,
+    this.autofocusBody = false,
+    this.initialCaret,
   });
 
   @override
@@ -34,18 +50,24 @@ class EditorScreen extends StatefulWidget {
 
 /// What the formatting sheet can drop into the note.
 enum _Format {
-  bullets('•', 'Lista com marcadores', '• '),
-  numbered('1.', 'Lista numerada', '1. '),
-  checkbox('[ ]', 'Caixa de seleção', '[ ] '),
-  dateTime('12:00', 'Inserir data e hora', null);
+  bullets('Lista com marcadores', '• '),
+  numbered('Lista numerada', '1. '),
+  checkbox('Caixa de seleção', '[ ] '),
+  dateTime('Inserir data e hora', null);
 
-  final String glyph;
   final String label;
 
   /// Text put at the start of the current line; null means "insert the
   /// current date and time at the cursor".
   final String? linePrefix;
-  const _Format(this.glyph, this.label, this.linePrefix);
+  const _Format(this.label, this.linePrefix);
+
+  Widget get icon => switch (this) {
+    _Format.bullets => const BulletListIcon(),
+    _Format.numbered => const NumberedListIcon(),
+    _Format.checkbox => const CheckBoxIcon(),
+    _Format.dateTime => const DateTimeIcon(),
+  };
 }
 
 class _EditorScreenState extends State<EditorScreen> {
@@ -55,14 +77,28 @@ class _EditorScreenState extends State<EditorScreen> {
   final _bodyFocus = FocusNode();
   // Shared across both fields: Flutter tracks which one is focused and
   // undoes/redoes into that field only, so one pair of buttons works for
-  // title and body without us having to track focus ourselves.
+  // title and body.
   final UndoHistoryController _undoController = UndoHistoryController();
-  bool _sheetOpen = false;
+  final _pageKey = GlobalKey();
+
+  /// The visual row (wrapped rows count) that holds the caret, while the
+  /// body has focus. Its rule is drawn in the accent.
+  final _caretRow = ValueNotifier<int?>(null);
+  bool _caretRowScheduled = false;
+  double _pitch = CyNoteType.pitch;
 
   @override
   void initState() {
     super.initState();
-    _titleFocus.addListener(() => setState(() {}));
+    _bodyController.addListener(_scheduleCaretRow);
+    _bodyFocus.addListener(_scheduleCaretRow);
+    if (widget.autofocusBody) {
+      final at = (widget.initialCaret ?? widget.note.body.length).clamp(0, widget.note.body.length);
+      _bodyController.selection = TextSelection.collapsed(offset: at);
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _bodyFocus.requestFocus();
+      });
+    }
   }
 
   @override
@@ -72,11 +108,12 @@ class _EditorScreenState extends State<EditorScreen> {
     _titleFocus.dispose();
     _bodyFocus.dispose();
     _undoController.dispose();
+    _caretRow.dispose();
     super.dispose();
   }
 
   // Typing keeps the note and the fields equal, so a mismatch means sync
-  // replaced this note with a newer version - show it, instead of letting the
+  // replaced this note with a newer version: show it, instead of letting the
   // next keystroke write the old text straight back over it.
   @override
   void didUpdateWidget(covariant EditorScreen oldWidget) {
@@ -94,18 +131,83 @@ class _EditorScreenState extends State<EditorScreen> {
     );
   }
 
+  // ------------------------------------------------------- the caret's row
+
+  /// The caret's row is read from the laid-out text, so it is measured after
+  /// the frame that lays out the latest text and selection.
+  void _scheduleCaretRow() {
+    if (_caretRowScheduled) return;
+    _caretRowScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _caretRowScheduled = false;
+      _updateCaretRow();
+    });
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  void _updateCaretRow() {
+    if (!mounted) return;
+    int? row;
+    final selection = _bodyController.selection;
+    final page = _pageKey.currentContext?.findRenderObject();
+    if (_bodyFocus.hasFocus && selection.isValid && page is RenderBox && page.hasSize) {
+      final editable = _findEditable(page);
+      if (editable != null && editable.hasSize) {
+        final caret = editable.getLocalRectForCaret(
+          TextPosition(offset: selection.extentOffset, affinity: selection.affinity),
+        );
+        final y = editable.localToGlobal(caret.center, ancestor: page).dy;
+        row = ((y - _topPad) / _pitch).floor();
+      }
+    }
+    _caretRow.value = row;
+  }
+
+  static RenderEditable? _findEditable(RenderObject node) {
+    if (node is RenderEditable) return node;
+    RenderEditable? found;
+    node.visitChildren((child) => found ??= _findEditable(child));
+    return found;
+  }
+
+  /// The height of one row of note text at the current text size: the strut
+  /// fixes it, this reads it back.
+  double _measurePitch(TextScaler scaler) {
+    final painter = TextPainter(
+      text: TextSpan(text: 'Ág', style: CyNoteType.style(const Color(0xFF000000))),
+      strutStyle: CyNoteType.strut,
+      textDirection: TextDirection.ltr,
+      textScaler: scaler,
+    )..layout();
+    final height = painter.preferredLineHeight;
+    painter.dispose();
+    return height;
+  }
+
+  // ------------------------------------------------------------ formatting
+
   Future<void> _openSheet() async {
-    setState(() => _sheetOpen = true);
-    final t = widget.t;
     final picked = await showModalBottomSheet<_Format>(
       context: context,
-      backgroundColor: const Color(0x00000000),
-      barrierColor: t.scrim,
-      sheetAnimationStyle: const AnimationStyle(duration: Duration(milliseconds: 320), curve: CyMotion.grow),
-      builder: (ctx) => _FormatSheet(t: t),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              for (final format in _Format.values)
+                ListTile(
+                  leading: format.icon,
+                  title: Text(format.label),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 24),
+                  onTap: () => Navigator.of(ctx).pop(format),
+                ),
+            ],
+          ),
+        ),
+      ),
     );
     if (!mounted) return;
-    setState(() => _sheetOpen = false);
     if (picked != null) _applyFormat(picked);
   }
 
@@ -133,250 +235,282 @@ class _EditorScreenState extends State<EditorScreen> {
     _bodyFocus.requestFocus();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final t = widget.t;
-    final sync = widget.syncStatus;
-    return GreenhouseScreen(
-      t: t,
-      header: [
-        Medallion(
-          t: t,
-          onTap: widget.onBack,
-          child: BackChevronIcon(color: t.frameInk),
-        ),
-        const SizedBox(width: 6),
-        Expanded(
-          child: Container(
-            height: 40,
-            alignment: Alignment.centerLeft,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
-            decoration: BoxDecoration(
-              border: Border(bottom: BorderSide(color: _titleFocus.hasFocus ? t.gold : const Color(0x00000000))),
-            ),
-            child: TextField(
-              controller: _titleController,
-              focusNode: _titleFocus,
-              undoController: _undoController,
-              onChanged: widget.onTitleChanged,
-              cursorColor: t.gold,
-              style: CyType.display(19, t.frameInk, letterSpacing: 0.38),
-              decoration: InputDecoration(
-                isDense: true,
-                border: InputBorder.none,
-                hintText: 'Sem título',
-                hintStyle: CyType.display(19, t.frameInkSoft, letterSpacing: 0.38),
-              ),
-            ),
-          ),
-        ),
-        ValueListenableBuilder(
-          valueListenable: _undoController,
-          builder: (context, value, _) => Medallion(
-            t: t,
-            bordered: false,
-            enabled: value.canUndo,
-            onTap: _undoController.undo,
-            child: UndoIcon(color: t.frameInk),
-          ),
-        ),
-        ValueListenableBuilder(
-          valueListenable: _undoController,
-          builder: (context, value, _) => Medallion(
-            t: t,
-            bordered: false,
-            enabled: value.canRedo,
-            onTap: _undoController.redo,
-            child: RedoIcon(color: t.frameInk),
-          ),
-        ),
-        Medallion(
-          t: t,
-          active: _sheetOpen,
-          onTap: _openSheet,
-          child: Text('Aa', style: CyType.display(17, _sheetOpen ? t.frame2 : t.frameInk, height: 1)),
-        ),
-      ],
-      body: AnimatedContainer(
-        duration: const Duration(milliseconds: 500),
-        color: t.paper,
-        child: Column(
-          children: [
-            Expanded(
-              child: Stack(
-                children: [
-                  // The fine rule framing the page.
-                  Positioned(
-                    left: 10,
-                    right: 10,
-                    top: 8,
-                    bottom: 8,
-                    child: IgnorePointer(
-                      child: DecoratedBox(
-                        decoration: BoxDecoration(
-                          border: Border.all(color: t.rule),
-                          borderRadius: BorderRadius.circular(3),
-                        ),
-                      ),
-                    ),
-                  ),
-                  Positioned.fill(
-                    child: TextField(
-                      controller: _bodyController,
-                      focusNode: _bodyFocus,
-                      undoController: _undoController,
-                      onChanged: widget.onBodyChanged,
-                      maxLines: null,
-                      expands: true,
-                      textAlignVertical: TextAlignVertical.top,
-                      cursorColor: t.accent,
-                      style: CyType.body(16.5, t.ink, height: 1.7),
-                      decoration: InputDecoration(
-                        isDense: true,
-                        border: InputBorder.none,
-                        contentPadding: const EdgeInsets.fromLTRB(26, ArchHeader.overhang + 4, 26, 24),
-                        hintText: 'Plante a primeira linha…',
-                        hintStyle: CyType.body(16.5, t.inkFaint, height: 1.7),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 500),
-              color: t.frame,
-              padding: EdgeInsets.fromLTRB(20, 6, 20, 18 + MediaQuery.paddingOf(context).bottom),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Flexible(
-                    child: Tooltip(
-                      message: sync == SyncState.error ? 'Tocar para tentar de novo' : 'Sincronização',
-                      child: Pressable(
-                        onTap: widget.onRetrySync,
-                        builder: (context, pressed) => Container(
-                          height: kTouchTarget,
-                          padding: const EdgeInsets.fromLTRB(8, 0, 12, 0),
-                          decoration: BoxDecoration(
-                            color: pressed ? t.goldSoft : null,
-                            border: Border.all(color: t.goldLine),
-                            borderRadius: BorderRadius.circular(999),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              SyncFlower(t: t, status: sync),
-                              const SizedBox(width: 7),
-                              Flexible(
-                                child: Text(
-                                  syncLabel(sync),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: CyType.ui(13, sync == SyncState.error ? t.alert : t.frameInkSoft),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  ValueListenableBuilder(
-                    valueListenable: _bodyController,
-                    builder: (context, value, _) => Text(
-                      '${value.text.length} caracteres',
-                      style: CyType.ui(
-                        12.5,
-                        t.frameInkSoft,
-                      ).copyWith(fontFeatures: const [FontFeature.tabularFigures()]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-/// The formatting sheet: rises from the bottom, with a handle and a vine.
-class _FormatSheet extends StatelessWidget {
-  final CyColors t;
-  const _FormatSheet({required this.t});
+  // ----------------------------------------------------------------- build
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.fromLTRB(14, 10, 14, 30 + MediaQuery.paddingOf(context).bottom),
-      decoration: BoxDecoration(
-        color: t.paper,
-        border: Border(top: BorderSide(color: t.goldLine)),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(26)),
-        boxShadow: [BoxShadow(color: t.shadow, blurRadius: 30, offset: const Offset(0, -10))],
+    final c = CyColors.of(context);
+    final text = Theme.of(context).textTheme;
+    _pitch = _measurePitch(MediaQuery.textScalerOf(context));
+
+    return Scaffold(
+      appBar: AppBar(
+        leading: IconButton(tooltip: 'Voltar', onPressed: widget.onBack, icon: const BackChevronIcon()),
+        titleSpacing: 0,
+        title: TextField(
+          controller: _titleController,
+          focusNode: _titleFocus,
+          undoController: _undoController,
+          onChanged: widget.onTitleChanged,
+          maxLines: 1,
+          textCapitalization: TextCapitalization.sentences,
+          textInputAction: TextInputAction.next,
+          onEditingComplete: () => _bodyFocus.requestFocus(),
+          style: text.titleLarge,
+          decoration: InputDecoration.collapsed(
+            hintText: 'Sem título',
+            hintStyle: text.titleLarge!.copyWith(color: c.inkSoft),
+          ),
+        ),
+        actions: [
+          ValueListenableBuilder(
+            valueListenable: _undoController,
+            builder: (context, value, _) => IconButton(
+              tooltip: 'Desfazer',
+              onPressed: value.canUndo ? _undoController.undo : null,
+              icon: const UndoIcon(),
+            ),
+          ),
+          ValueListenableBuilder(
+            valueListenable: _undoController,
+            builder: (context, value, _) => IconButton(
+              tooltip: 'Refazer',
+              onPressed: value.canRedo ? _undoController.redo : null,
+              icon: const RedoIcon(),
+            ),
+          ),
+          IconButton(tooltip: 'Formatação', onPressed: _openSheet, icon: const FormatIcon()),
+          const SizedBox(width: 4),
+        ],
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+      body: Column(
         children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              margin: const EdgeInsets.only(bottom: 10),
-              decoration: BoxDecoration(color: t.rule, borderRadius: BorderRadius.circular(4)),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-            child: Row(
-              children: [
-                Text('Formatação', style: CyType.display(17, t.ink, letterSpacing: 0.5)),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: VineUnderline(t: t, width: double.infinity),
-                ),
-              ],
-            ),
-          ),
-          for (var i = 0; i < _Format.values.length; i++)
-            RiseIn(
-              delay: Duration(milliseconds: 60 + i * 40),
-              child: _FormatItem(
-                t: t,
-                format: _Format.values[i],
-                onTap: () => Navigator.of(context).pop(_Format.values[i]),
-              ),
-            ),
+          Expanded(child: _page(c)),
+          _StatusBar(status: widget.syncStatus, controller: _bodyController, onSyncTap: widget.onSyncTap),
         ],
       ),
     );
   }
+
+  /// The ruled page: the body field over its rules, scrolling together.
+  Widget _page(CyColors c) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final viewport = constraints.maxHeight;
+        // Enough rows to fill the page, so a tap anywhere lands in the text
+        // and the rules run to the bottom edge.
+        final rows = math.max(1, ((viewport - _topPad - _bottomPad) / _pitch).floor());
+        _scheduleCaretRow();
+        return SingleChildScrollView(
+          keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
+          child: ConstrainedBox(
+            constraints: BoxConstraints(minHeight: viewport),
+            child: CustomPaint(
+              key: _pageKey,
+              painter: _RulesPainter(
+                pitch: _pitch,
+                rule: c.rule,
+                current: c.accent,
+                margin: c.margin,
+                caretRow: _caretRow,
+                devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
+              ),
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(_textLeft, _topPad, _textRight, _bottomPad),
+                child: TextField(
+                  controller: _bodyController,
+                  focusNode: _bodyFocus,
+                  undoController: _undoController,
+                  onChanged: widget.onBodyChanged,
+                  keyboardType: TextInputType.multiline,
+                  textCapitalization: TextCapitalization.sentences,
+                  maxLines: null,
+                  minLines: rows,
+                  style: CyNoteType.style(c.ink),
+                  strutStyle: CyNoteType.strut,
+                  cursorColor: c.accent,
+                  decoration: InputDecoration.collapsed(
+                    hintText: 'Escreva aqui',
+                    hintStyle: CyNoteType.style(c.inkFaint),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 }
 
-class _FormatItem extends StatelessWidget {
-  final CyColors t;
-  final _Format format;
-  final VoidCallback onTap;
-  const _FormatItem({required this.t, required this.format, required this.onTap});
+/// The steno page: a rule at the foot of every row of text, all the way down,
+/// the caret's row in the accent, and the red margin rule on the left.
+class _RulesPainter extends CustomPainter {
+  final double pitch;
+  final Color rule;
+  final Color current;
+  final Color margin;
+  final ValueNotifier<int?> caretRow;
+  final double devicePixelRatio;
+
+  _RulesPainter({
+    required this.pitch,
+    required this.rule,
+    required this.current,
+    required this.margin,
+    required this.caretRow,
+    required this.devicePixelRatio,
+  }) : super(repaint: caretRow);
+
+  /// [v] on a whole device pixel, so a 1 dp rule stays crisp.
+  double _snap(double v) => (v * devicePixelRatio).round() / devicePixelRatio;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final ruleHeight = _snap(1).clamp(1 / devicePixelRatio, 2.0);
+    final rulePaint = Paint()..color = rule;
+    final caret = caretRow.value;
+    // Row i spans [top + i*pitch, top + (i+1)*pitch); its rule is the last
+    // pixel of that span, exactly as on the desktop.
+    for (var i = 0; ; i++) {
+      final y = _snap(_topPad + (i + 1) * pitch - ruleHeight);
+      if (y + ruleHeight > size.height) break;
+      canvas.drawRect(Rect.fromLTWH(0, y, size.width, ruleHeight), i == caret ? (Paint()..color = current) : rulePaint);
+    }
+    final x = _snap(_marginX);
+    canvas.drawRect(Rect.fromLTWH(x, 0, ruleHeight, size.height), Paint()..color = margin);
+  }
+
+  @override
+  bool shouldRepaint(_RulesPainter old) =>
+      old.pitch != pitch ||
+      old.rule != rule ||
+      old.current != current ||
+      old.margin != margin ||
+      old.caretRow != caretRow ||
+      old.devicePixelRatio != devicePixelRatio;
+}
+
+/// Thousands with a dot, as in pt-BR.
+String _thousands(int n) {
+  final digits = n.toString();
+  final out = StringBuffer();
+  for (var i = 0; i < digits.length; i++) {
+    if (i > 0 && (digits.length - i) % 3 == 0) out.write('.');
+    out.write(digits[i]);
+  }
+  return out.toString();
+}
+
+String characterCountLabel(String text) {
+  final n = text.characters.length;
+  return n == 1 ? '1 caractere' : '${_thousands(n)} caracteres';
+}
+
+/// Short names for the sync state, the same as the desktop status bar.
+String syncStateLabel(SyncPhase phase) => switch (phase) {
+  SyncPhase.off => 'Sincronização desligada',
+  SyncPhase.syncing => 'Sincronizando…',
+  SyncPhase.synced => 'Sincronizado',
+  SyncPhase.offline => 'Sem conexão',
+  SyncPhase.denied => 'Acesso recusado',
+  SyncPhase.error => 'Erro ao sincronizar',
+};
+
+String _syncHint(SyncPhase phase) => switch (phase) {
+  SyncPhase.off => 'Toque para ligar a sincronização',
+  SyncPhase.syncing => 'Sincronizando as notas',
+  SyncPhase.synced => 'Toque para sincronizar agora',
+  SyncPhase.offline => 'Tento de novo sozinho. Toque para tentar agora',
+  SyncPhase.denied => 'Toque para tentar de novo',
+  SyncPhase.error => 'Toque para tentar de novo',
+};
+
+/// The pad's cover at the foot of the page: sync state on the left (tap to
+/// sync now), the character count on the right.
+class _StatusBar extends StatelessWidget {
+  final SyncStatus status;
+  final TextEditingController controller;
+  final VoidCallback onSyncTap;
+  const _StatusBar({required this.status, required this.controller, required this.onSyncTap});
 
   @override
   Widget build(BuildContext context) {
-    return Pressable(
-      onTap: onTap,
-      pressedScale: 0.98,
-      builder: (context, pressed) => Container(
-        height: 50,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(color: pressed ? t.goldSoft : null, borderRadius: BorderRadius.circular(12)),
-        child: Row(
-          children: [
-            SizedBox(width: 48, child: Text(format.glyph, style: CyType.mono(13, t.accent))),
-            Expanded(child: Text(format.label, style: CyType.ui(15, t.ink))),
-          ],
+    final c = CyColors.of(context);
+    final label = Theme.of(context).textTheme.labelMedium!.copyWith(color: c.coverInk);
+    final phase = status.phase;
+    final warn = phase == SyncPhase.offline || phase == SyncPhase.denied || phase == SyncPhase.error;
+    final iconColor = warn ? c.coverAlert : c.coverInk;
+    final icon = switch (phase) {
+      SyncPhase.off || SyncPhase.offline => SyncOffIcon(size: 18, color: iconColor),
+      SyncPhase.syncing => SyncingIcon(size: 18, color: iconColor),
+      SyncPhase.synced => SyncedIcon(size: 18, color: iconColor),
+      SyncPhase.denied || SyncPhase.error => SyncProblemIcon(size: 18, color: iconColor),
+    };
+
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      // The navigation bar sits on the cover, dark in both themes.
+      value: const SystemUiOverlayStyle(
+        systemNavigationBarColor: Color(0x00000000),
+        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarContrastEnforced: false,
+      ),
+      child: Material(
+        color: c.cover,
+        child: SafeArea(
+          top: false,
+          child: SizedBox(
+            height: 48,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Flexible(
+                        child: Tooltip(
+                          message: _syncHint(phase),
+                          child: InkWell(
+                            onTap: onSyncTap,
+                            splashColor: c.coverInk.withValues(alpha: 0.12),
+                            highlightColor: c.coverInk.withValues(alpha: 0.08),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  icon,
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      syncStateLabel(phase),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: label,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Padding(
+                  padding: const EdgeInsets.only(left: 8, right: 16),
+                  child: Center(
+                    child: ValueListenableBuilder(
+                      valueListenable: controller,
+                      builder: (context, value, _) => Text(characterCountLabel(value.text), style: tabular(label)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
       ),
     );

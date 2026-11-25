@@ -15,12 +15,7 @@ class MobileUpdate {
   final String notes;
   final String apkUrl;
 
-  const MobileUpdate({
-    required this.buildNumber,
-    required this.version,
-    required this.notes,
-    required this.apkUrl,
-  });
+  const MobileUpdate({required this.buildNumber, required this.version, required this.notes, required this.apkUrl});
 }
 
 const _manifestUrl = 'https://github.com/costanoy/Cynote/releases/latest/download/latest-android.json';

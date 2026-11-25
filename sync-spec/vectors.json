@@ -1,0 +1,1063 @@
+{
+  "description": "Shared test vectors for Cynote sync v2 reconcile(). Both desktop/src/sync/reconcile.ts and mobile/lib/sync/reconcile.dart must produce `expected` from `input`. newId() returns c1, c2, ... in call order. Generated from the TypeScript reference; every case was reviewed by hand.",
+  "tombstoneHash": "79b141b4",
+  "hashExamples": [
+    {
+      "title": "Compras",
+      "body": "pão",
+      "deleted": false,
+      "hash": "3b9e782a"
+    },
+    {
+      "title": "",
+      "body": "",
+      "deleted": true,
+      "hash": "79b141b4"
+    },
+    {
+      "title": "Ação ✓",
+      "body": "linha 1\nlinha 2 😀",
+      "deleted": false,
+      "hash": "6adc9c96"
+    }
+  ],
+  "cases": [
+    {
+      "name": "new-local-note-is-pushed",
+      "why": "A note that exists only here goes to the cloud.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão\nleite",
+            "u": 100
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {},
+        "base": {}
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão\nleite",
+            "u": 100,
+            "d": "A",
+            "p": ""
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "f6f56669",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "blank-new-note-waits",
+      "why": "An empty 'Nova nota' is not uploaded until it has content.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Nova nota",
+            "body": "",
+            "u": 100
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {},
+        "base": {}
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {}
+      }
+    },
+    {
+      "name": "remote-note-is-imported",
+      "why": "A note created on the other device appears here.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n2": {
+            "t": "Ideias",
+            "b": "rever sync",
+            "u": 200,
+            "d": "B"
+          }
+        },
+        "base": {}
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "n2",
+            "title": "Ideias",
+            "body": "rever sync",
+            "u": 200
+          }
+        ],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {
+          "n2": {
+            "h": "83c54003",
+            "m": false
+          }
+        }
+      }
+    },
+    {
+      "name": "unknown-remote-tombstone-is-only-recorded",
+      "why": "A note deleted elsewhere that this device never had is just remembered.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n3": {
+            "t": "",
+            "b": "",
+            "u": 300,
+            "d": "B",
+            "x": true
+          }
+        },
+        "base": {}
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {
+          "n3": {
+            "h": "79b141b4",
+            "m": false
+          }
+        }
+      }
+    },
+    {
+      "name": "same-text-agrees",
+      "why": "Both sides already match: only the base is recorded.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão",
+            "u": 100
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão",
+            "u": 150,
+            "d": "B"
+          }
+        },
+        "base": {}
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": false
+          }
+        }
+      }
+    },
+    {
+      "name": "local-edit-is-pushed",
+      "why": "Edited here, unchanged in the cloud: upload, based on the agreed version.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão\nleite",
+            "u": 200
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão",
+            "u": 100,
+            "d": "B"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão\nleite",
+            "u": 200,
+            "d": "A",
+            "p": "3b9e782a"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "f6f56669",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "remote-edit-is-taken",
+      "why": "Edited elsewhere, unchanged here: take the new text.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão",
+            "u": 100
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão\ncafé",
+            "u": 300,
+            "d": "B",
+            "p": "3b9e782a"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão\ncafé",
+            "u": 300
+          }
+        ],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {
+          "n1": {
+            "h": "f62191d1",
+            "m": false
+          }
+        }
+      }
+    },
+    {
+      "name": "remote-delete-is-applied",
+      "why": "Deleted elsewhere, unchanged here: delete here too.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão",
+            "u": 100
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "",
+            "b": "",
+            "u": 400,
+            "d": "B",
+            "p": "3b9e782a",
+            "x": true
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [
+          {
+            "id": "n1",
+            "deletedAt": 400
+          }
+        ],
+        "undeletes": [],
+        "push": {},
+        "base": {
+          "n1": {
+            "h": "79b141b4",
+            "m": false
+          }
+        }
+      }
+    },
+    {
+      "name": "local-delete-is-pushed",
+      "why": "Deleted here, unchanged in the cloud: announce the deletion.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [],
+        "deleted": {
+          "n1": 300
+        },
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão",
+            "u": 100,
+            "d": "B"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "n1": {
+            "t": "",
+            "b": "",
+            "u": 300,
+            "d": "A",
+            "p": "3b9e782a",
+            "x": true
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "79b141b4",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "delete-here-loses-to-edit-elsewhere",
+      "why": "Deleted here but edited elsewhere: the edit wins and the note comes back.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [],
+        "deleted": {
+          "n1": 300
+        },
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão\nleite",
+            "u": 350,
+            "d": "B",
+            "p": "3b9e782a"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão\nleite",
+            "u": 350
+          }
+        ],
+        "removals": [],
+        "undeletes": [
+          "n1"
+        ],
+        "push": {},
+        "base": {
+          "n1": {
+            "h": "f6f56669",
+            "m": false
+          }
+        }
+      }
+    },
+    {
+      "name": "edit-here-beats-delete-elsewhere",
+      "why": "Edited here but deleted elsewhere: the edit wins and is uploaded.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão\nleite",
+            "u": 300
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "",
+            "b": "",
+            "u": 350,
+            "d": "B",
+            "p": "3b9e782a",
+            "x": true
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão\nleite",
+            "u": 300,
+            "d": "A",
+            "p": "79b141b4"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "f6f56669",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "both-edited-remote-newer",
+      "why": "Both edited: the later edit stays and this device's text becomes a copy.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Roteiro",
+            "body": "abertura\nmeio\nfala local",
+            "u": 200
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Roteiro",
+            "b": "abertura\nmeio\nfala remota",
+            "u": 300,
+            "d": "B",
+            "p": "4033479d"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "4033479d",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "n1",
+            "title": "Roteiro",
+            "body": "abertura\nmeio\nfala remota",
+            "u": 300
+          },
+          {
+            "id": "c1",
+            "title": "Roteiro (conflito)",
+            "body": "abertura\nmeio\nfala local",
+            "u": 5000
+          }
+        ],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "c1": {
+            "t": "Roteiro (conflito)",
+            "b": "abertura\nmeio\nfala local",
+            "u": 5000,
+            "d": "A",
+            "p": ""
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "f63f6bcf",
+            "m": false
+          },
+          "c1": {
+            "h": "1a01e76b",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "both-edited-local-newer",
+      "why": "Both edited, this one later: upload it and keep the other text as a copy.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Roteiro",
+            "body": "abertura\nmeio\nfala local",
+            "u": 400
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Roteiro",
+            "b": "abertura\nmeio\nfala remota",
+            "u": 300,
+            "d": "B",
+            "p": "4033479d"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "4033479d",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "c1",
+            "title": "Roteiro (conflito)",
+            "body": "abertura\nmeio\nfala remota",
+            "u": 5000
+          }
+        ],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "n1": {
+            "t": "Roteiro",
+            "b": "abertura\nmeio\nfala local",
+            "u": 400,
+            "d": "A",
+            "p": "f63f6bcf"
+          },
+          "c1": {
+            "t": "Roteiro (conflito)",
+            "b": "abertura\nmeio\nfala remota",
+            "u": 5000,
+            "d": "A",
+            "p": ""
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "8115b6a0",
+            "m": true
+          },
+          "c1": {
+            "h": "0ac0140a",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "both-edited-loser-has-nothing-new",
+      "why": "No copy when every line of the losing text is in the winner.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Lista",
+            "body": "a\nb",
+            "u": 200
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Lista",
+            "b": "a\nb\nc\nd",
+            "u": 300,
+            "d": "B",
+            "p": "85a89270"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "85a89270",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "n1",
+            "title": "Lista",
+            "body": "a\nb\nc\nd",
+            "u": 300
+          }
+        ],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {
+          "n1": {
+            "h": "c7dbd5ce",
+            "m": false
+          }
+        }
+      }
+    },
+    {
+      "name": "both-edited-same-time-tie-break",
+      "why": "Same timestamp: the larger hash wins on both devices.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Lista",
+            "body": "x\nlocal",
+            "u": 500
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Lista",
+            "b": "x\nremoto",
+            "u": 500,
+            "d": "B",
+            "p": "abe5d158"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "abe5d158",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "n1",
+            "title": "Lista",
+            "body": "x\nremoto",
+            "u": 500
+          },
+          {
+            "id": "c1",
+            "title": "Lista (conflito)",
+            "body": "x\nlocal",
+            "u": 5000
+          }
+        ],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "c1": {
+            "t": "Lista (conflito)",
+            "b": "x\nlocal",
+            "u": 5000,
+            "d": "A",
+            "p": ""
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "5038fc02",
+            "m": false
+          },
+          "c1": {
+            "h": "fb5c28ce",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "own-push-overwritten-is-a-conflict",
+      "why": "Our upload was replaced by an edit that never saw it: treated as a conflict, nothing lost.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Lista",
+            "body": "a\nnosso",
+            "u": 200
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Lista",
+            "b": "a\ndeles",
+            "u": 300,
+            "d": "B",
+            "p": "652c4cbb"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "1897d7db",
+            "m": true
+          }
+        }
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "n1",
+            "title": "Lista",
+            "body": "a\ndeles",
+            "u": 300
+          },
+          {
+            "id": "c1",
+            "title": "Lista (conflito)",
+            "body": "a\nnosso",
+            "u": 5000
+          }
+        ],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "c1": {
+            "t": "Lista (conflito)",
+            "b": "a\nnosso",
+            "u": 5000,
+            "d": "A",
+            "p": ""
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "9af85c88",
+            "m": false
+          },
+          "c1": {
+            "h": "af8a4628",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "edit-on-top-of-own-push-is-taken",
+      "why": "The other device edited on top of our upload: just take it.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Lista",
+            "body": "a\nnosso",
+            "u": 200
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "Lista",
+            "b": "a\nnosso\ndeles",
+            "u": 300,
+            "d": "B",
+            "p": "1897d7db"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "1897d7db",
+            "m": true
+          }
+        }
+      },
+      "expected": {
+        "upserts": [
+          {
+            "id": "n1",
+            "title": "Lista",
+            "body": "a\nnosso\ndeles",
+            "u": 300
+          }
+        ],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {
+          "n1": {
+            "h": "78463c68",
+            "m": false
+          }
+        }
+      }
+    },
+    {
+      "name": "legacy-deleted-id-is-ignored",
+      "why": "Notes deleted before sync v2 are never brought back.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [],
+        "deleted": {},
+        "ignored": [
+          "n9"
+        ],
+        "remote": {
+          "n9": {
+            "t": "Antiga",
+            "b": "texto",
+            "u": 100,
+            "d": "B"
+          }
+        },
+        "base": {}
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {}
+      }
+    },
+    {
+      "name": "note-missing-from-cloud-is-uploaded-again",
+      "why": "The cloud lost a note both sides agreed on: upload it again.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n1",
+            "title": "Compras",
+            "body": "pão",
+            "u": 100
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {},
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": true
+          }
+        }
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "n1": {
+            "t": "Compras",
+            "b": "pão",
+            "u": 100,
+            "d": "A",
+            "p": "3b9e782a"
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "invalid-remote-entries-are-ignored",
+      "why": "Malformed entries and ids Firebase cannot store are skipped; the local note is uploaded.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [
+          {
+            "id": "n5",
+            "title": "Válida",
+            "body": "texto",
+            "u": 100
+          }
+        ],
+        "deleted": {},
+        "ignored": [],
+        "remote": {
+          "n5": {
+            "t": "x",
+            "b": "y",
+            "u": "ontem",
+            "d": "B"
+          },
+          "bad.id": {
+            "t": "x",
+            "b": "y",
+            "u": 1,
+            "d": "B"
+          },
+          "n6": "texto solto"
+        },
+        "base": {}
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {
+          "n5": {
+            "t": "Válida",
+            "b": "texto",
+            "u": 100,
+            "d": "A",
+            "p": ""
+          }
+        },
+        "base": {
+          "n5": {
+            "h": "a351f688",
+            "m": true
+          }
+        }
+      }
+    },
+    {
+      "name": "tombstones-on-both-sides-agree",
+      "why": "Deleted on both sides: just agree.",
+      "input": {
+        "me": "A",
+        "now": 5000,
+        "local": [],
+        "deleted": {
+          "n1": 300
+        },
+        "ignored": [],
+        "remote": {
+          "n1": {
+            "t": "",
+            "b": "",
+            "u": 310,
+            "d": "B",
+            "x": true
+          }
+        },
+        "base": {
+          "n1": {
+            "h": "3b9e782a",
+            "m": false
+          }
+        }
+      },
+      "expected": {
+        "upserts": [],
+        "removals": [],
+        "undeletes": [],
+        "push": {},
+        "base": {
+          "n1": {
+            "h": "79b141b4",
+            "m": false
+          }
+        }
+      }
+    }
+  ]
+}

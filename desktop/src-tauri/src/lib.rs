@@ -1,7 +1,6 @@
 mod cloud_sync;
 mod dashboard;
 mod identity;
-mod sync;
 #[cfg(windows)]
 mod taskbar;
 
@@ -236,6 +235,37 @@ pub fn stop_tray_alert() {
     TRAY_ALERTING.store(false, Ordering::SeqCst);
 }
 
+/// Labels of the windows whose webview was last told it's hidden.
+static HIDDEN_WEBVIEWS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+/// Hiding or minimizing a window doesn't reach the WebView2 inside it: unless
+/// told, it goes on painting every frame, and running the page's animations
+/// and timers at full speed, for a window nobody can see. That's most of the
+/// time for Cynote, since closing it only hides it to the tray - so it kept a
+/// good part of a CPU core busy around the clock. Told it's hidden, the page
+/// stops rendering until the window is back on screen.
+fn set_webview_visible(window: &tauri::WebviewWindow, visible: bool) {
+    {
+        let mut hidden = HIDDEN_WEBVIEWS.lock().unwrap();
+        let label = window.label();
+        if hidden.iter().any(|l| l == label) != visible {
+            return; // already that way
+        }
+        if visible {
+            hidden.retain(|l| l != label);
+        } else {
+            hidden.push(label.to_string());
+        }
+    }
+    let webview: &tauri::Webview = window.as_ref();
+    let _ = if visible { webview.show() } else { webview.hide() };
+}
+
+fn hide_window(window: &tauri::WebviewWindow) {
+    set_webview_visible(window, false);
+    let _ = window.hide();
+}
+
 /// show() + set_focus() alone often leaves the window visible but stuck
 /// behind whatever already had focus (Explorer, another app...) - Windows
 /// silently refuses SetForegroundWindow for a process that isn't already
@@ -244,7 +274,8 @@ pub fn stop_tray_alert() {
 /// plugin. Briefly forcing always-on-top isn't subject to that restriction,
 /// so it reliably pulls the window to the front even when focus doesn't
 /// follow.
-fn bring_to_front(window: &tauri::WebviewWindow) {
+pub(crate) fn bring_to_front(window: &tauri::WebviewWindow) {
+    set_webview_visible(window, true);
     let _ = window.unminimize();
     let _ = window.show();
     let _ = window.set_always_on_top(true);
@@ -254,7 +285,7 @@ fn bring_to_front(window: &tauri::WebviewWindow) {
 
 fn toggle_window(window: &tauri::WebviewWindow) {
     if window.is_visible().unwrap_or(false) {
-        let _ = window.hide();
+        hide_window(window);
     } else {
         bring_to_front(window);
     }
@@ -296,8 +327,8 @@ fn show_dashboard_window(app: &AppHandle, popup: bool) {
     let mut builder = tauri::WebviewWindowBuilder::new(app, "dashboard", tauri::WebviewUrl::App(url.into()))
         .title("Dashnotes")
         .decorations(false)
-        .transparent(true)
-        .shadow(false)
+        .transparent(false)
+        .shadow(true)
         .resizable(true);
 
     builder = if popup {
@@ -380,10 +411,6 @@ pub fn run() {
             undo_forced_autostart_once(app.handle());
             dashboard::sync_dashboard_shortcuts(app.handle());
 
-            if let Ok(identity) = identity::load_or_create(app.handle()) {
-                sync::start(app.handle().clone(), identity);
-            }
-
             let args: Vec<String> = std::env::args().collect();
             let launched_as_dashboard = args.iter().any(|a| a == "--dashboard");
 
@@ -391,7 +418,10 @@ pub fn run() {
                 restore_window_geometry(app.handle(), &window);
                 #[cfg(windows)]
                 disable_browser_accelerator_keys(&window);
-                if !launched_as_dashboard {
+                if launched_as_dashboard {
+                    // Stays out of sight until asked for (see bring_to_front).
+                    set_webview_visible(&window, false);
+                } else {
                     let _ = window.show();
                 }
             }
@@ -455,6 +485,23 @@ pub fn run() {
             Ok(())
         })
         .on_window_event(|window, event| {
+            // Every window's webview follows whether it can be seen at all
+            // (see set_webview_visible): minimizing and restoring land here,
+            // hiding and showing go through hide_window and bring_to_front.
+            match event {
+                WindowEvent::Resized(_) | WindowEvent::Focused(true) => {
+                    if let Some(webview) = window.app_handle().get_webview_window(window.label()) {
+                        let minimized = window.is_minimized().unwrap_or(false);
+                        let on_screen = !minimized && window.is_visible().unwrap_or(false);
+                        if minimized || on_screen {
+                            set_webview_visible(&webview, on_screen);
+                        }
+                    }
+                }
+                WindowEvent::Destroyed => HIDDEN_WEBVIEWS.lock().unwrap().retain(|l| l != window.label()),
+                _ => {}
+            }
+
             // The dashboard window is a lightweight, disposable panel - only
             // "main" hides-to-tray and remembers its geometry across launches.
             if window.label() != "main" {
@@ -464,7 +511,12 @@ pub fn run() {
                 WindowEvent::CloseRequested { api, .. } => {
                     api.prevent_close();
                     save_window_geometry(window.app_handle(), window);
-                    let _ = window.hide();
+                    match window.app_handle().get_webview_window(window.label()) {
+                        Some(webview) => hide_window(&webview),
+                        None => {
+                            let _ = window.hide();
+                        }
+                    }
                 }
                 WindowEvent::Resized(_) | WindowEvent::Moved(_) => {
                     save_window_geometry(window.app_handle(), window);
@@ -485,19 +537,11 @@ pub fn run() {
             dashboard::file_exists,
             dashboard::open_note_in_main,
             identity::get_device_identity,
-            sync::list_discovered_devices,
-            sync::list_trusted_devices,
-            sync::list_reachable_trusted_devices,
-            sync::fetch_peer_notes,
-            sync::request_pairing,
-            sync::list_pairing_requests,
-            sync::respond_to_pairing,
             cloud_sync::get_cloud_sync_id,
-            cloud_sync::generate_cloud_sync_id,
             cloud_sync::set_cloud_sync_id,
             cloud_sync::clear_cloud_sync_id,
-            cloud_sync::push_cloud_notes,
-            cloud_sync::fetch_cloud_changes
+            cloud_sync::load_sync_state,
+            cloud_sync::save_sync_state
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

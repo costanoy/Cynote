@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { safeSketches, shiftSketchAnchors, tabsForSync } from "./sketches";
-import type { NoteSketch, TabData } from "./types";
+import { safeSketches, shiftSketchAnchors } from "./sketches";
+import type { NoteSketch } from "./types";
 
 const PNG = "data:image/png;base64,AAAA";
 
@@ -83,28 +83,5 @@ describe("shiftSketchAnchors", () => {
 
   it("passes notes without drawings straight through", () => {
     expect(shiftSketchAnchors(undefined, body, "x")).toBeUndefined();
-  });
-});
-
-describe("tabsForSync", () => {
-  const tab = (sketches: NoteSketch[]): TabData => ({
-    id: "n",
-    title: "T",
-    body: "b",
-    favorite: false,
-    sketches,
-    updatedAt: 1,
-    originDeviceId: "d",
-  });
-
-  it("uploads the picture and placement but keeps the strokes on this computer", () => {
-    const withStrokes = { ...sketch("a", 1), naturalWidth: 100, strokes: [{ tool: "pen" as const, color: "ink" as const, size: 2, points: [0, 0, 1] }] };
-    const [uploaded] = tabsForSync([tab([withStrokes])]);
-    expect(uploaded.sketches[0]).toEqual(sketch("a", 1));
-  });
-
-  it("leaves notes whose drawings have no strokes untouched", () => {
-    const plain = tab([sketch("a")]);
-    expect(tabsForSync([plain])[0]).toBe(plain);
   });
 });

@@ -516,8 +516,8 @@ export function DrawingOverlay({ ref, open, editing, darkMode, onClose, onInsert
 
       <div className="overlay-header">
         <DrawIcon size={13} />
-        <span className="overlay-title">Note Styling</span>
-        <span className="overlay-subtitle">{editing ? "editando o desenho" : "caderno de botânica"}</span>
+        <span className="overlay-title">Desenhar na nota</span>
+        <span className="overlay-subtitle">{editing ? "editando o desenho" : "caneta, marca-texto e borracha"}</span>
       </div>
 
       <div className="draw-dock">

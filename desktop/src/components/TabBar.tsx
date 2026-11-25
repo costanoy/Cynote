@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { TabData } from "../types";
-import { ChevronDownIcon, CloseIcon, GripIcon, Leaf, PlusIcon } from "../icons";
+import { ChevronDownIcon, CloseIcon, GripIcon, PlusIcon } from "../icons";
 
 type Props = {
   tabs: TabData[];
@@ -15,14 +15,6 @@ type Props = {
   onRename: (i: number, title: string) => void;
   isDirty: (tab: TabData) => boolean;
 };
-
-// Each tab is a pane of stained glass, in one of four colors. Picked from the
-// note's id (not its position) so a tab keeps its color when reordered.
-function glassOf(id: string): string {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) >>> 0;
-  return `var(--glass-${h % 4})`;
-}
 
 export function TabBar({
   tabs,
@@ -176,7 +168,6 @@ export function TabBar({
                 (i === draggingIndex ? " dragging" : "") +
                 (renaming ? " renaming" : "")
               }
-              style={{ "--glass": glassOf(tab.id) } as React.CSSProperties}
               title={tab.title}
               onClick={() => select(i)}
               onDoubleClick={() => setRenamingIndex(i)}
@@ -187,8 +178,6 @@ export function TabBar({
                 }
               }}
             >
-              <span className="tab-came" />
-              {i === activeTab && <span className="tab-bloom" />}
               <span
                 className="tab-move"
                 onMouseDown={(e) => onGripMouseDown(e, i)}
@@ -215,27 +204,27 @@ export function TabBar({
               {!renaming && isDirty(tab) && <span className="tab-dirty-dot" title="Alterações não salvas" />}
               <button
                 className="tab-close"
-                title="Fechar guia (Ctrl+W)"
+                title="Fechar nota (Ctrl+W)"
                 onClick={(e) => {
                   e.stopPropagation();
                   onClose(i);
                 }}
               >
-                <CloseIcon size={8} width={2.2} />
+                <CloseIcon size={14} />
               </button>
             </div>
           );
         })}
       </div>
       <div className="tab-bar-actions">
-        <button className="medallion small" onClick={onAdd} title="Nova guia (Ctrl+N ou Ctrl+T)">
+        <button className="icon-btn small" onClick={onAdd} title="Nova nota (Ctrl+N)">
           <PlusIcon />
         </button>
         <button
           ref={menuButtonRef}
-          className={"medallion small" + (tabsMenuOpen ? " active" : "")}
+          className={"icon-btn small" + (tabsMenuOpen ? " active" : "")}
           onClick={onToggleMenu}
-          title="Todas as guias"
+          title="Notas abertas"
         >
           <ChevronDownIcon />
         </button>
@@ -244,28 +233,22 @@ export function TabBar({
         <>
           <div className="menu-backdrop" onClick={onCloseMenu} />
           <div
-            className={"tabs-menu" + (menuAnchor && "left" in menuAnchor ? " from-left" : "")}
+            className="menu tabs-menu"
             style={menuAnchor ?? undefined}
           >
-            <div className="tabs-menu-heading">Todas as guias</div>
+            <div className="menu-heading">Notas abertas</div>
             {tabs.map((tab, i) => (
               <button
                 key={tab.id}
                 className={"menu-item" + (i === activeTab ? " current" : "")}
-                style={{ animationDelay: i * 35 + "ms" }}
                 onClick={() => {
                   onSelect(i);
                   onCloseMenu();
                 }}
               >
-                <span className="tabs-menu-bead" style={{ background: glassOf(tab.id) }} />
                 <span className="menu-item-label">{tab.title}</span>
                 {isDirty(tab) && <span className="tab-dirty-dot" title="Alterações não salvas" />}
-                {tab.favorite && (
-                  <span title="Favorita" style={{ display: "flex" }}>
-                    <Leaf color="var(--gold)" rotate={40} />
-                  </span>
-                )}
+                {tab.favorite && <span className="menu-fav" title="Favorita" />}
               </button>
             ))}
           </div>

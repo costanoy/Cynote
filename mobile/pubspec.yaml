@@ -34,11 +34,8 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  google_fonts: ^8.1.0
-  flutter_svg: ^2.3.0
   path_provider: ^2.1.5
   uuid: ^4.6.0
-  bonsoir: ^6.0.1
   package_info_plus: ^9.0.1
   open_filex: ^4.7.0
 
@@ -70,6 +67,15 @@ flutter:
   #   - images/a_dot_ham.jpeg
   assets:
     - assets/cynote-logo.png
+    - assets/fonts/JetBrainsMono-OFL.txt
+
+  # The note's typeface, bundled (no runtime downloads). JetBrains Mono 2.304,
+  # SIL Open Font License 1.1 (assets/fonts/JetBrainsMono-OFL.txt).
+  fonts:
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Regular.ttf
+          weight: 400
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

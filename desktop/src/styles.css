@@ -1,13 +1,14 @@
-/* Main window. Tokens, the arched header, medallions and the page frame live
-   in theme.css (shared with Dashnotes). */
+/* Main window. Tokens and the window frame live in theme.css (shared with
+   Dashnotes); the editor itself (CodeMirror, the ruled page) in editor.css. */
 
 [contenteditable]:focus,
 [contenteditable]:focus-visible {
   outline: none;
 }
 
-/* ---------------------------------------------------------------- pills */
+/* -------------------------------------------------------------- buttons */
 
+.btn,
 .pill {
   all: unset;
   box-sizing: border-box;
@@ -15,55 +16,113 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 6px;
   height: 28px;
   padding: 0 12px;
-  border: 1px solid var(--field-border);
-  border-radius: 999px;
-  cursor: pointer;
-  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: var(--page-2);
   color: var(--ink);
   font-family: var(--font-ui);
-  font-size: 12.5px;
+  font-size: var(--fs-m);
+  line-height: 1;
   white-space: nowrap;
+  cursor: default;
   transition: var(--t-base);
 }
+.btn:hover,
 .pill:hover {
-  background: var(--paper-2);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);
+  background: var(--page-3);
 }
+.btn:active,
 .pill:active {
-  transform: translateY(0) scale(0.95);
-  box-shadow: 0 1px 2px var(--shadow);
-  filter: brightness(0.94);
+  background: var(--pressed);
 }
-.pill.ghost {
-  border-color: transparent;
-  color: var(--ink-soft);
+.btn:focus-visible,
+.pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
 }
+.btn.primary,
 .pill.primary {
-  border-color: transparent;
-  background: var(--accent);
-  color: var(--accent-ink);
-  font-weight: 500;
-  padding: 0 14px;
+  background: var(--cover);
+  color: var(--cover-ink);
+  font-weight: 600;
 }
+.btn.primary:hover,
 .pill.primary:hover {
-  background: var(--accent);
-  filter: brightness(1.08);
+  background: color-mix(in oklab, var(--cover) 86%, var(--ink));
 }
+.btn.primary:active,
 .pill.primary:active {
-  filter: brightness(0.94);
+  background: color-mix(in oklab, var(--cover) 74%, var(--ink));
 }
+.btn.danger,
+.pill.danger {
+  color: var(--margin-ink);
+}
+.btn.danger:hover,
+.pill.danger:hover {
+  background: color-mix(in oklab, var(--margin) 14%, var(--page-2));
+}
+.btn.link,
+.pill.ghost {
+  height: auto;
+  padding: 2px 0;
+  border: none;
+  background: none;
+  color: var(--ink);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in oklab, var(--ink) 35%, transparent);
+  text-underline-offset: 3px;
+}
+.btn.link:hover,
+.pill.ghost:hover {
+  background: none;
+  text-decoration-color: var(--ink);
+}
+.btn.link.danger {
+  color: var(--margin-ink);
+  text-decoration-color: color-mix(in oklab, var(--margin) 40%, transparent);
+}
+.btn.small,
 .pill.small {
-  height: 26px;
-  padding: 0 12px;
+  height: 24px;
+  padding: 0 10px;
+  font-size: var(--fs-s);
 }
+.btn:disabled,
 .pill:disabled {
   opacity: 0.45;
-  cursor: default;
   pointer-events: none;
+}
+
+.text-input {
+  box-sizing: border-box;
+  height: 28px;
+  min-width: 0;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  outline: none;
+  background: var(--page-2);
+  color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-m);
+  caret-color: var(--accent);
+  transition: var(--t-base);
+}
+.text-input::placeholder {
+  color: var(--ink-faint);
+}
+.text-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.text-input.mono {
+  font-family: var(--font-mono);
+  font-size: var(--fs-s);
+  letter-spacing: 0.02em;
 }
 
 /* ---------------------------------------------------------------- menus */
@@ -73,38 +132,37 @@
   inset: 0;
   z-index: 49;
 }
+.menu,
 .main-menu,
 .tabs-menu {
   position: absolute;
   z-index: 50;
-  padding: 6px;
-  background: var(--paper);
-  border: 1px solid var(--gold-line);
-  box-shadow: 0 14px 30px var(--shadow);
-  animation: cyGrow 0.25s var(--ease-grow);
+  min-width: 220px;
+  padding: 4px;
+  background: var(--page);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px var(--shadow), 0 1px 3px var(--shadow);
+  animation: cyDrop 0.12s var(--ease);
 }
-/* The square corner is the one the menu grows from. */
 .main-menu {
-  left: 38px;
-  top: 54px;
-  width: 236px;
-  padding-left: 18px;
-  border-radius: 6px 14px 14px 14px;
-  transform-origin: 0 0;
+  left: 6px;
+  top: 34px;
+  width: 260px;
 }
-.main-menu-vine {
-  position: absolute;
-  left: 4px;
-  top: 8px;
-  height: calc(100% - 16px);
+.menu-entry {
+  display: contents;
 }
-.main-menu-vine path {
-  fill: none;
-  stroke: var(--accent);
-  stroke-width: 1.2;
-  stroke-linecap: round;
-  stroke-dasharray: 420;
-  animation: cyVine 0.55s var(--ease-grow) both;
+.menu-sep {
+  height: 1px;
+  margin: 4px 6px;
+  background: var(--edge);
+}
+.menu-heading {
+  padding: 6px 10px 4px;
+  font-size: var(--fs-s);
+  font-weight: 600;
+  color: var(--ink-faint);
 }
 .menu-item {
   all: unset;
@@ -113,23 +171,27 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 7px 10px;
-  border-radius: 8px;
-  cursor: pointer;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: 4px;
   color: var(--ink);
   font-family: var(--font-ui);
-  font-size: 13px;
-  animation: cyRise 0.25s var(--ease-rise) both;
-  transition: var(--t-base);
+  font-size: var(--fs-m);
+  cursor: default;
 }
-.menu-item:hover {
-  background: var(--paper-2);
-  transform: translateX(3px);
-  box-shadow: inset 2px 0 0 var(--gold);
+.menu-item:hover,
+.menu-item:focus-visible {
+  background: var(--accent);
+  color: var(--on-accent);
+  outline: none;
 }
-.menu-item:active {
-  transform: translateX(3px) scale(0.98);
-  background: var(--gold-soft);
+.menu-item:hover .menu-item-key,
+.menu-item:focus-visible .menu-item-key {
+  color: inherit;
+  opacity: 0.85;
+}
+.menu-item.current {
+  font-weight: 600;
 }
 .menu-item-label {
   flex: 1;
@@ -139,116 +201,115 @@
   white-space: nowrap;
 }
 .menu-item-key {
-  font-family: var(--font-mono);
-  font-size: 10.5px;
+  flex: none;
+  font-size: var(--fs-s);
   color: var(--ink-faint);
+}
+.menu-check {
+  flex: none;
+  width: 14px;
+  height: 14px;
+  margin-left: -2px;
+}
+.menu-check.on::before {
+  content: "";
+  display: block;
+  width: 7px;
+  height: 4px;
+  margin: 3px 0 0 3px;
+  border-left: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(-45deg);
+}
+.menu-item.checkable:not(:has(.menu-check)) {
+  padding-left: 34px;
+}
+.menu-fav {
+  flex: none;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--ink-soft);
 }
 
 /* -------------------------------------------------------------- tab bar */
 
+/* Note tabs sit in the title strip, flat like an editor's; the active one is
+   cut from the page itself and carries the ballpoint rule on top. */
 .tab-bar {
   position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
   display: flex;
-  align-items: flex-end;
-  gap: 6px;
-  height: 36px;
-  padding: 0 8px 0 10px;
-  flex: none;
+  align-items: stretch;
 }
-/* The row only takes the width its tabs need, so the buttons sit right after
-   the last tab; once tabs overflow it shrinks and scrolls, and the buttons
-   stay pinned at the right edge. */
 .tab-row {
   flex: 0 1 auto;
   min-width: 0;
-  height: 100%;
   display: flex;
-  align-items: flex-end;
-  gap: 5px;
+  align-items: stretch;
   overflow-x: auto;
   overflow-y: hidden;
   scrollbar-width: none;
-  padding-top: 6px;
 }
 .tab-row::-webkit-scrollbar {
   display: none;
 }
 .tab-bar-actions {
+  flex: none;
   display: flex;
-  gap: 4px;
-  padding-bottom: 5px;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px;
 }
 
-/* A pane of stained glass: lead came around tinted glass, lit when active. */
 .tab {
   position: relative;
   flex: none;
   display: flex;
   align-items: center;
-  gap: 5px;
-  height: 26px;
-  min-width: 84px;
-  max-width: 168px;
-  /* Fixed left padding: the title never shifts when the handle shows up. */
-  padding: 0 10px 0 15px;
-  border: 1.5px solid var(--lead);
-  border-bottom: none;
-  border-radius: 9px 9px 0 0;
-  background: color-mix(in oklab, var(--glass) 34%, transparent);
-  color: var(--frame-ink);
-  cursor: pointer;
-  transition:
-    height 0.22s var(--ease-grow),
-    box-shadow 0.35s,
-    background 0.35s,
-    color 0.35s,
-    filter 0.2s,
-    transform 0.15s;
+  gap: 6px;
+  min-width: 96px;
+  max-width: 188px;
+  height: 100%;
+  padding: 0 6px 0 14px;
+  border-right: 1px solid var(--edge);
+  color: var(--ink-soft);
+  cursor: default;
+  transition: var(--t-base);
+}
+.tab:first-child {
+  border-left: 1px solid var(--edge);
 }
 .tab:hover {
-  background: color-mix(in oklab, var(--glass) 52%, transparent);
-  filter: brightness(1.08);
-}
-.tab:active {
-  filter: brightness(0.92);
-  transform: translateY(1px);
+  background: var(--hover);
+  color: var(--ink);
 }
 .tab.active {
-  height: 30px;
-  margin-bottom: -1px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.42) 0%, rgba(255, 255, 255, 0) 52%),
-    radial-gradient(120% 90% at 50% 0%, rgba(255, 244, 205, 0.55), rgba(255, 244, 205, 0) 60%),
-    var(--glass);
-  color: #1b261f;
-  box-shadow: 0 0 16px var(--glow), inset 0 1px 0 rgba(255, 255, 255, 0.55);
+  background: var(--page);
+  color: var(--ink);
+}
+.tab.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  height: 2px;
+  background: var(--accent);
+}
+/* The active tab opens onto the page: no seam under it. */
+.tab.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -1px;
+  height: 1px;
+  background: var(--page);
 }
 .tab.dragging {
-  opacity: 0.5;
-}
-.tab-came {
-  position: absolute;
-  left: 3px;
-  right: 3px;
-  top: 3px;
-  height: 62%;
-  border: 1px solid rgba(20, 40, 30, 0.22);
-  border-bottom: none;
-  border-radius: 6px 6px 0 0;
-  pointer-events: none;
-}
-.tab-bloom {
-  position: absolute;
-  left: 50%;
-  top: -5px;
-  width: 7px;
-  height: 7px;
-  margin-left: -3.5px;
-  border-radius: 50%;
-  background: var(--gold);
-  border: 1px solid var(--lead);
-  box-shadow: 0 0 8px var(--glow);
-  animation: cyBloom 0.45s var(--ease-grow);
+  opacity: 0.55;
 }
 .tab-label {
   flex: 1;
@@ -256,521 +317,155 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  font-size: 12.5px;
-  letter-spacing: 0.01em;
+  font-size: var(--fs-m);
 }
-.tab.active .tab-label {
-  font-weight: 500;
-}
+/* Unsaved: a dot where the close button lives; hovering swaps them, like an editor. */
 .tab-dirty-dot {
   flex: none;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
+  margin: 0 5px;
   border-radius: 50%;
-  background: var(--gold);
-  border: 1px solid var(--lead);
-}
-/* Hovering swaps the unsaved dot for the close button - display (not
-   opacity) so the two are never on screen together. */
-.tab:hover .tab-dirty-dot {
-  display: none;
-}
-.tab-move {
-  position: absolute;
-  left: 6px;
-  top: 50%;
-  margin-top: -6px;
-  display: none;
-  opacity: 0.6;
-  cursor: grab;
-  line-height: 0;
-  animation: cyFade 0.2s ease;
+  background: currentColor;
 }
 .tab-close {
   all: unset;
   box-sizing: border-box;
   flex: none;
-  width: 16px;
-  height: 16px;
-  margin-right: -4px;
-  border-radius: 50%;
-  display: none;
+  width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  display: grid;
   place-items: center;
-  cursor: pointer;
   color: inherit;
+  opacity: 0;
   transition: var(--t-base);
 }
-.tab-close:hover {
-  background: rgba(20, 40, 30, 0.18);
-  box-shadow: 0 0 0 1px var(--gold), 0 0 12px var(--glow);
-  transform: translateY(-1px);
+.tab.active .tab-close,
+.tab:hover .tab-close,
+.tab-close:focus-visible {
+  opacity: 1;
 }
-.tab-close:active {
-  transform: translateY(0) scale(0.88);
-  filter: brightness(0.92);
+.tab-close:hover {
+  background: var(--pressed);
+}
+.tab-dirty-dot + .tab-close {
+  display: none;
+}
+.tab:hover .tab-dirty-dot {
+  display: none;
+}
+.tab:hover .tab-dirty-dot + .tab-close {
+  display: grid;
+}
+.tab-move {
+  position: absolute;
+  left: 4px;
+  top: 50%;
+  margin-top: -6px;
+  display: none;
+  color: var(--ink-faint);
+  cursor: grab;
+  line-height: 0;
 }
 .tab:hover:not(.renaming) .tab-move {
   display: block;
 }
-.tab:hover:not(.renaming) .tab-close {
-  display: grid;
-}
 .tab-rename-input {
-  width: 112px;
+  flex: 1;
+  width: 120px;
   min-width: 0;
-  height: 20px;
-  margin-left: -4px;
-  padding: 0 7px;
-  border: 1px solid var(--gold);
-  border-radius: 6px;
+  height: 24px;
+  margin-left: -6px;
+  padding: 0 6px;
+  border: 1px solid var(--accent);
+  border-radius: 3px;
   outline: none;
-  background: var(--paper);
+  background: var(--page);
   color: var(--ink);
   caret-color: var(--accent);
   font-family: var(--font-ui);
-  font-size: 12.5px;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  box-shadow: 0 0 0 3px var(--gold-soft), inset 0 1px 2px var(--shadow);
-  animation: cyGrow 0.2s var(--ease-grow);
+  font-size: var(--fs-m);
 }
-
 .tabs-menu {
-  right: 12px;
   top: 34px;
-  width: 220px;
-  max-height: min(320px, calc(100vh - 130px));
+  width: 260px;
+  max-height: min(360px, calc(100vh - 90px));
   overflow-y: auto;
-  border-radius: 14px 6px 14px 14px;
-  transform-origin: 100% 0;
 }
-.tabs-menu.from-left {
-  border-radius: 6px 14px 14px 14px;
-  transform-origin: 0 0;
-}
-.tabs-menu-heading {
-  padding: 4px 10px 6px;
-  font-size: 10.5px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--ink-faint);
-}
-.tabs-menu .menu-item {
-  gap: 9px;
-  animation-duration: 0.22s;
-  animation-timing-function: ease;
-}
-.tabs-menu .menu-item.current {
-  background: var(--paper-2);
-  font-weight: 500;
-}
-.tabs-menu-bead {
-  flex: none;
-  width: 11px;
-  height: 11px;
-  border-radius: 50%;
-  border: 1.2px solid var(--lead);
-}
-.tabs-menu .menu-item.current .tabs-menu-bead {
-  box-shadow: 0 0 8px var(--glow);
+.tabs-menu .menu-item .tab-dirty-dot {
+  width: 7px;
+  height: 7px;
+  margin: 0;
 }
 
-/* ------------------------------------------------------------- settings */
+/* --------------------------------------------------------- page content */
 
-/* Inside the page's inner rule, like the note text. */
-.settings-wrap {
-  position: absolute;
-  inset: 8px;
-  overflow-y: auto;
-  padding: 10px 22px 18px;
-  z-index: 2;
-  animation: cyFade 0.3s ease;
-}
-.settings-col {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-width: 520px;
-  margin: 0 auto;
-}
-.settings-head {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-.settings-head .pill {
-  padding: 0 11px 0 8px;
-}
-.settings-title-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 1px;
-}
-.settings-title {
-  font-family: var(--font-display);
-  font-size: 22px;
-  letter-spacing: 0.03em;
-  line-height: 1.1;
-}
-.settings-title-vine path {
-  fill: none;
-  stroke: var(--gold);
-  stroke-width: 1.1;
-  stroke-linecap: round;
-  stroke-dasharray: 160;
-  animation: cyVine 0.9s var(--ease-grow) both;
-}
-.settings-row {
-  display: flex;
-  align-items: center;
-  gap: 16px;
-  animation: cyRise 0.3s ease both;
-}
-.settings-row-text {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-.settings-row-label {
-  font-size: 14px;
-  font-weight: 500;
-}
-.settings-row-hint {
-  font-size: 12.5px;
-  line-height: 1.45;
-  color: var(--ink-soft);
-  text-wrap: pretty;
-}
-.switch-track {
-  all: unset;
-  box-sizing: border-box;
-  position: relative;
-  flex: none;
-  width: 40px;
-  height: 22px;
-  border-radius: 11px;
-  border: 1px solid var(--field-border);
-  background: var(--paper-2);
-  cursor: pointer;
-  transition: var(--t-base);
-}
-.switch-track.on {
-  border-color: var(--accent);
-  background: var(--accent);
-}
-.switch-track:hover {
-  box-shadow: 0 0 0 3px var(--gold-soft);
-}
-.switch-track:active {
-  transform: scale(0.94);
-}
-.switch-thumb {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--paper);
-  border: 1px solid var(--gold);
-  box-shadow: 0 1px 2px var(--shadow);
-  transition: left 0.3s var(--ease-grow);
-}
-.switch-track.on .switch-thumb {
-  left: 20px;
-}
-.settings-divider {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-top: 4px;
-}
-.settings-divider span {
-  flex: 1;
-  height: 1px;
-  background: var(--rule);
-}
-.settings-section {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-.settings-section-title {
-  font-family: var(--font-display);
-  font-size: 15.5px;
-  letter-spacing: 0.03em;
-}
-
-.device-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  border-radius: 12px;
-  animation: cyRise 0.3s ease;
-}
-.device-row svg {
-  flex: none;
-}
-.device-row.synced {
-  padding: 9px 12px;
-  border: 1px solid var(--rule);
-  background: var(--paper-2);
-}
-.device-row.found {
-  padding: 8px 8px 8px 12px;
-  border: 1px dashed var(--field-border);
-}
-.device-row-name {
-  flex: 1;
-  min-width: 0;
-  font-size: 13.5px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.device-row-status {
-  flex: none;
-  font-size: 12px;
-  font-weight: 500;
-  color: var(--accent);
-}
-.device-row .pill:disabled {
-  opacity: 1;
-  background: var(--paper-2);
-  color: var(--ink-soft);
-}
-.device-searching {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 2px 12px;
-  font-size: 12.5px;
-  color: var(--ink-faint);
-}
-.device-searching-bud {
-  display: flex;
-  animation: cyBud 1.6s ease-in-out infinite;
-}
-
-.cloud-off {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  animation: cyFade 0.3s ease;
-}
-.cloud-off .pill.primary {
-  height: 30px;
-  padding: 0 16px;
-  font-size: 13px;
-  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-}
-.cloud-on {
-  display: flex;
-  flex-direction: column;
-  gap: 9px;
-  animation: cyGrow 0.35s var(--ease-grow);
-}
-.sync-code-box {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 8px 8px 14px;
-  border: 1px solid var(--gold-line);
-  border-radius: 12px;
-  background: var(--paper-2);
-}
-.sync-code-text {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-family: var(--font-mono);
-  font-size: 13px;
-  letter-spacing: 0.04em;
-  user-select: text;
-}
-.sync-code-input-row {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-}
-.sync-code-input-row .pill {
-  height: 30px;
-  padding: 0 14px;
-  font-size: 13px;
-}
-.sync-code-error {
-  color: var(--danger);
-}
-.sync-code-input {
-  flex: 1;
-  min-width: 150px;
-  height: 30px;
-  padding: 0 10px;
-  border: 1px solid var(--field-border);
-  border-radius: 9px;
-  background: var(--field);
-  color: var(--field-ink);
-  font-family: var(--font-mono);
-  font-size: 12.5px;
-  outline: none;
-  transition: border-color 0.2s, box-shadow 0.25s;
-}
-.sync-code-input::placeholder,
-.find-input::placeholder {
-  color: var(--ink-faint);
-}
-.sync-code-input:focus,
-.find-input:focus {
-  border-color: var(--gold);
-  box-shadow: 0 0 0 3px var(--gold-soft);
-}
-.sync-clear-link {
-  all: unset;
-  align-self: flex-start;
-  cursor: pointer;
-  font-size: 12.5px;
-  color: var(--danger);
-  text-decoration: underline transparent;
-  text-underline-offset: 3px;
-  transition: text-decoration-color 0.2s, opacity 0.2s;
-}
-.sync-clear-link:hover {
-  text-decoration-color: currentColor;
-}
-.sync-clear-link:active {
-  opacity: 0.7;
-}
-
-/* --------------------------------------------------------------- editor */
-
-/* The text scrolls inside the page's fine inner rule (7px in), never across it. */
 .content-shell {
   position: absolute;
-  inset: 8px;
+  inset: 0;
 }
+/* The scroller. App sets --text-size and --pitch (integer px) for the zoom;
+   these are the 100% values. */
 .content-wrap {
+  --text-size: 14px;
+  --pitch: 24px;
+  /* Rules sit just under the descenders, so the text rests on them. */
+  --rule-offset: round(calc(var(--pitch) / -12), 1px);
   position: absolute;
   inset: 0;
   overflow-y: auto;
   overflow-x: hidden;
   scrollbar-gutter: stable;
-  /* Plus the 8px inset: text 24px from the top, and 8 + 34 (margin) + 4 = 46px from the left. */
-  padding: 16px 22px 20px 0;
-  font-family: var(--font-body);
-  font-optical-sizing: auto;
   color: var(--ink);
+  /* The ruling also runs under the scrollbar, scrolling with the text. */
+  background-color: var(--page);
+  background-image: linear-gradient(to bottom, transparent calc(var(--pitch) - 1px), var(--rule) calc(var(--pitch) - 1px));
+  background-size: 100% var(--pitch);
+  background-position: 0 var(--rule-offset);
+  background-attachment: local;
 }
 .note-body-row {
   position: relative;
-  display: flex;
-  align-items: stretch;
   min-height: 100%;
 }
-/* Reading mode: larger type in a centered column of about 640px. */
-.content-wrap.reading {
-  padding-left: 10px;
-  padding-right: 32px;
-}
+/* Reading mode: one centred column, no line numbers, a touch more air. */
 .content-wrap.reading .note-body-row {
-  max-width: 678px;
+  max-width: 84ch;
   margin: 0 auto;
 }
-/* The empty margin left of the text, like Notepad's: the pointer turns into
-   a mirrored arrow (pointing at the text), and pressing and dragging there
-   selects whole lines. Nothing is drawn in it. */
-.line-gutter {
-  flex: none;
-  width: 34px;
-  cursor: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='22'%3E%3Cpath d='M18.5 1.5 V17.5 L14.5 13.7 L11.8 19.8 L9.6 18.8 L12.2 12.8 H6.8 Z' fill='white' stroke='black' stroke-width='1.1' stroke-linejoin='round'/%3E%3C/svg%3E")
-      18 1,
-    default;
-}
-.note-body {
-  flex: 1;
-  min-width: 0;
-  padding-left: 4px;
-  outline: none;
-  tab-size: 4;
-  white-space: pre-wrap;
-  overflow-wrap: break-word;
-  word-break: break-word;
-  color: var(--ink);
-  caret-color: var(--cursor);
-  user-select: text;
-}
-/* The `!important` guards against Chromium inserting a fresh <div> with its
-   own inline font styling when you press Enter in a contentEditable - without
-   it, the new line silently falls back to the browser's default font. */
-.note-body,
-.note-body * {
-  font-family: var(--font-body) !important;
-  font-weight: 400 !important;
-}
-/* Multiple cursors: Chromium has a single real selection/caret, so every
-   cursor but the primary is painted - selections through the CSS Custom
-   Highlight API (no DOM changes), carets as overlay bars. */
-::highlight(cy-multi) {
-  background-color: var(--extra-sel);
-}
-.fake-caret {
-  position: absolute;
-  width: 2px;
-  margin-left: -1px;
-  border-radius: 1px;
-  background: var(--petrol);
-  pointer-events: none;
-  animation: cyBlink 1.06s steps(1) infinite;
-}
-.note-body:not(:focus) ~ .fake-caret {
-  display: none;
-}
-::highlight(cy-find) {
-  background-color: var(--match);
-}
-::highlight(cy-find-current) {
-  background-color: var(--match-cur);
-}
-.match-ring {
-  position: absolute;
-  border-radius: 3px;
-  box-shadow: 0 0 0 1px var(--match-cur-ring);
-  pointer-events: none;
-}
+
 .blank-page {
   position: absolute;
   inset: 0;
 }
 
-/* Find / replace / go-to-line bar, pinned to the top-right of the note. */
+/* ------------------------------------------------------------- find bar */
+
 .find-anchor {
   position: sticky;
-  top: 6px;
+  top: 0;
   height: 0;
-  margin: -10px 0 10px;
   z-index: 20;
 }
 .find-bar {
   position: absolute;
-  right: -10px;
+  right: 18px;
   top: 0;
   display: flex;
   flex-direction: column;
-  gap: 5px;
-  padding: 6px 6px 6px 5px;
-  max-width: calc(100% + 10px);
-  background: var(--frame);
-  border: 1px solid var(--gold-line);
-  border-radius: 14px 14px 10px 10px;
-  box-shadow: 0 10px 24px var(--shadow);
-  color: var(--frame-ink);
+  gap: 4px;
+  max-width: calc(100% - 36px);
+  padding: 5px 6px;
+  border: 1px solid var(--edge);
+  border-top: none;
+  border-radius: 0 0 6px 6px;
+  background: var(--page-2);
+  box-shadow: 0 6px 18px var(--shadow);
   font-family: var(--font-ui);
-  font-size: 12px;
+  font-size: var(--fs-s);
   line-height: 1.2;
-  animation: cyRise 0.28s var(--ease-rise);
+  animation: cyDrop 0.12s var(--ease);
 }
 .find-row {
   display: flex;
@@ -778,169 +473,130 @@
   gap: 3px;
 }
 .find-row.replace {
-  gap: 4px;
   padding-left: 23px;
-  animation: cyRise 0.22s ease;
 }
 .find-row.goto {
-  gap: 4px;
-  padding-left: 4px;
+  padding-left: 2px;
 }
 .find-input {
-  width: 150px;
+  box-sizing: border-box;
+  width: 180px;
   min-width: 60px;
   height: 26px;
-  padding: 0 9px;
-  border: 1px solid var(--field-border);
-  border-radius: 8px;
-  background: var(--field);
-  color: var(--field-ink);
-  font-family: var(--font-ui);
-  font-size: 13px;
+  padding: 0 8px;
+  border: 1px solid transparent;
+  border-radius: 3px;
   outline: none;
-  transition: border-color 0.2s, box-shadow 0.25s;
+  background: var(--page);
+  color: var(--ink);
+  caret-color: var(--accent);
+  font-family: var(--font-ui);
+  font-size: var(--fs-m);
+}
+.find-input::placeholder {
+  color: var(--ink-faint);
+}
+.find-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
 .find-input.goto {
-  width: 170px;
+  width: 200px;
 }
-.find-btn {
+.find-btn,
+.find-toggle-replace,
+.find-case,
+.find-text-btn {
   all: unset;
   box-sizing: border-box;
   flex: none;
-  width: 24px;
-  height: 24px;
-  border-radius: 7px;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  color: var(--frame-ink);
+  height: 24px;
+  border-radius: 3px;
+  color: var(--ink-soft);
+  cursor: default;
   transition: var(--t-base);
 }
+.find-btn {
+  width: 24px;
+}
 .find-btn:hover,
+.find-toggle-replace:hover,
 .find-case:hover,
-.reading-btn:hover,
-.sketch-tool-btn:hover {
-  background: var(--gold-soft);
-  box-shadow: 0 0 0 1px var(--gold-line);
-  transform: translateY(-1px);
+.find-text-btn:hover {
+  background: var(--hover);
+  color: var(--ink);
 }
 .find-btn:active,
 .find-case:active,
-.reading-btn:active,
-.sketch-tool-btn:active {
-  transform: scale(0.9);
-  filter: brightness(0.92);
+.find-text-btn:active {
+  background: var(--pressed);
 }
-.find-btn:disabled {
-  cursor: default;
-  opacity: 0.45;
+.find-btn:disabled,
+.find-text-btn:disabled {
+  opacity: 0.4;
   pointer-events: none;
 }
 .find-toggle-replace {
   width: 20px;
   height: 26px;
-  border-radius: 6px;
 }
 .find-toggle-replace svg {
-  transition: transform 0.25s ease;
+  transition: transform 0.12s ease;
 }
 .find-toggle-replace.open svg {
   transform: rotate(90deg);
 }
 .find-case {
-  all: unset;
-  box-sizing: border-box;
-  flex: none;
-  height: 24px;
-  padding: 0 6px;
-  border: 1px solid var(--gold-line);
-  border-radius: 7px;
-  cursor: pointer;
-  color: var(--frame-ink);
-  font-size: 12px;
+  min-width: 26px;
+  padding: 0 4px;
+  font-size: var(--fs-s);
   font-weight: 600;
-  line-height: 22px;
-  transition: var(--t-base);
 }
 .find-case.active {
-  background: var(--gold);
-  border-color: var(--gold);
-  color: var(--frame-2);
+  color: var(--ink);
+  background: var(--pressed);
+  box-shadow: inset 0 0 0 1px var(--ink-soft);
 }
 .find-status {
   flex: none;
-  min-width: 70px;
-  padding: 0 4px;
-  text-align: center;
-  color: var(--frame-ink-soft);
-  font-size: 12px;
-  white-space: nowrap;
+  min-width: 74px;
+  padding: 0 6px;
+  color: var(--ink-soft);
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 .find-status.none {
-  color: var(--alert);
+  color: var(--margin-ink);
 }
 .find-text-btn {
-  all: unset;
-  box-sizing: border-box;
-  flex: none;
-  height: 24px;
-  padding: 0 9px;
-  border: 1px solid var(--gold-line);
-  border-radius: 999px;
-  cursor: pointer;
-  color: var(--frame-ink);
-  font-size: 12px;
-  line-height: 22px;
-  transition: var(--t-base);
-}
-.find-text-btn:hover {
-  background: var(--gold-soft);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);
-}
-.find-text-btn:active {
-  transform: translateY(0) scale(0.95);
-  box-shadow: 0 1px 2px var(--shadow);
-  filter: brightness(0.94);
-}
-.find-text-btn:disabled {
-  cursor: default;
-  opacity: 0.45;
-  pointer-events: none;
+  padding: 0 8px;
+  font-size: var(--fs-s);
 }
 
-/* Drawings laid over the text (see ContentArea). The mouse goes straight
-   through them to the text; only their toolbar and resize handle take it, and
-   ContentArea picks up presses that land on ink. */
+/* -------------------------------------------------------------- drawings */
+
 .note-sketch-wrap {
   position: absolute;
   z-index: 3;
   pointer-events: none;
-  outline: none;
 }
 .note-sketch {
   display: block;
   width: 100%;
   height: 100%;
-  border-radius: 4px;
-  outline: 1px dashed transparent;
-  outline-offset: 3px;
-  transition: outline-color 0.2s;
 }
 .note-sketch-wrap.active .note-sketch,
 .note-sketch-wrap:focus .note-sketch {
-  outline-color: var(--gold);
+  outline: 1px dashed var(--accent);
+  outline-offset: 3px;
 }
 .note-sketch-wrap.moving .note-sketch {
-  outline-style: solid;
-  outline-color: var(--gold-line);
-  filter: drop-shadow(0 6px 10px var(--shadow));
+  opacity: 0.75;
 }
-/* Over ink, the pointer grabs the drawing instead of pointing at text. */
 .note-body-row.over-ink,
-.note-body-row.over-ink .note-body,
-.note-body-row.over-ink .line-gutter {
+.note-body-row.over-ink * {
   cursor: move;
 }
 .note-body-row.move-sketch,
@@ -954,21 +610,20 @@
 .sketch-toolbar {
   position: absolute;
   right: -2px;
-  top: -30px;
+  top: -32px;
   display: none;
-  gap: 2px;
-  padding: 3px;
-  background: var(--frame);
-  border: 1px solid var(--gold-line);
-  border-radius: 9px;
+  align-items: center;
+  gap: 1px;
+  padding: 2px;
+  border: 1px solid var(--edge);
+  border-radius: 5px;
+  background: var(--page-2);
+  box-shadow: 0 4px 12px var(--shadow);
   pointer-events: auto;
-  animation: cyRise 0.18s ease;
 }
-/* Too close to the top of the page for room above: hang it below. (The trip
-   from the ink to the toolbar keeps the drawing active - see ContentArea.) */
 .note-sketch-wrap.below .sketch-toolbar {
   top: auto;
-  bottom: -30px;
+  bottom: -32px;
 }
 .note-sketch-wrap.active .sketch-toolbar,
 .note-sketch-wrap:focus-within .sketch-toolbar {
@@ -977,81 +632,59 @@
 .sketch-tool-btn {
   all: unset;
   box-sizing: border-box;
-  width: 22px;
-  height: 20px;
-  border-radius: 6px;
+  width: 24px;
+  height: 22px;
+  border-radius: 3px;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  color: var(--frame-ink);
-  transition: var(--t-base);
+  color: var(--ink-soft);
+  cursor: default;
 }
 .sketch-tool-btn:hover {
-  background: var(--gold-soft);
+  background: var(--hover);
+  color: var(--ink);
 }
 .sketch-tool-btn.delete:hover {
-  background: rgba(180, 83, 63, 0.55);
+  color: var(--margin-ink);
 }
 .sketch-tool-btn.grip {
   width: 18px;
   cursor: grab;
-  touch-action: none;
-  color: var(--frame-ink-soft);
-}
-.sketch-tool-btn.grip:hover {
-  color: var(--frame-ink);
 }
 .sketch-resize-handle {
   position: absolute;
-  right: -7px;
-  bottom: -7px;
-  width: 13px;
-  height: 13px;
-  border-radius: 50%;
-  background: var(--gold);
-  border: 1.5px solid var(--lead);
+  right: -6px;
+  bottom: -6px;
+  width: 11px;
+  height: 11px;
+  border: 1.5px solid var(--accent);
+  border-radius: 2px;
+  background: var(--page);
   cursor: nwse-resize;
   display: none;
   pointer-events: auto;
-  touch-action: none;
-  transition: transform 0.18s, box-shadow 0.25s;
 }
 .note-sketch-wrap.active .sketch-resize-handle,
 .note-sketch-wrap:focus-within .sketch-resize-handle {
   display: block;
 }
 .sketch-resize-handle:hover {
-  transform: scale(1.25);
-  box-shadow: 0 0 8px var(--glow);
+  background: var(--accent);
 }
 
-/* --------------------------------------------------------- Note Styling */
-
-/* A sheet of tracing paper over the note: the text shows through, and what's
-   drawn stays exactly where it was drawn. Always mounted (the canvas keeps its
-   size in sync), only shown when open. It stops short of the scrollbar, which
-   still scrolls the note underneath. */
+/* The drawing layer covers the page but stops short of the scrollbar. */
 .overlay {
   position: absolute;
-  inset: 0 10px 0 0;
+  inset: 0 12px 0 0;
   z-index: 30;
-  outline: none;
-  background: color-mix(in srgb, var(--paper) 30%, transparent);
-  box-shadow:
-    inset 0 0 0 1px var(--gold-line),
-    inset 0 0 36px var(--gold-soft);
   opacity: 0;
-  visibility: hidden;
   pointer-events: none;
-  transition:
-    opacity 0.25s ease,
-    visibility 0s 0.25s;
+  box-shadow: inset 0 0 0 2px var(--cover);
+  transition: opacity 0.15s ease;
 }
 .overlay.open {
   opacity: 1;
-  visibility: visible;
   pointer-events: auto;
-  transition: opacity 0.25s ease;
 }
 .draw-canvas {
   position: absolute;
@@ -1067,37 +700,25 @@
   right: 12px;
   display: flex;
   align-items: center;
-  gap: 7px;
-  padding: 4px 13px 4px 10px;
-  border-radius: 999px;
-  background: var(--frame);
-  border: 1px solid var(--gold-line);
-  color: var(--frame-ink);
-  box-shadow: 0 6px 16px var(--shadow);
+  gap: 8px;
+  padding: 5px 10px;
+  border-radius: 4px;
+  background: var(--page-2);
+  color: var(--ink-soft);
+  font-size: var(--fs-s);
   pointer-events: none;
-  animation: cyRise 0.3s var(--ease-rise);
-  transition: opacity 0.2s;
-}
-.overlay-header svg {
-  color: var(--gold);
 }
 .overlay-title {
-  font-family: var(--font-display);
-  font-size: 14px;
-  letter-spacing: 0.04em;
+  font-weight: 600;
+  color: var(--ink);
 }
 .overlay-subtitle {
-  font-family: var(--font-body);
-  font-style: italic;
-  font-size: 12px;
-  color: var(--frame-ink-soft);
+  color: var(--ink-faint);
 }
-/* Out of the way while a stroke is being drawn. */
 .overlay.drawing .overlay-header,
 .overlay.drawing .draw-dock {
-  opacity: 0.3;
+  opacity: 0.35;
 }
-
 .draw-dock {
   position: absolute;
   left: 0;
@@ -1106,73 +727,63 @@
   margin: 0 auto;
   width: max-content;
   max-width: calc(100% - 20px);
-  box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
-  gap: 6px 2px;
-  padding: 6px 8px;
-  border-radius: 18px;
-  background: var(--frame);
-  border: 1px solid var(--gold-line);
-  color: var(--frame-ink);
-  box-shadow: 0 12px 28px var(--shadow);
-  animation: cyRise 0.3s var(--ease-rise);
-  transition: opacity 0.2s;
+  gap: 6px;
+  padding: 4px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--page-2);
+  box-shadow: 0 8px 22px var(--shadow);
+  transition: opacity 0.15s ease;
 }
 .draw-group {
   display: flex;
   align-items: center;
   gap: 2px;
-  transition: opacity 0.2s;
 }
 .draw-group.dimmed {
-  opacity: 0.45;
+  opacity: 0.4;
 }
 .draw-sep {
   width: 1px;
   height: 20px;
-  margin: 0 5px;
-  background: var(--gold-line);
+  margin: 0 2px;
+  background: var(--edge);
 }
 .draw-tool,
 .draw-size {
   all: unset;
   box-sizing: border-box;
   height: 28px;
-  border-radius: 9px;
+  border-radius: 4px;
   display: grid;
   place-items: center;
-  cursor: pointer;
-  transition: var(--t-base);
+  color: var(--ink-soft);
+  cursor: default;
 }
 .draw-tool {
   width: 30px;
-  color: var(--frame-ink);
 }
 .draw-tool:hover,
 .draw-size:hover {
-  background: var(--gold-soft);
-  box-shadow: 0 0 0 1px var(--gold-line);
+  background: var(--hover);
+  color: var(--ink);
 }
 .draw-tool:active,
 .draw-size:active {
-  transform: scale(0.9);
+  background: var(--pressed);
 }
 .draw-tool.active {
-  background: var(--gold);
-  color: var(--frame-2);
-  box-shadow: 0 0 12px var(--glow);
+  color: var(--ink);
+  background: var(--pressed);
 }
 .draw-tool:disabled {
-  opacity: 0.32;
-  cursor: default;
+  opacity: 0.35;
   pointer-events: none;
 }
 .draw-size {
   width: 24px;
-  color: var(--frame-ink-soft);
 }
 .draw-size i {
   display: block;
@@ -1192,61 +803,32 @@
   height: 11px;
 }
 .draw-size.active {
-  color: var(--gold);
-  box-shadow: inset 0 0 0 1px var(--gold-line);
+  color: var(--ink);
+  background: var(--pressed);
 }
 .draw-swatch {
   all: unset;
   box-sizing: border-box;
   width: 20px;
   height: 20px;
-  margin: 0 2px;
+  margin: 0 1px;
   border-radius: 50%;
-  border: 1.5px solid var(--lead);
-  cursor: pointer;
-  transition: var(--t-base);
+  border: 2px solid var(--page-2);
+  box-shadow: 0 0 0 1px var(--edge);
+  cursor: default;
 }
 .draw-swatch:hover {
-  transform: scale(1.18) rotate(-8deg);
-  box-shadow:
-    0 0 0 2px var(--frame),
-    0 0 0 3.5px var(--gold-line);
+  box-shadow: 0 0 0 1px var(--ink-soft);
 }
 .draw-swatch.active {
-  transform: scale(1.12);
-  box-shadow:
-    0 0 0 2px var(--frame),
-    0 0 0 3.5px var(--gold);
-}
-.draw-swatch:active {
-  transform: scale(0.9);
+  box-shadow: 0 0 0 2px var(--ink);
 }
 .draw-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: 8px;
+  gap: 4px;
+  margin-left: 6px;
 }
-.draw-dock .pill {
-  color: var(--frame-ink);
-  border-color: var(--gold-line);
-}
-.draw-dock .pill.ghost {
-  border-color: transparent;
-  color: var(--frame-ink-soft);
-}
-.draw-dock .pill:hover {
-  background: var(--gold-soft);
-}
-.draw-dock .pill.primary {
-  border-color: transparent;
-  background: var(--accent);
-  color: var(--accent-ink);
-}
-.draw-dock .pill.primary:hover {
-  background: var(--accent);
-}
-
 .draw-confirm {
   position: absolute;
   inset: 0;
@@ -1254,304 +836,519 @@
   width: max-content;
   height: max-content;
   max-width: calc(100% - 24px);
-  box-sizing: border-box;
   display: flex;
   align-items: center;
-  justify-content: center;
-  flex-wrap: wrap;
   gap: 8px;
-  padding: 12px 14px 12px 18px;
-  border-radius: 14px;
-  background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--gold-line);
-  box-shadow: 0 14px 30px var(--shadow);
-  font-family: var(--font-ui);
-  font-size: 13.5px;
-  animation: cyGrow 0.22s var(--ease-grow);
+  padding: 10px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--page);
+  box-shadow: 0 12px 30px var(--shadow);
+  font-size: var(--fs-m);
+  animation: cyRaise 0.15s var(--ease);
 }
 .draw-confirm > span {
   margin-right: 6px;
 }
-.pill.danger {
-  color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 55%, transparent);
-}
-.pill.danger:hover {
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
-}
-
-/* While drawing, the page under the sheet stays as it is: same note, same zoom. */
 .cy-window.drawing .tab-bar,
 .cy-window.drawing .status-bar {
   opacity: 0.5;
   pointer-events: none;
-  transition: opacity 0.2s;
 }
 
-/* "Desenho excluído · Desfazer" */
-.cy-toast.with-action {
+/* ------------------------------------------------------------- settings */
+
+/* Settings reads like a settings page in an editor: one column, plain rows. */
+.settings-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  overflow-y: auto;
+  padding: 20px 28px 32px;
+  background: var(--page);
+  animation: cyFade 0.15s ease;
+}
+.settings-col {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 560px;
+  margin: 0 auto;
+}
+.settings-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.settings-head .pill,
+.settings-head .btn {
+  width: 28px;
+  padding: 0;
+  border-color: transparent;
+  background: none;
+  color: var(--ink-soft);
+}
+.settings-head .pill:hover,
+.settings-head .btn:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.settings-title-wrap {
+  display: flex;
+  flex-direction: column;
+}
+.settings-title {
+  font-size: var(--fs-l);
+  font-weight: 600;
+  line-height: 1.2;
+}
+.settings-title-vine {
+  display: none;
+}
+.settings-section,
+.sync-section {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-section-title {
+  margin-bottom: 6px;
+  font-size: var(--fs-m);
+  font-weight: 600;
+  color: var(--ink);
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: 44px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--rule);
+}
+.settings-row-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.settings-row-label {
+  font-size: var(--fs-m);
+  color: var(--ink);
+}
+.settings-row-hint,
+.sync-explain {
+  font-size: var(--fs-s);
+  line-height: 1.45;
+  color: var(--ink-soft);
+}
+.settings-divider,
+.divider {
+  display: block;
+  height: 1px;
+  background: var(--rule);
+}
+.settings-divider > * {
+  display: none;
+}
+
+.switch-track {
+  all: unset;
+  box-sizing: border-box;
+  position: relative;
+  flex: none;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1px solid var(--ink-faint);
+  background: transparent;
+  cursor: default;
+  transition: var(--t-base);
+}
+.switch-track:hover {
+  border-color: var(--ink-soft);
+}
+.switch-track:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.switch-track.on {
+  border-color: var(--ink);
+  background: var(--ink);
+}
+.switch-thumb {
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--ink-soft);
+  transition: left 0.15s var(--ease), background-color 0.15s ease;
+}
+.switch-track.on .switch-thumb {
+  left: 19px;
+  background: var(--page);
+}
+
+/* Sync with the phone. */
+.sync-explain {
+  margin-bottom: 10px;
+}
+.sync-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sync-actions .text-input {
+  flex: 1 1 220px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-s);
+}
+.sync-code-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 5px 4px 14px;
-  pointer-events: auto;
+  padding: 10px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--page-2);
 }
-.cy-toast-action {
-  all: unset;
-  cursor: pointer;
-  padding: 3px 10px;
-  border-radius: 999px;
-  color: var(--gold);
-  font-weight: 500;
-  transition: var(--t-base);
+.sync-code {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-m);
+  letter-spacing: 0.04em;
+  color: var(--ink);
+  user-select: all;
 }
-.cy-toast-action:hover {
-  background: var(--gold-soft);
-}
-
-/* ----------------------------------------------------------- status bar */
-
-.status-bar {
+.sync-status {
   display: flex;
   align-items: center;
-  gap: 14px;
-  height: 30px;
+  gap: 8px;
+  margin-top: 8px;
+  font-size: var(--fs-s);
+  color: var(--ink-soft);
+}
+.sync-status::before {
+  content: "";
   flex: none;
-  padding: 0 14px 1px 16px;
-  font-size: 11.5px;
-  color: var(--frame-ink-soft);
-  font-variant-numeric: tabular-nums;
-  white-space: nowrap;
-}
-.status-zoom {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-}
-.zoom-value {
-  min-width: 34px;
-  text-align: center;
-}
-.zoom-btn {
-  all: unset;
-  box-sizing: border-box;
-  width: 18px;
-  height: 18px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
-  cursor: pointer;
-  color: var(--frame-ink);
-  font-size: 13px;
-  line-height: 18px;
-  text-align: center;
-  transition: var(--t-base);
+  background: var(--ink-faint);
 }
-.zoom-btn:hover {
-  background: var(--gold-soft);
-  box-shadow: 0 0 0 1px var(--gold), 0 0 12px var(--glow);
-  transform: translateY(-1px);
+.sync-status[data-phase="synced"]::before {
+  background: var(--ok);
 }
-.zoom-btn:active {
-  transform: translateY(0) scale(0.88);
-  filter: brightness(0.92);
+.sync-status[data-phase="syncing"]::before {
+  background: var(--ink-soft);
 }
-.reading-btn {
-  all: unset;
-  box-sizing: border-box;
-  width: 24px;
-  height: 22px;
-  border-radius: 7px;
-  display: grid;
-  place-items: center;
-  cursor: pointer;
-  color: var(--frame-ink);
-  transition: var(--t-base);
+.sync-status[data-phase="offline"]::before {
+  background: var(--amber);
 }
-.reading-btn.active {
-  background: var(--gold);
-  color: var(--frame-2);
+.sync-status[data-phase="denied"],
+.sync-status[data-phase="error"] {
+  color: var(--margin-ink);
 }
-.sync-btn {
-  all: unset;
-  box-sizing: border-box;
+.sync-status[data-phase="denied"]::before,
+.sync-status[data-phase="error"]::before {
+  background: var(--margin);
+}
+.sync-error {
+  margin-top: 6px;
+  font-size: var(--fs-s);
+  color: var(--margin-ink);
+}
+.sync-section .btn.link {
+  align-self: flex-start;
+  margin-top: 12px;
+}
+
+/* Older sync markup, until every screen uses the classes above. */
+.cloud-off,
+.cloud-on {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sync-code-box {
   display: flex;
   align-items: center;
-  gap: 6px;
-  height: 22px;
-  padding: 0 6px 0 4px;
-  border-radius: 999px;
-  cursor: pointer;
-  color: var(--frame-ink-soft);
-  transition: var(--t-base);
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  background: var(--page-2);
 }
-.sync-btn.error {
-  color: var(--alert);
+.sync-code-text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-m);
 }
-.sync-btn:hover {
-  background: var(--gold-soft);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px var(--shadow), 0 0 0 1px var(--gold-line);
+.sync-code-input-row {
+  display: flex;
+  gap: 8px;
 }
-.sync-btn:active {
-  transform: translateY(0) scale(0.95);
-  box-shadow: 0 1px 2px var(--shadow);
-  filter: brightness(0.94);
+.sync-code-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  outline: none;
+  background: var(--page);
+  color: var(--ink);
+  font-family: var(--font-mono);
+  font-size: var(--fs-s);
 }
-.sync-bloom {
-  transform-origin: 0 0;
-  animation: cyBloom 0.6s var(--ease-grow);
+.sync-code-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
 }
-.sync-bud {
-  transform-origin: 0 6px;
-  animation: cyBud 1.2s ease-in-out infinite;
+.sync-code-error {
+  font-size: var(--fs-s);
+  color: var(--margin-ink);
 }
-.sync-droop {
-  transform-origin: 0 9px;
-  animation: cyDroop 0.7s var(--ease-grow) forwards;
+.sync-clear-link {
+  all: unset;
+  align-self: flex-start;
+  color: var(--margin-ink);
+  font-size: var(--fs-s);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 /* -------------------------------------------------------------- dialogs */
 
 .dialog-scrim {
-  position: absolute;
+  position: fixed;
   inset: 0;
-  z-index: 60;
+  z-index: 100;
   display: grid;
   place-items: center;
-  padding-top: 20px;
+  padding: 24px;
   background: var(--scrim);
-  border-radius: 18px 18px 16px 16px;
-  animation: cyFade 0.25s ease;
+  animation: cyFade 0.12s ease;
 }
 .dialog {
-  position: relative;
-  width: 340px;
-  max-width: calc(100% - 32px);
-  padding: 40px 22px 18px;
-  background: var(--paper);
-  border: 1px solid var(--gold-line);
-  border-radius: 22px 22px 16px 16px;
-  box-shadow: 0 20px 44px var(--shadow);
-  text-align: center;
-  animation: cyGrow 0.32s var(--ease-grow);
+  width: min(400px, 100%);
+  padding: 18px 20px 16px;
+  border: 1px solid var(--edge);
+  border-radius: 8px;
+  background: var(--page);
+  box-shadow: 0 18px 48px var(--shadow), 0 2px 6px var(--shadow);
+  animation: cyRaise 0.15s var(--ease);
 }
 .dialog-halo {
-  position: absolute;
-  left: 50%;
-  top: -30px;
-  margin-left: -31px;
-  width: 62px;
-  height: 62px;
-  border-radius: 50%;
-  border: 1px solid var(--gold);
-  box-shadow: inset 0 0 0 3px var(--paper), inset 0 0 0 4px var(--gold-line);
-  display: grid;
-  place-items: center;
-  background: var(--paper);
-}
-.dialog-halo-disc {
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: var(--frame);
-  border: 1px solid var(--gold);
-  display: grid;
-  place-items: center;
-  color: var(--gold);
-  box-shadow: 0 0 14px var(--glow);
+  display: none;
 }
 .dialog-title {
-  font-family: var(--font-display);
-  font-size: 19px;
-  letter-spacing: 0.02em;
-  margin-bottom: 8px;
+  font-size: var(--fs-l);
+  font-weight: 600;
+  color: var(--ink);
 }
 .dialog-body {
-  font-family: var(--font-body);
-  font-size: 14px;
-  line-height: 1.55;
+  margin-top: 8px;
+  font-size: var(--fs-m);
+  line-height: 1.5;
   color: var(--ink-soft);
-  text-wrap: pretty;
-  margin-bottom: 18px;
-  overflow-wrap: anywhere;
-}
-.dialog-progress {
-  height: 3px;
-  margin: -6px 10px 18px;
-  border-radius: 3px;
-  background: var(--rule);
-  overflow: hidden;
-}
-/* The real download has no progress to report, so the bar grows to almost
-   full and waits there until the app restarts. */
-.dialog-progress div {
-  height: 100%;
-  width: 92%;
-  background: var(--accent);
-  transform-origin: 0 50%;
-  animation: dialogProgress 2.4s cubic-bezier(0.4, 0.1, 0.3, 1) both;
-}
-@keyframes dialogProgress {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
 }
 .dialog-actions {
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   gap: 8px;
-  flex-wrap: wrap;
+  margin-top: 18px;
 }
-.dialog-btn {
-  height: 32px;
-  padding: 0 16px;
-  font-size: 13px;
+.dialog-progress {
+  position: relative;
+  height: 3px;
+  margin-top: 16px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--rule);
 }
-.dialog-btn:hover {
-  filter: brightness(1.06);
+.dialog-progress > div {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40%;
+  border-radius: 2px;
+  background: var(--cover);
+  animation: dialogProgress 1.2s ease-in-out infinite;
 }
-.dialog-btn.danger {
-  color: var(--danger);
+@keyframes dialogProgress {
+  from {
+    left: -40%;
+  }
+  to {
+    left: 100%;
+  }
 }
 
-/* ---------------------------------------------------- the small window */
+/* ----------------------------------------------------------- status bar */
 
-/* Near the 420x320 minimum the ornaments step back instead of squeezing:
-   less detail, not cramped detail. */
-@media (max-width: 520px), (max-height: 400px) {
-  .cy-brand-name,
-  .cy-arch-vines,
-  .cy-vignette,
-  .status-chars,
-  .sync-label {
+/* The pad's cover: a green band with the note's facts, like an editor's. */
+.status-bar {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: stretch;
+  min-width: 0;
+  padding: 0 4px;
+  background: var(--cover);
+  color: var(--cover-ink);
+  font-size: var(--fs-s);
+  line-height: 24px;
+  user-select: none;
+  white-space: nowrap;
+}
+.status-item {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  color: inherit;
+  cursor: default;
+}
+button.status-item:hover {
+  background: var(--cover-hover);
+}
+button.status-item:active {
+  background: color-mix(in oklab, var(--cover-hover) 100%, transparent);
+  filter: brightness(1.1);
+}
+button.status-item:focus-visible {
+  outline: 1px solid var(--cover-ink);
+  outline-offset: -3px;
+}
+.status-item.static {
+  font-variant-numeric: tabular-nums;
+}
+.status-item.icon {
+  min-width: 26px;
+  justify-content: center;
+  padding: 0 6px;
+  font-size: var(--fs-m);
+}
+.status-item.icon:not(.on) svg {
+  opacity: 0.7;
+}
+.status-item.on {
+  background: var(--cover-hover);
+}
+.status-zoom {
+  display: flex;
+  align-items: stretch;
+}
+.zoom-value {
+  min-width: 46px;
+  justify-content: center;
+  font-variant-numeric: tabular-nums;
+}
+.zoom-value:disabled {
+  pointer-events: none;
+}
+.status-item.sync svg {
+  flex: none;
+}
+.status-item.sync[data-phase="offline"] svg,
+.status-item.sync[data-phase="denied"] svg,
+.status-item.sync[data-phase="error"] svg {
+  color: var(--cover-alert);
+}
+.status-item.sync[data-phase="denied"],
+.status-item.sync[data-phase="error"] {
+  background: var(--cover-alarm);
+}
+.status-item.sync[data-phase="off"] {
+  opacity: 0.8;
+}
+.sync-turn {
+  transform-origin: 8px 10px;
+  animation: syncTurn 1s linear infinite;
+}
+@keyframes syncTurn {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ------------------------------------------------------------- narrow */
+
+@media (max-width: 560px) {
+  .status-item.static + .status-item.static,
+  .status-zoom {
     display: none;
   }
   .tab {
-    min-width: 64px;
-  }
-  .status-bar {
-    gap: 8px;
-  }
-  .content-wrap {
-    padding: 10px 12px 20px 0;
-  }
-  .line-gutter {
-    width: 24px;
-  }
-  .find-input {
-    width: 104px;
-  }
-  .find-status {
-    min-width: 52px;
+    min-width: 72px;
   }
   .settings-wrap {
-    padding-left: 10px;
-    padding-right: 10px;
+    padding: 16px;
   }
-  .dialog {
-    width: 300px;
-  }
+}
+
+/* Settings: headings, the "ou" between the two ways in, the shortcut sheet. */
+.settings-head .icon-btn {
+  margin-left: -6px;
+}
+h1.settings-title,
+h2.settings-section-title {
+  margin: 0;
+}
+.settings-section + .settings-section,
+.settings-section + .sync-section,
+.sync-section + .settings-section {
+  margin-top: 6px;
+}
+.sync-or {
+  color: var(--ink-faint);
+  font-size: var(--fs-s);
+}
+.shortcut-list {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+}
+.shortcut-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  border-bottom: 1px solid var(--rule);
+}
+.shortcut-row dt {
+  flex: none;
+  width: 160px;
+}
+.shortcut-row dd {
+  margin: 0;
+  min-width: 0;
+  font-size: var(--fs-s);
+  color: var(--ink-soft);
+}
+.shortcut-row kbd {
+  font-family: var(--font-ui);
+  font-size: var(--fs-s);
+  padding: 1px 6px;
+  border: 1px solid var(--edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--page-2);
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+/* The drawing layer's own frame marks the mode; it takes focus for its shortcuts,
+   so neither it nor its canvas needs a focus ring on top. */
+.overlay:focus-visible,
+.draw-canvas:focus-visible {
+  outline: none;
 }

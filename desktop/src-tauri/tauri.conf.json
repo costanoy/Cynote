@@ -22,15 +22,15 @@
         "minHeight": 320,
         "resizable": true,
         "decorations": false,
-        "transparent": true,
-        "shadow": false,
+        "transparent": false,
+        "shadow": true,
         "skipTaskbar": false,
         "visible": false,
         "alwaysOnTop": false
       }
     ],
     "security": {
-      "csp": "default-src 'self' ipc: http://ipc.localhost; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'",
+      "csp": "default-src 'self' ipc: http://ipc.localhost; connect-src 'self' ipc: http://ipc.localhost https://cynote-f5f04-default-rtdb.firebaseio.com; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; object-src 'none'; base-uri 'none'; form-action 'none'",
       "devCsp": null
     }
   },

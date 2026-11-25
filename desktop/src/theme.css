@@ -1,107 +1,154 @@
+/* Cynote: a steno pad you summon over your work.
+   Tokens, base elements and the window frame, shared by the main window and
+   Dashnotes. The page is pale steno green, ruled; ballpoint blue marks only
+   where you are; the red margin rule doubles as the destructive colour. */
+
 html,
 body {
+  height: 100%;
   margin: 0;
-  background: transparent;
   overflow: hidden;
 }
-
 #root {
-  width: 100vw;
-  height: 100vh;
+  height: 100%;
 }
 
-/* Day in the greenhouse. */
+/* Glyphs JetBrains Mono lacks (emoji, symbols) come from Windows fonts with its
+   ascent and descent, so a line holding them is exactly as tall as any other. */
+@font-face {
+  font-family: "Cynote Emoji";
+  src: local("Segoe UI Emoji");
+  ascent-override: 102%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Cynote Symbol";
+  src: local("Segoe UI Symbol");
+  ascent-override: 102%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: "Cynote Text";
+  src: local("Segoe UI");
+  ascent-override: 102%;
+  descent-override: 30%;
+  line-gap-override: 0%;
+}
+
 :root,
 [data-theme="light"] {
-  --frame: #37604f;
-  --frame-2: #274a3c;
-  --frame-ink: #f3ebd3;
-  --frame-ink-soft: #c3d3bc;
-  --gold: #c9a04e;
-  --gold-line: rgba(226, 190, 110, 0.55);
-  --gold-soft: rgba(226, 190, 110, 0.22);
-  --glow: rgba(240, 200, 110, 0.45);
-  --paper: #fbf6e9;
-  --paper-2: #f2ead5;
-  --rule: #dccda6;
-  --ink: #2a2a22;
-  --ink-soft: #645f4c;
-  --ink-faint: #9c957c;
-  --accent: #3d7a4c;
-  --accent-ink: #fffdf4;
-  --petrol: #2e6470;
-  --selection: rgba(214, 170, 76, 0.34);
-  --extra-sel: rgba(46, 100, 112, 0.2);
-  --match: rgba(143, 184, 120, 0.4);
-  --match-cur: #ebc46c;
-  --match-cur-ring: #b8893a;
-  --cursor: #2a2a22;
-  --danger: #a8483a;
-  --alert: #f5b9a8;
-  --lead: #1c3027;
-  --shadow: rgba(38, 52, 32, 0.3);
-  --scrim: rgba(28, 44, 34, 0.38);
-  --field: #fffdf6;
-  --field-border: #cfbf97;
-  --field-ink: #2a2a22;
-
-  /* Stained glass, one pane per tab / folder (hue % 4). */
-  --glass-0: #a9cb8f;
-  --glass-1: #e3b45a;
-  --glass-2: #7fb2b8;
-  --glass-3: #9aaad0;
+  color-scheme: light;
+  --page: #edf2e8;
+  --page-2: #e1e8db;
+  --page-3: #d6dfd0;
+  --rule: #cbd9c6;
+  --edge: #c3cfbe;
+  --ink: #262b27;
+  --ink-soft: #59625a;
+  --ink-faint: #67716a;
+  --accent: #2350c0;
+  --on-accent: #ffffff;
+  --accent-soft: rgba(35, 80, 192, 0.12);
+  --selection: rgba(35, 80, 192, 0.2);
+  --selection-blur: rgba(38, 43, 39, 0.1);
+  --margin: #c9463d;
+  --margin-ink: #b23a31;
+  --amber: #b7791f;
+  --match: rgba(214, 160, 52, 0.32);
+  --match-current: rgba(214, 160, 52, 0.62);
+  --cover: #2f5240;
+  --cover-ink: #e6efe4;
+  --cover-hover: rgba(230, 239, 228, 0.14);
+  --hover: rgba(38, 43, 39, 0.06);
+  --pressed: rgba(38, 43, 39, 0.11);
+  --shadow: rgba(30, 44, 34, 0.18);
+  --scrim: rgba(24, 32, 27, 0.28);
+  --scroll-thumb: rgba(38, 43, 39, 0.2);
+  --scroll-thumb-hover: rgba(38, 43, 39, 0.34);
+  --close-hover: #c42b1c;
+  --ok: #3f8a5c;
+  --cover-alert: #ffd27a;
+  --cover-alarm: rgba(201, 70, 61, 0.55);
 }
 
-/* The same greenhouse at night. */
 [data-theme="dark"] {
-  --frame: #10211a;
-  --frame-2: #0a1712;
-  --frame-ink: #eadfc2;
-  --frame-ink-soft: #91a58e;
-  --gold: #e2b85c;
-  --gold-line: rgba(226, 184, 92, 0.55);
-  --gold-soft: rgba(226, 184, 92, 0.18);
-  --glow: rgba(236, 190, 90, 0.55);
-  --paper: #15251e;
-  --paper-2: #1b2e26;
-  --rule: #2f4a3d;
-  --ink: #e9e2cc;
-  --ink-soft: #aeb49e;
-  --ink-faint: #6f7f6d;
-  --accent: #86b96f;
-  --accent-ink: #0e1c16;
-  --petrol: #7fc2ca;
-  --selection: rgba(226, 184, 92, 0.28);
-  --extra-sel: rgba(127, 194, 202, 0.24);
-  --match: rgba(134, 185, 111, 0.3);
-  --match-cur: rgba(226, 184, 92, 0.72);
-  --match-cur-ring: #e2b85c;
-  --cursor: #f2e7c8;
-  --danger: #e58a74;
-  --alert: #f2a08c;
-  --lead: #040a08;
-  --shadow: rgba(0, 0, 0, 0.55);
-  --scrim: rgba(2, 8, 6, 0.55);
-  --field: #0e1d17;
-  --field-border: #39584a;
-  --field-ink: #e9e2cc;
-
-  --glass-0: #8cc474;
-  --glass-1: #e5a945;
-  --glass-2: #62a7b0;
-  --glass-3: #8397c9;
+  color-scheme: dark;
+  --page: #18201b;
+  --page-2: #111713;
+  --page-3: #0c110e;
+  --rule: #26312a;
+  --edge: #2d3a31;
+  --ink: #dce5da;
+  --ink-soft: #9aa79b;
+  --ink-faint: #7c8a7f;
+  --accent: #7fa2ff;
+  --on-accent: #0b1430;
+  --accent-soft: rgba(127, 162, 255, 0.14);
+  --selection: rgba(127, 162, 255, 0.28);
+  --selection-blur: rgba(220, 229, 218, 0.1);
+  --margin: #e0766c;
+  --margin-ink: #e98a81;
+  --amber: #d9a441;
+  --match: rgba(217, 164, 65, 0.26);
+  --match-current: rgba(217, 164, 65, 0.55);
+  --cover: #2b4d3b;
+  --cover-ink: #cfe0d2;
+  --cover-hover: rgba(207, 224, 210, 0.12);
+  --hover: rgba(220, 229, 218, 0.07);
+  --pressed: rgba(220, 229, 218, 0.12);
+  --shadow: rgba(0, 0, 0, 0.5);
+  --scrim: rgba(0, 0, 0, 0.45);
+  --scroll-thumb: rgba(220, 229, 218, 0.18);
+  --scroll-thumb-hover: rgba(220, 229, 218, 0.3);
+  --close-hover: #c42b1c;
+  --ok: #5fae7c;
+  --cover-alert: #ffd27a;
+  --cover-alarm: rgba(224, 118, 108, 0.45);
 }
 
 :root {
-  --font-display: "Marcellus", Georgia, serif;
-  --font-body: "Literata Variable", "Literata", Georgia, serif;
-  --font-ui: "Jost", "Segoe UI", sans-serif;
-  --font-mono: "JetBrains Mono", Consolas, monospace;
-  --ease-grow: cubic-bezier(0.3, 0.7, 0.2, 1);
-  --ease-rise: cubic-bezier(0.2, 0.8, 0.2, 1);
-  --t-base:
-    background 0.2s, color 0.2s, border-color 0.2s, box-shadow 0.25s, filter 0.2s, opacity 0.2s,
-    transform 0.18s var(--ease-grow);
+  --font-ui: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", "Cynote Emoji", "Cynote Symbol", "Cynote Text", Consolas, monospace;
+  /* Three interface sizes, no more; the note itself has its own (--text-size). */
+  --fs-s: 12px;
+  --fs-m: 13px;
+  --fs-l: 18px;
+  --ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --t-base: background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+
+  /* Names older styles and components still read. */
+  --paper: var(--page);
+  --paper-2: var(--page-2);
+  --gold: var(--accent);
+  --gold-line: var(--edge);
+  --gold-soft: var(--accent-soft);
+  --glow: transparent;
+  --frame: var(--page-2);
+  --frame-2: var(--page-2);
+  --frame-ink: var(--ink);
+  --frame-ink-soft: var(--ink-soft);
+  --lead: var(--edge);
+  --petrol: var(--accent);
+  --cursor: var(--accent);
+  --extra-sel: var(--selection);
+  --match-cur: var(--match-current);
+  --match-cur-ring: var(--accent);
+  --field: var(--page);
+  --field-border: var(--edge);
+  --field-ink: var(--ink);
+  --danger: var(--margin-ink);
+  --alert: var(--amber);
+  --accent-ink: var(--on-accent);
+  --glass-0: var(--ink-faint);
+  --glass-1: var(--ink-faint);
+  --glass-2: var(--ink-faint);
+  --glass-3: var(--ink-faint);
+  --font-body: var(--font-mono);
+  --font-display: var(--font-ui);
+  --ease-grow: var(--ease);
+  --ease-rise: var(--ease);
 }
 
 * {
@@ -109,13 +156,20 @@ body {
 }
 
 body {
-  font-family: var(--font-ui);
+  background: var(--page);
   color: var(--ink);
+  font-family: var(--font-ui);
+  font-size: var(--fs-m);
+  line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+  font-synthesis: none;
 }
 
+input,
 button,
-input {
-  font-family: inherit;
+textarea {
+  font: inherit;
+  color: inherit;
 }
 
 ::selection {
@@ -123,84 +177,54 @@ input {
 }
 
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 6px;
+  width: 12px;
+  height: 12px;
 }
 ::-webkit-scrollbar-track {
   background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-  background: var(--gold-soft);
-  border-radius: 8px;
+  background: var(--scroll-thumb);
+  border: 3px solid transparent;
+  border-radius: 6px;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--gold-line);
+  background: var(--scroll-thumb-hover);
+  border: 3px solid transparent;
+  background-clip: padding-box;
 }
 ::-webkit-scrollbar-corner {
   background: transparent;
 }
 
-/* Keyboard focus: the same gold ring as the fields. Mouse clicks don't get
-   one - every clickable thing already has its own hover/active state. */
 button:focus {
   outline: none;
 }
-button:focus-visible {
-  box-shadow: 0 0 0 3px var(--gold-soft), 0 0 0 1px var(--gold);
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
 }
 
-@keyframes cyBlink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
-}
-@keyframes cyBloom {
-  0% {
-    transform: scale(0.15) rotate(-60deg);
-    opacity: 0;
-  }
-  70% {
-    transform: scale(1.12) rotate(6deg);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1) rotate(0);
-    opacity: 1;
-  }
-}
-@keyframes cyBud {
-  0%,
-  100% {
-    transform: scale(0.88);
-    opacity: 0.75;
-  }
-  50% {
-    transform: scale(1.04);
-    opacity: 1;
-  }
-}
-@keyframes cyDroop {
-  0% {
-    transform: rotate(0);
-  }
-  100% {
-    transform: rotate(38deg);
-  }
-}
-@keyframes cyVine {
+@keyframes cyFade {
   from {
-    stroke-dashoffset: 420;
+    opacity: 0;
   }
   to {
-    stroke-dashoffset: 0;
+    opacity: 1;
   }
 }
-@keyframes cyRise {
+@keyframes cyDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes cyRaise {
   from {
     opacity: 0;
     transform: translateY(6px);
@@ -210,326 +234,240 @@ button:focus-visible {
     transform: none;
   }
 }
+/* Older names, kept as plain fades so nothing that still mentions them moves. */
+@keyframes cyRise {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
 @keyframes cyGrow {
   from {
     opacity: 0;
-    transform: scale(0.94) translateY(8px);
   }
   to {
     opacity: 1;
-    transform: none;
   }
 }
-@keyframes cyFade {
-  from {
+@keyframes cyBlink {
+  50% {
     opacity: 0;
   }
-  to {
-    opacity: 1;
-  }
-}
-@keyframes cySway {
-  0%,
-  100% {
-    transform: rotate(-3deg);
-  }
-  50% {
-    transform: rotate(3deg);
-  }
-}
-@keyframes cyLamp {
-  0%,
-  100% {
-    box-shadow: 0 0 6px var(--glow);
-  }
-  50% {
-    box-shadow: 0 0 14px var(--glow);
-  }
 }
 
-/* ------------------------------------------------------------------
-   Pieces shared by the main window and Dashnotes.
-   ------------------------------------------------------------------ */
+/* ------------------------------------------------------------ the window */
 
+/* The pad: a card strip on top, the ruled page, the cover's green band below.
+   The window is opaque, with Windows 11 drawing its rounded corners and shadow:
+   opaque windows get ClearType text, transparent ones only greyscale. */
 .cy-window {
   position: relative;
-  width: 100%;
   height: 100%;
+  display: grid;
+  grid-template-rows: 36px minmax(0, 1fr) 24px;
+  background: var(--page);
+  overflow: hidden;
+}
+
+.titlebar {
+  position: relative;
+  z-index: 10;
   display: flex;
-  flex-direction: column;
-  font-family: var(--font-ui);
-  color: var(--ink);
+  align-items: stretch;
+  min-width: 0;
+  background: var(--page-2);
   user-select: none;
 }
-
-/* Guimard arch: the iron header, rising 10px at the center. */
-.cy-arch {
-  position: relative;
-  height: 56px;
+.titlebar-drag {
+  flex: 1 1 24px;
+  min-width: 24px;
+}
+.titlebar-group {
   flex: none;
-}
-.cy-arch-shape {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  overflow: visible;
-  pointer-events: none;
-}
-.cy-arch-shape .iron {
-  fill: var(--frame);
-  transition: fill 0.5s ease;
-}
-.cy-arch-shape .fillet {
-  fill: none;
-  stroke: var(--gold-line);
-  stroke-width: 1;
-}
-.cy-arch-vines {
-  position: absolute;
-  left: 50%;
-  top: 4px;
-  transform: translateX(-50%);
-  overflow: visible;
-  pointer-events: none;
-}
-.cy-lamp {
-  position: absolute;
-  left: 50%;
-  top: 3px;
-  width: 7px;
-  height: 7px;
-  margin-left: -3.5px;
-  border-radius: 50%;
-  background: var(--gold);
-  animation: cyLamp 4s ease-in-out infinite;
-  pointer-events: none;
-}
-.cy-arch-strip {
-  position: absolute;
-  left: 10px;
-  right: 8px;
-  bottom: 3px;
-  height: 30px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 2px;
+  padding: 0 4px;
 }
-.cy-brand {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding-right: 4px;
-  pointer-events: none;
-}
-.cy-logo {
-  position: relative;
-  width: 24px;
-  height: 24px;
+.titlebar-sep {
   flex: none;
-  border-radius: 50%;
-  border: 1px solid var(--gold);
-  display: grid;
-  place-items: center;
-  box-shadow: inset 0 0 0 2px var(--frame), inset 0 0 0 3px var(--gold-line);
-}
-.cy-logo span {
-  font-family: var(--font-display);
-  font-size: 14px;
-  line-height: 1;
-  color: var(--gold);
-  margin-left: -1px;
-}
-.cy-logo svg {
-  position: absolute;
-  right: 3px;
-  top: 4px;
-}
-.cy-brand-name {
-  font-family: var(--font-display);
-  font-size: 15px;
-  letter-spacing: 0.1em;
-  color: var(--frame-ink);
-  white-space: nowrap;
-}
-.cy-spacer {
-  flex: 1;
-  align-self: stretch;
-}
-.cy-arch-divider {
   width: 1px;
-  height: 18px;
-  margin: 0 3px;
-  background: var(--gold-line);
+  margin: 10px 4px;
+  background: var(--edge);
 }
 
-/* Medallions: the round iron buttons. */
-.medallion {
+/* One button vocabulary for every icon control on the shell. */
+.icon-btn {
   all: unset;
   box-sizing: border-box;
   flex: none;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
   display: grid;
   place-items: center;
-  border: 1px solid var(--gold-line);
-  cursor: pointer;
-  background: transparent;
-  color: var(--frame-ink);
+  width: 30px;
+  height: 28px;
+  border-radius: 4px;
+  color: var(--ink-soft);
+  cursor: default;
   transition: var(--t-base);
 }
-.medallion:hover {
-  background: var(--gold-soft);
-  box-shadow: 0 0 0 1px var(--gold), 0 0 12px var(--glow);
-  transform: translateY(-1px);
+.icon-btn:hover {
+  background: var(--hover);
+  color: var(--ink);
 }
-.medallion:active {
-  transform: translateY(0) scale(0.88);
-  box-shadow: 0 0 0 1px var(--gold), 0 0 4px var(--glow);
-  filter: brightness(0.92);
+.icon-btn:active {
+  background: var(--pressed);
 }
-.medallion.active {
-  background: var(--gold);
-  color: var(--frame-2);
-  box-shadow: 0 0 12px var(--glow);
+.icon-btn.active,
+.icon-btn[aria-pressed="true"] {
+  color: var(--ink);
+  background: var(--pressed);
 }
-.medallion.win {
-  width: 22px;
-  height: 22px;
+.icon-btn:focus-visible {
+  outline-offset: -2px;
 }
-.medallion.small {
-  width: 24px;
-  height: 24px;
-}
-.medallion.close:hover {
-  background: #b4533f;
-  color: #fff6ee;
-  border-color: #b4533f;
-}
-.medallion:disabled {
+.icon-btn:disabled {
   opacity: 0.4;
-  cursor: default;
   pointer-events: none;
+}
+.icon-btn.small {
+  width: 26px;
+  height: 26px;
 }
 
-/* Iron body under the arch, holding the page. */
-.cy-body {
-  position: relative;
-  flex: 1;
-  min-height: 0;
-  display: flex;
-  flex-direction: column;
-  background: var(--frame);
-  border-radius: 0 0 16px 16px;
-  transition: background 0.5s ease;
+/* The app mark doubles as the menu button, like a system menu. */
+.app-mark {
+  width: 40px;
+  height: 36px;
+  border-radius: 0;
 }
+.app-mark svg {
+  display: block;
+}
+
+/* Windows caption buttons: full strip height, square, red close. */
+.win-btn {
+  all: unset;
+  box-sizing: border-box;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 36px;
+  color: var(--ink-soft);
+  transition: var(--t-base);
+}
+.win-btn:hover {
+  background: var(--hover);
+  color: var(--ink);
+}
+.win-btn:active {
+  background: var(--pressed);
+}
+.win-btn.close:hover {
+  background: var(--close-hover);
+  color: #ffffff;
+}
+.win-btn.close:active {
+  background: #a52619;
+  color: #ffffff;
+}
+
 .cy-page {
   position: relative;
-  flex: 1;
   min-height: 0;
-  margin: 0 7px;
-  background: var(--paper);
-  border-top: 1px solid var(--gold-line);
-  border-radius: 2px 2px 8px 8px;
-  overflow: hidden;
-  transition: background 0.5s ease;
+  background: var(--page);
 }
-.cy-page-rule {
-  position: absolute;
-  inset: 7px;
-  border: 1px solid var(--rule);
-  border-radius: 3px;
-  pointer-events: none;
-  z-index: 1;
+
+.cy-spacer {
+  flex: 1;
 }
-.cy-vignette {
-  position: absolute;
-  z-index: 2;
-  pointer-events: none;
-}
-.cy-vignette path {
-  fill: none;
-  stroke: var(--gold);
-  stroke-width: 1.1;
-  stroke-linecap: round;
-}
-.cy-vignette.tl {
-  left: 4px;
-  top: 4px;
-}
-.cy-vignette.tr {
-  right: 4px;
-  top: 4px;
-  transform: scaleX(-1);
-}
-.cy-vignette.bl {
-  left: 4px;
-  bottom: 4px;
-  transform: scaleY(-1);
-}
-.cy-vignette.br {
-  right: 4px;
-  bottom: 4px;
-  transform: scale(-1, -1);
-}
+
+/* ------------------------------------------------------------- toasts */
 
 .cy-toast {
   position: absolute;
   left: 50%;
   bottom: 14px;
+  z-index: 60;
   transform: translateX(-50%);
-  z-index: 40;
-  padding: 6px 14px;
-  border-radius: 999px;
-  background: var(--frame);
-  color: var(--frame-ink);
-  border: 1px solid var(--gold-line);
-  font-size: 12.5px;
-  white-space: nowrap;
-  box-shadow: 0 6px 16px var(--shadow);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  max-width: calc(100% - 32px);
+  padding: 8px 14px;
+  border-radius: 6px;
+  background: var(--ink);
+  color: var(--page);
+  box-shadow: 0 6px 20px var(--shadow);
+  font-size: var(--fs-s);
+  animation: cyRaise 0.18s var(--ease);
   pointer-events: none;
 }
+.cy-toast.with-action {
+  pointer-events: auto;
+  padding-right: 6px;
+}
 .cy-toast > span {
-  display: block;
-  animation: cyRise 0.25s ease;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cy-toast-action {
+  all: unset;
+  flex: none;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-weight: 600;
+  color: var(--page);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.cy-toast-action:hover {
+  background: rgba(127, 127, 127, 0.22);
 }
 
-/* Empty states: a swaying sprout over a title and an italic line. */
+/* --------------------------------------------------------- empty page */
+
 .cy-empty {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 20px;
-  text-align: center;
+  gap: 6px;
   pointer-events: none;
-  animation: cyFade 0.6s ease;
-}
-.cy-empty svg {
-  transform-origin: 50% 90%;
-  animation: cySway 6s ease-in-out infinite;
+  animation: cyFade 0.2s ease;
 }
 .cy-empty-title {
-  font-family: var(--font-display);
-  font-size: 18px;
+  font-size: var(--fs-m);
+  font-weight: 600;
   color: var(--ink-soft);
-  letter-spacing: 0.03em;
 }
 .cy-empty-hint {
-  font-family: var(--font-body);
-  font-style: italic;
-  font-size: 13.5px;
+  font-size: var(--fs-s);
   color: var(--ink-faint);
+}
+.cy-empty-hint kbd {
+  font-family: var(--font-ui);
+  font-size: var(--fs-s);
+  padding: 1px 5px;
+  border: 1px solid var(--edge);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  color: var(--ink-soft);
+  background: var(--page-2);
 }
 
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
   *::after {
-    animation-name: cyFade !important;
-    animation-iteration-count: 1 !important;
-    transition-property: background, color, border-color, opacity, fill !important;
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
   }
 }

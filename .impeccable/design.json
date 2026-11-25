@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-25T00:00:00Z",
+  "title": "Design System: Cynote",
+  "extensions": {
+    "colorMeta": {
+      "accent": { "role": "primary", "displayName": "Ballpoint Blue", "canonical": "#2350c0", "tonalRamp": ["oklch(15% 0.05 264)", "oklch(26% 0.10 264)", "oklch(37% 0.15 264)", "oklch(47% 0.18 264)", "oklch(58% 0.16 264)", "oklch(70% 0.12 264)", "oklch(83% 0.07 264)", "oklch(95% 0.02 264)"] },
+      "cover": { "role": "secondary", "displayName": "Cover Green", "canonical": "#2f5240", "tonalRamp": ["oklch(15% 0.03 155)", "oklch(26% 0.04 155)", "oklch(40% 0.05 155)", "oklch(50% 0.06 155)", "oklch(61% 0.06 155)", "oklch(72% 0.05 155)", "oklch(84% 0.03 155)", "oklch(95% 0.01 155)"] },
+      "margin": { "role": "tertiary", "displayName": "Margin Red", "canonical": "#c9463d", "tonalRamp": ["oklch(15% 0.04 27)", "oklch(27% 0.08 27)", "oklch(40% 0.13 27)", "oklch(52% 0.16 27)", "oklch(58% 0.17 27)", "oklch(70% 0.12 27)", "oklch(83% 0.07 27)", "oklch(95% 0.02 27)"] },
+      "amber": { "role": "tertiary", "displayName": "Highlighter Amber", "canonical": "#b7791f", "tonalRamp": ["oklch(15% 0.03 70)", "oklch(28% 0.06 70)", "oklch(42% 0.09 70)", "oklch(52% 0.11 70)", "oklch(62% 0.12 70)", "oklch(74% 0.11 70)", "oklch(86% 0.07 70)", "oklch(96% 0.02 70)"] },
+      "page": { "role": "neutral", "displayName": "Steno Page", "canonical": "#edf2e8", "tonalRamp": ["oklch(15% 0.01 130)", "oklch(24% 0.015 145)", "oklch(36% 0.015 145)", "oklch(50% 0.015 140)", "oklch(64% 0.015 135)", "oklch(80% 0.02 132)", "oklch(90% 0.02 130)", "oklch(95.5% 0.013 130)"] },
+      "page-2": { "role": "neutral", "displayName": "Card", "canonical": "#e1e8db" },
+      "page-3": { "role": "neutral", "displayName": "Card Pressed", "canonical": "#d6dfd0" },
+      "rule": { "role": "neutral", "displayName": "Printed Rule", "canonical": "#cbd9c6" },
+      "edge": { "role": "neutral", "displayName": "Edge", "canonical": "#c3cfbe" },
+      "ink": { "role": "neutral", "displayName": "Graphite", "canonical": "#262b27", "tonalRamp": ["oklch(15% 0.008 150)", "oklch(28% 0.01 150)", "oklch(40% 0.012 150)", "oklch(50% 0.015 150)", "oklch(62% 0.015 150)", "oklch(74% 0.015 150)", "oklch(86% 0.012 150)", "oklch(95% 0.008 150)"] },
+      "ink-soft": { "role": "neutral", "displayName": "Pencil", "canonical": "#59625a" },
+      "ink-faint": { "role": "neutral", "displayName": "Faint Pencil", "canonical": "#67716a" },
+      "cover-ink": { "role": "neutral", "displayName": "Cover Ink", "canonical": "#e6efe4" },
+      "cover-alert": { "role": "tertiary", "displayName": "Cover Alert", "canonical": "#ffd27a" },
+      "close-hover": { "role": "neutral", "displayName": "Windows Close Red", "canonical": "#c42b1c" }
+    },
+    "typographyMeta": {
+      "note": { "displayName": "Note", "purpose": "All note text on Windows, 14px on a 24px pitch at 100% zoom; zoom changes size and pitch together in whole pixels." },
+      "note-android": { "displayName": "Note (Android)", "purpose": "All note text on Android, 15 on a 26 pitch, forced strut." },
+      "title": { "displayName": "Title", "purpose": "Settings page title and dialog titles (Windows, --fs-l)." },
+      "body": { "displayName": "Body", "purpose": "Tabs, buttons, menu items, inputs, settings labels (Windows, --fs-m)." },
+      "label": { "displayName": "Label", "purpose": "Status band, hints, shortcut keys, find widget, metadata, toasts (Windows, --fs-s)." },
+      "label-android": { "displayName": "Label (Android)", "purpose": "Material labelSmall raised to 12 with tabular figures so a screen stays at three sizes." }
+    },
+    "shadows": [
+      { "name": "menu", "value": "0 8px 24px var(--shadow), 0 1px 3px var(--shadow)", "purpose": "Main menu and tabs menu." },
+      { "name": "find", "value": "0 6px 18px var(--shadow)", "purpose": "Find widget hanging from the page's top edge." },
+      { "name": "dock", "value": "0 8px 22px var(--shadow)", "purpose": "Drawing dock." },
+      { "name": "toolbar", "value": "0 4px 12px var(--shadow)", "purpose": "Selected drawing's small toolbar." },
+      { "name": "toast", "value": "0 6px 20px var(--shadow)", "purpose": "Toasts." },
+      { "name": "dialog", "value": "0 18px 48px var(--shadow), 0 2px 6px var(--shadow)", "purpose": "Dialogs over the scrim." }
+    ],
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(0.2, 0.8, 0.2, 1)", "purpose": "Menus dropping (cyDrop, 4px, 0.12s), dialogs and toasts raising (cyRaise, 6px, 0.15 to 0.18s), switch thumb." },
+      { "name": "t-base", "value": "background-color 0.12s ease, color 0.12s ease, border-color 0.12s ease, opacity 0.12s ease", "purpose": "Every control state change. Reduced motion collapses all durations." },
+      { "name": "caret-blink", "value": "1060ms", "purpose": "Caret blink rate." }
+    ],
+    "breakpoints": [
+      { "name": "narrow", "value": "560px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Button",
+      "kind": "button",
+      "refersTo": "button",
+      "description": "Default Windows button: tone, not chrome.",
+      "html": "<button class=\"ds-btn\">Cancelar</button>",
+      "css": ".ds-btn { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: 1px solid transparent; border-radius: 4px; background: var(--page-2, #e1e8db); color: var(--ink, #262b27); font: 13px 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; transition: background-color .12s ease; } .ds-btn:hover { background: var(--page-3, #d6dfd0); } .ds-btn:active { background: var(--pressed, rgba(38,43,39,.11)); } .ds-btn:focus-visible { outline: 2px solid var(--accent, #2350c0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one primary action per view, in cover green.",
+      "html": "<button class=\"ds-btn-primary\">Ligar sincronização</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: 1px solid transparent; border-radius: 4px; background: var(--cover, #2f5240); color: var(--cover-ink, #e6efe4); font: 600 13px 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; transition: background-color .12s ease; } .ds-btn-primary:hover { background: color-mix(in oklab, #2f5240 86%, #262b27); } .ds-btn-primary:active { background: color-mix(in oklab, #2f5240 74%, #262b27); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent, #2350c0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Danger Button",
+      "kind": "button",
+      "refersTo": "button-danger",
+      "description": "Destructive action in margin red.",
+      "html": "<button class=\"ds-btn-danger\">Apagar</button>",
+      "css": ".ds-btn-danger { display: inline-flex; align-items: center; height: 28px; padding: 0 12px; border: 1px solid transparent; border-radius: 4px; background: var(--page-2, #e1e8db); color: var(--margin-ink, #b23a31); font: 13px 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; } .ds-btn-danger:hover { background: color-mix(in oklab, #c9463d 14%, #e1e8db); } .ds-btn-danger:focus-visible { outline: 2px solid var(--accent, #2350c0); outline-offset: 1px; }"
+    },
+    {
+      "name": "Text Input",
+      "kind": "input",
+      "refersTo": "text-input",
+      "description": "Tone field with a ballpoint focus ring.",
+      "html": "<input class=\"ds-input\" placeholder=\"Código de sincronização\">",
+      "css": ".ds-input { height: 28px; padding: 0 8px; border: 1px solid transparent; border-radius: 4px; outline: none; background: var(--page-2, #e1e8db); color: var(--ink, #262b27); caret-color: var(--accent, #2350c0); font: 13px 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; } .ds-input::placeholder { color: var(--ink-faint, #67716a); } .ds-input:focus { border-color: var(--accent, #2350c0); box-shadow: 0 0 0 1px var(--accent, #2350c0); }"
+    },
+    {
+      "name": "Note Tabs",
+      "kind": "nav",
+      "refersTo": "tab-active",
+      "description": "Flat tabs in the title strip; the active one is cut from the page with a ballpoint rule on top.",
+      "html": "<div class=\"ds-tabs\"><div class=\"ds-tab ds-tab-active\">Lista de compras</div><div class=\"ds-tab\">Reunião</div></div>",
+      "css": ".ds-tabs { display: flex; height: 36px; background: var(--page-2, #e1e8db); font: 13px 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; } .ds-tab { position: relative; display: flex; align-items: center; min-width: 96px; padding: 0 14px; border-right: 1px solid var(--edge, #c3cfbe); color: var(--ink-soft, #59625a); transition: background-color .12s ease; } .ds-tab:first-child { border-left: 1px solid var(--edge, #c3cfbe); } .ds-tab:hover { background: var(--hover, rgba(38,43,39,.06)); color: var(--ink, #262b27); } .ds-tab-active { background: var(--page, #edf2e8); color: var(--ink, #262b27); } .ds-tab-active::before { content: ''; position: absolute; left: 0; right: 0; top: 0; height: 2px; background: var(--accent, #2350c0); }"
+    },
+    {
+      "name": "Menu",
+      "kind": "custom",
+      "refersTo": "menu-item-highlight",
+      "description": "Page-toned popover; the highlighted row is where you are, so it is ballpoint blue.",
+      "html": "<div class=\"ds-menu\"><div class=\"ds-menu-item\">Nova nota<span>Ctrl+N</span></div><div class=\"ds-menu-item ds-menu-hi\">Abrir arquivo<span>Ctrl+O</span></div></div>",
+      "css": ".ds-menu { width: 240px; padding: 4px; background: var(--page, #edf2e8); border: 1px solid var(--edge, #c3cfbe); border-radius: 6px; box-shadow: 0 8px 24px rgba(30,44,34,.18), 0 1px 3px rgba(30,44,34,.18); font: 13px 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; } .ds-menu-item { display: flex; align-items: center; justify-content: space-between; height: 28px; padding: 0 10px; border-radius: 4px; color: var(--ink, #262b27); } .ds-menu-item span { font-size: 12px; color: var(--ink-faint, #67716a); } .ds-menu-item:hover, .ds-menu-hi { background: var(--accent, #2350c0); color: var(--on-accent, #fff); } .ds-menu-item:hover span, .ds-menu-hi span { color: inherit; opacity: .85; }"
+    },
+    {
+      "name": "Status Band",
+      "kind": "custom",
+      "refersTo": "status-band",
+      "description": "The pad's cover at the foot of every window, carrying the note's facts.",
+      "html": "<div class=\"ds-status\"><span class=\"ds-status-item\">Sincronizado</span><span style=\"flex:1\"></span><span class=\"ds-status-item\">Ln 5, Col 147</span><span class=\"ds-status-item\">287 caracteres</span><span class=\"ds-status-item\">100%</span></div>",
+      "css": ".ds-status { display: flex; height: 24px; padding: 0 4px; background: var(--cover, #2f5240); color: var(--cover-ink, #e6efe4); font: 12px/24px 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif; font-variant-numeric: tabular-nums; white-space: nowrap; } .ds-status-item { padding: 0 8px; } .ds-status-item:hover { background: var(--cover-hover, rgba(230,239,228,.14)); }"
+    },
+    {
+      "name": "Ruled Page",
+      "kind": "custom",
+      "refersTo": "note",
+      "description": "Note text on one integer pitch, rules under every row, red margin, the caret's row ruled in ballpoint blue.",
+      "html": "<div class=\"ds-page\"><div class=\"ds-gutter\">1<br>2<br>3</div><div class=\"ds-text\">Lista de compras<br><span class=\"ds-cur\">Café, pão, açúcar</span><br>Ligar para o João</div></div>",
+      "css": ".ds-page { display: flex; height: 120px; --pitch: 24px; background-color: var(--page, #edf2e8); background-image: linear-gradient(to bottom, transparent calc(var(--pitch) - 1px), var(--rule, #cbd9c6) calc(var(--pitch) - 1px)); background-size: 100% var(--pitch); background-position: 0 -2px; font: 400 14px/24px 'JetBrains Mono', Consolas, monospace; font-variant-ligatures: none; color: var(--ink, #262b27); } .ds-gutter { width: 47px; padding: 0 12px 0 8px; box-sizing: border-box; text-align: right; color: var(--ink-faint, #67716a); border-right: 1px solid var(--margin, #c9463d); font-variant-numeric: tabular-nums; } .ds-text { flex: 1; padding-left: 16px; } .ds-cur { display: inline-block; width: 100%; box-shadow: 0 1px 0 var(--accent, #2350c0); border-left: 2px solid transparent; }"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Steno Pad",
+    "overview": "Cynote is a top-bound steno pad you summon over whatever you are doing. The note is the whole window: pale steno-green paper, a printed rule under every line at one fixed pitch, a red margin rule down the left, graphite ink, and one ballpoint blue that only ever says where you are. Around the page sits the pad's card and cover: a title strip one tone darker than the page, and a deep cover-green band at the foot carrying the note's facts (line, column, characters, sync, zoom). Editing behaves like VS Code; the look refuses both the dark code-editor clone and the cream paper notebook.\n\nThe system is quiet and dense in the way a good tool is. Controls are tone on tone, not boxes; there is no gradient, no ornament, no button chrome. Type is split cleanly: the note in one bundled monospace at an integer pitch, everything else in the platform sans (Segoe UI on Windows, Roboto through Material 3 on Android) at no more than three sizes per screen. Both apps share one token set by name and value (desktop/src/theme.css, mobile/lib/theme.dart CyColors), and each follows its own platform's controls on top of it.\n\nThis world replaced the retired Art Nouveau greenhouse look. Compatibility aliases from that look (--gold, --petrol, --glass-*, LogoMedallion, Leaf, Bud) still resolve to steno-pad tokens so unrebuilt code compiles; they are not part of the system.",
+    "keyCharacteristics": [
+      "One integer line pitch for every line of note text, rules drawn at that pitch to the bottom edge of the page.",
+      "Ballpoint blue is spent only on location.",
+      "Margin red is both the margin rule and the destructive/error color.",
+      "Cover green is the status band, the primary action and the brand mark's ground.",
+      "Tone instead of borders for Windows controls; three interface sizes at most.",
+      "Light and dark are the same pad: graphite-green page, chalk ink, lighter ballpoint."
+    ],
+    "rules": [
+      { "name": "The Ballpoint Rule", "body": "Blue is spent only on location: caret, cursor rule, active tab rule, focus, selection, current match, the highlighted menu row. A test: if the element would still be blue when the user is not on it, it is wrong. Android maps Material primary to ink and the filled button to the cover precisely so blue never leaks onto a control.", "section": "colors" },
+      { "name": "The Margin Doubles Rule", "body": "The red that rules the margin is the only destructive and error color. There is no second red, except Windows' own caption close hover (close-hover), which belongs to the platform.", "section": "colors" },
+      { "name": "The Cover Rule", "body": "Cover green is the status band and the primary action, and nothing decorative. One primary action per view.", "section": "colors" },
+      { "name": "The Three Sizes Rule", "body": "At most three interface sizes per screen (Windows: 12, 13 and 18px via --fs-s, --fs-m, --fs-l). The note has its own size and does not count. Emphasis is weight (600) or ink tone, never a fourth size.", "section": "typography" },
+      { "name": "The One Pitch Rule", "body": "Every line of note text, wrapped or not, emoji or not, is exactly one integer pitch tall on both apps. Windows fixes it with line-height: var(--pitch) and fallback fonts overridden to the mono's metrics; Android fixes it with a forced strut (CyNoteType.strut). Nothing may make a row a fractional height.", "section": "typography" },
+      { "name": "The Tabular Figures Rule", "body": "Numbers that change in place (Ln/Col, counts, zoom, dates, line numbers) use tabular figures.", "section": "typography" },
+      { "name": "The Flat Pad Rule", "body": "Nothing that is part of the pad (strip, page, band, rows) casts a shadow. Only what floats over the page does. Android removes Material's surface tint everywhere for the same reason.", "section": "elevation" }
+    ],
+    "dos": [
+      "Do keep every line of note text at one integer pitch on both apps; change --text-size and --pitch together, in whole pixels.",
+      "Do spend ballpoint blue only on location: caret, cursor rule, active tab rule, focus, selection, current match, highlighted menu row.",
+      "Do use margin red (margin / margin-ink) for every destructive action and error.",
+      "Do put the note's facts and sync state on the cover-green status band, and make the cover the one primary action.",
+      "Do build Windows controls from tone (page-2, page-3, hover, pressed), with edge hairlines only between surfaces.",
+      "Do keep each screen to three interface sizes; use weight or ink tone for emphasis.",
+      "Do keep token names and values identical between theme.css and CyColors."
+    ],
+    "donts": [
+      "Don't color a control, icon or link blue because it is clickable; Android primary stays ink.",
+      "Don't give Windows buttons visible borders, gradients or bevels.",
+      "Don't add a second red, a fourth interface size, or a line height that is not the pitch.",
+      "Don't shadow anything that is part of the pad (strip, page, band, rows).",
+      "Don't let ligatures or fallback glyphs change the note's metrics.",
+      "Don't reintroduce the retired greenhouse ornaments (vines, arches, medallions, leaves); their aliases exist only so old code compiles."
+    ]
+  }
+}

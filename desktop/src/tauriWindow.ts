@@ -6,10 +6,13 @@ function isTauri() {
   return typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
 }
 
+/** Hides the window to the tray. Asks to close rather than hiding it here, so
+ * the Rust side handles it like any other close (Alt+F4, the tray): that also
+ * tells the webview it's out of sight, and the page stops rendering. */
 export function hideAppWindow() {
   if (!isTauri()) return;
   getCurrentWindow()
-    .hide()
+    .close()
     .catch(() => {});
 }
 

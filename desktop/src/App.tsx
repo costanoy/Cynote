@@ -9,7 +9,6 @@ import { ContentArea } from "./components/ContentArea";
 import { DrawingOverlay, type DrawingOverlayHandle, type DrawingResult } from "./components/DrawingOverlay";
 import { StatusBar } from "./components/StatusBar";
 import { Dialog } from "./components/Dialog";
-import { CornerVignette, Sprout } from "./icons";
 import {
   hideAppWindow,
   minimizeAppWindow,
@@ -25,19 +24,13 @@ import { planOpen, samePath } from "./noteFiles";
 import { parseNoteFile } from "./cynoteFormat";
 import { loadNotes, saveNotes } from "./notesStore";
 import { getDeviceIdentity } from "./deviceIdentity";
-import { onPairingRequest, respondToPairing, listReachableTrustedDevices, fetchPeerNotes } from "./sync";
-import { mergeFromPeer, dropDuplicateCopies } from "./merge";
-import { loadBookkeeping, saveBookkeeping } from "./bookkeeping";
-import { loadDeletedNoteIds, markNotesDeleted, forgetDeletedNote } from "./deletedNotes";
-import { getCloudSyncId, pushCloudNotes, fetchCloudChanges } from "./cloudSync";
-import { shiftSketchAnchors, tabsForSync } from "./sketches";
+import { useCloudSync } from "./sync/useCloudSync";
+import { dropDuplicateCopies } from "./sync/legacy";
+import { shiftSketchAnchors } from "./sketches";
 import { isDirty as isTabDirtyAgainst, snapshotOf, tabHasContent, type SavedSnapshot } from "./dirtyTracking";
 import { checkForUpdate, installUpdate, type Update } from "./updater";
-import type { PeerInfo } from "./types";
 
 const UPDATE_CHECK_DELAY_MS = 4000;
-
-const SYNC_INTERVAL_MS = 25000;
 
 function makeBlankTab(deviceId: string): TabData {
   return {
@@ -85,6 +78,36 @@ function loadDarkModePref(): boolean {
   }
 }
 
+const WRAP_KEY = "cynote-word-wrap";
+const LINE_NUMBERS_KEY = "cynote-line-numbers";
+const ZOOM_KEY = "cynote-zoom";
+
+function loadFlag(key: string, fallback: boolean): boolean {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw === null ? fallback : raw === "true";
+  } catch {
+    return fallback;
+  }
+}
+
+function saveSetting(key: string, value: string) {
+  try {
+    localStorage.setItem(key, value);
+  } catch {
+    // the setting just won't survive a restart
+  }
+}
+
+function loadZoomPref(): number {
+  try {
+    const z = Number(localStorage.getItem(ZOOM_KEY));
+    return Number.isFinite(z) && z >= 60 && z <= 200 ? Math.round(z / 10) * 10 : 100;
+  } catch {
+    return 100;
+  }
+}
+
 function loadSpellCheckPref(): boolean {
   try {
     const raw = localStorage.getItem(SPELLCHECK_KEY);
@@ -97,7 +120,6 @@ function loadSpellCheckPref(): boolean {
 function App() {
   const [tabs, setTabs] = useState<TabData[]>([]);
   const [deviceId, setDeviceId] = useState<string | null>(null);
-  const [deviceName, setDeviceName] = useState<string>("Computador");
   const [activeTab, setActiveTab] = useState(0);
   const [drawingOpen, setDrawingOpen] = useState(false);
   // Read by the long-lived key and wheel handlers below.
@@ -113,9 +135,17 @@ function App() {
   const [caret, setCaret] = useState({ line: 1, col: 1 });
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  // Autosave progress: "syncing" while a save is pending or in flight. The
+  // status bar's sync state is derived from it and the cloud sync status below.
   const [syncStatus, setSyncStatus] = useState<"synced" | "syncing" | "error">("synced");
-  const [zoom, setZoom] = useState(100);
+  const [zoom, setZoom] = useState(loadZoomPref);
   const zoomBy = (delta: number) => setZoom((z) => Math.min(200, Math.max(60, z + delta)));
+  const [wordWrap, setWordWrap] = useState(() => loadFlag(WRAP_KEY, true));
+  const [lineNumbers, setLineNumbers] = useState(() => loadFlag(LINE_NUMBERS_KEY, true));
+  const [selectionInfo, setSelectionInfo] = useState({ selections: 1, selectedChars: 0 });
+  useEffect(() => saveSetting(ZOOM_KEY, String(zoom)), [zoom]);
+  useEffect(() => saveSetting(WRAP_KEY, String(wordWrap)), [wordWrap]);
+  useEffect(() => saveSetting(LINE_NUMBERS_KEY, String(lineNumbers)), [lineNumbers]);
 
   // Ctrl+wheel zooms the note, like Notepad and VS Code (passive: false, or
   // preventDefault is ignored and the page itself would try to zoom).
@@ -140,7 +170,6 @@ function App() {
   };
   const [pinned, setPinned] = useState(false);
   const [loaded, setLoaded] = useState(false);
-  const [pairingRequests, setPairingRequests] = useState<PeerInfo[]>([]);
   const [spellCheckEnabled, setSpellCheckEnabled] = useState(loadSpellCheckPref);
   const [autoStartEnabled, setAutoStartOn] = useState(false);
 
@@ -181,17 +210,6 @@ function App() {
     setAppAlwaysOnTop(pinned);
   }, [pinned]);
 
-  useEffect(() => {
-    return onPairingRequest((peer) => {
-      setPairingRequests((prev) => (prev.some((p) => p.deviceId === peer.deviceId) ? prev : [...prev, peer]));
-    });
-  }, []);
-
-  const respondPairing = (deviceId: string, accept: boolean) => {
-    respondToPairing(deviceId, accept);
-    setPairingRequests((prev) => prev.filter((p) => p.deviceId !== deviceId));
-  };
-
   // Assigned during render (not in an effect) so it's never a step behind the
   // committed state - sync compares against it to detect edits made while a
   // cycle was in flight.
@@ -223,109 +241,28 @@ function App() {
     activeTabRef.current = activeTab;
   }, [activeTab]);
 
-  // Everything network-bound happens before this: the merge itself runs in one
-  // synchronous step against the latest tabs, and is only applied if nothing
-  // changed them in the meantime (an edit, or another sync cycle) - otherwise
-  // it's simply redone next cycle, instead of overwriting newer state with a
-  // result computed from stale state.
-  const mergeAndApply = (peers: { deviceId: string; notes: TabData[] }[], myDeviceId: string) => {
-    const base = tabsRef.current;
-    const deleted = loadDeletedNoteIds();
-    let book = loadBookkeeping();
-    let merged = base;
-    let anyChange = false;
-    for (const peer of peers) {
-      const result = mergeFromPeer(merged, peer.notes, peer.deviceId, myDeviceId, book, deleted);
-      merged = result.tabs;
-      book = result.bookkeeping;
-      if (result.changed) anyChange = true;
-    }
-    if (!anyChange) {
-      saveBookkeeping(book);
-      return;
-    }
-    setTabs((prev) => {
-      if (prev !== base) return prev;
-      saveBookkeeping(book);
-      tabsRef.current = merged;
-      return merged;
-    });
-  };
+  // Tabs closed here (or deleted on another device), for Ctrl+Shift+T.
+  const closedTabsRef = useRef<TabData[]>([]);
 
-  const lanSyncBusy = useRef(false);
-  const runSyncCycle = async (myDeviceId: string) => {
-    if (lanSyncBusy.current) return;
-    lanSyncBusy.current = true;
-    try {
-      const peers = await listReachableTrustedDevices();
-      const fetched: { deviceId: string; notes: TabData[] }[] = [];
-      for (const peer of peers) {
-        const resp = await fetchPeerNotes(peer);
-        if (resp) fetched.push({ deviceId: peer.deviceId, notes: resp.notes as TabData[] });
-      }
-      if (fetched.length > 0) mergeAndApply(fetched, myDeviceId);
-    } finally {
-      lanSyncBusy.current = false;
-    }
-  };
-
-  // Same merge as the LAN cycle above, just fetched over the internet instead
-  // of the local network - this is what still works when both devices are on
-  // a network that blocks device-to-device discovery (a work/guest Wi-Fi with
-  // client isolation, for instance), once a pairing code is set up between
-  // them (see SettingsView).
-  //
-  // Only what changed crosses the network: our notes are uploaded when they
-  // differ from the last upload, and another device's notes are downloaded
-  // when its timestamp moves (kept here so every cycle can still merge them).
-  const cloudSyncBusy = useRef(false);
-  const cloudState = useRef({
-    syncId: "",
-    lastPushed: "",
-    peers: new Map<string, { updatedAt: number; notes: TabData[] }>(),
+  // Sync v2 (SYNC.md): one code shared by the computer and the phone, through
+  // the internet. It applies other devices' changes to the tabs itself.
+  const cloudSync = useCloudSync({
+    ready: loaded && !!deviceId,
+    deviceId,
+    tabsRef,
+    setTabs,
+    activeTabRef,
+    setActiveTab,
+    makeBlankTab,
+    onTabsRemoved: (removed) => closedTabsRef.current.push(...removed),
   });
-  const runCloudSyncCycle = async (myDeviceId: string, myDeviceName: string) => {
-    if (cloudSyncBusy.current) return;
-    cloudSyncBusy.current = true;
-    try {
-      const syncId = await getCloudSyncId();
-      if (!syncId) return;
-      const cloud = cloudState.current;
-      if (cloud.syncId !== syncId) {
-        cloudState.current = { syncId, lastPushed: "", peers: new Map() };
-      }
-      const { peers } = cloudState.current;
-
-      const payload = JSON.stringify(tabsForSync(tabsRef.current));
-      if (payload !== cloudState.current.lastPushed && (await pushCloudNotes(syncId, myDeviceId, myDeviceName, payload))) {
-        cloudState.current.lastPushed = payload;
-      }
-
-      const known = Object.fromEntries([...peers].map(([id, p]) => [id, p.updatedAt]));
-      const changes = await fetchCloudChanges(syncId, myDeviceId, known);
-      if (!changes) return;
-      for (const id of [...peers.keys()]) if (!changes.devices.includes(id)) peers.delete(id);
-      for (const p of changes.changed) {
-        peers.set(p.deviceId, { updatedAt: p.updatedAt, notes: Array.isArray(p.notes) ? (p.notes as TabData[]) : [] });
-      }
-      if (peers.size > 0) {
-        mergeAndApply(
-          [...peers].map(([deviceId, p]) => ({ deviceId, notes: p.notes })),
-          myDeviceId
-        );
-      }
-    } finally {
-      cloudSyncBusy.current = false;
-    }
-  };
 
   useEffect(() => {
     getDeviceIdentity().then(async (identity) => {
       setDeviceId(identity.deviceId);
-      setDeviceName(identity.deviceName);
       const saved = await loadNotes(identity.deviceId);
       const deduped = saved ? dropDuplicateCopies(saved) : null;
-      if (deduped) markNotesDeleted(deduped.removedIds);
+      if (deduped) cloudSync.ignoreNotes(deduped.removedIds);
       const initial = deduped && deduped.tabs.length > 0 ? deduped.tabs : [makeBlankTab(identity.deviceId)];
       // Whatever was loaded from notes.json is durably on disk already -
       // start every tab clean, not flagged as having unsaved changes.
@@ -334,18 +271,6 @@ function App() {
       setLoaded(true);
     });
   }, []);
-
-  useEffect(() => {
-    if (!loaded || !deviceId) return;
-    const runBoth = () => {
-      runSyncCycle(deviceId);
-      runCloudSyncCycle(deviceId, deviceName);
-    };
-    runBoth();
-    const interval = setInterval(runBoth, SYNC_INTERVAL_MS);
-    return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loaded, deviceId]);
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -377,10 +302,7 @@ function App() {
     setSyncStatus("syncing");
     saveNotes(tabsRef.current).then(async () => {
       setSyncStatus("synced");
-      if (deviceId) {
-        runSyncCycle(deviceId);
-        runCloudSyncCycle(deviceId, deviceName);
-      }
+      cloudSync.syncNow();
 
       const i = activeTabRef.current;
       const tab = tabsRef.current[i];
@@ -400,10 +322,7 @@ function App() {
     saveTimerRef.current = setTimeout(() => {
       saveNotes(tabs).then(() => {
         setSyncStatus("synced");
-        if (deviceId) {
-        runSyncCycle(deviceId);
-        runCloudSyncCycle(deviceId, deviceName);
-      }
+        cloudSync.syncNow();
       });
     }, AUTOSAVE_DELAY_MS);
     return () => {
@@ -500,15 +419,23 @@ function App() {
   };
 
   // Ctrl+Shift+T brings back the most recently closed tab, like a browser or VS Code.
-  const closedTabsRef = useRef<TabData[]>([]);
-  const reopenClosedTab = () => {
-    const tab = closedTabsRef.current.pop();
-    if (!tab) return;
-    forgetDeletedNote(tab.id);
+  const restoreTab = (tab: TabData, at?: number) => {
+    // Closing deleted the note everywhere; bringing it back uploads it again.
+    cloudSync.noteRestored(tab.id);
     if (tabsRef.current.some((t) => t.id === tab.id)) return;
     markSaved(tab);
-    setActiveTab(tabsRef.current.length);
-    setTabs((prev) => [...prev, tab]);
+    const index = at === undefined ? tabsRef.current.length : Math.max(0, Math.min(at, tabsRef.current.length));
+    setActiveTab(index);
+    setTabs((prev) => {
+      const next = prev.slice();
+      next.splice(Math.min(index, next.length), 0, tab);
+      return next;
+    });
+  };
+
+  const reopenClosedTab = () => {
+    const tab = closedTabsRef.current.pop();
+    if (tab) restoreTab(tab);
   };
 
   const addTab = () => {
@@ -574,7 +501,7 @@ function App() {
     }
 
     const id = plan.action === "open" ? plan.id : "n" + Date.now();
-    forgetDeletedNote(id);
+    cloudSync.noteRestored(id);
     const note: TabData = {
       id,
       title,
@@ -708,8 +635,18 @@ function App() {
     const removeTab = () => {
       const closing = tabsRef.current[i];
       if (closing) {
-        markNotesDeleted([closing.id]);
+        // Closing a note deletes it on every device that shares the code.
+        cloudSync.noteDeleted(closing.id);
         closedTabsRef.current.push(closing);
+        if (tabHasContent(closing)) {
+          showToast("Nota apagada.", {
+            label: "Desfazer",
+            run: () => {
+              closedTabsRef.current = closedTabsRef.current.filter((t) => t.id !== closing.id);
+              restoreTab(closing, i);
+            },
+          });
+        }
       }
       setTabs((prev) => {
         const next = prev.slice();
@@ -731,10 +668,7 @@ function App() {
       setSyncStatus("syncing");
       saveNotes(tabsRef.current).then(() => {
         setSyncStatus("synced");
-        if (deviceId) {
-        runSyncCycle(deviceId);
-        runCloudSyncCycle(deviceId, deviceName);
-      }
+        cloudSync.syncNow();
         removeTab();
       });
     } else {
@@ -933,6 +867,21 @@ function App() {
   const activeSketches = activeNote.sketches ?? [];
   const editingSketch = editingSketchId ? activeSketches.find((s) => s.id === editingSketchId) ?? null : null;
   const isBlankPage = charCount === 0 && activeSketches.length === 0 && !drawingOpen;
+  // The status bar shows the cloud's state; a local save in flight reads as syncing.
+  const statusBarSync =
+    syncStatus === "syncing" && cloudSync.status.phase === "synced"
+      ? { ...cloudSync.status, phase: "syncing" as const }
+      : syncStatus === "error"
+        ? { phase: "error" as const, message: "não deu para salvar as notas neste computador" }
+        : cloudSync.status;
+  const onStatusSyncClick = () => {
+    const phase = cloudSync.status.phase;
+    if (phase === "off" || phase === "denied") setShowSettings(true);
+    else saveNow();
+  };
+  // Integer pixels at every zoom step, so every line has exactly the same height.
+  const textSize = Math.round(((readingMode ? 16 : 14) * zoom) / 100);
+  const pitch = Math.round(((readingMode ? 28 : 24) * zoom) / 100);
   const dirtyCount = tabs.filter((t) => isTabDirty(t) && tabHasContent(t)).length;
 
   return (
@@ -958,9 +907,12 @@ function App() {
         onMinimize={minimizeAppWindow}
         onToggleMaximize={toggleMaximizeAppWindow}
         onClose={hideAppWindow}
-      />
-
-      <div className="cy-body">
+        extraMenuItems={[
+          { label: "Quebra de linha", key: "Alt+Z", checked: wordWrap, run: () => setWordWrap((v) => !v), separatorBefore: true },
+          { label: "Números de linha", checked: lineNumbers, run: () => setLineNumbers((v) => !v) },
+          { label: "Modo leitura", checked: readingMode, run: () => setReadingMode((v) => !v) },
+        ]}
+      >
       <TabBar
         tabs={tabs}
         activeTab={activeTab}
@@ -974,13 +926,9 @@ function App() {
         onRename={renameTab}
         isDirty={isTabDirty}
       />
+      </Header>
 
-      <div className="cy-page">
-      <div className="cy-page-rule" />
-      <CornerVignette corner="tl" />
-      <CornerVignette corner="tr" />
-      <CornerVignette corner="bl" />
-      <CornerVignette corner="br" />
+      <main className="cy-page">
       {showSettings ? (
         <SettingsView
           darkMode={darkMode}
@@ -990,15 +938,17 @@ function App() {
           onToggleSpellCheck={toggleSpellCheck}
           autoStartEnabled={autoStartEnabled}
           onToggleAutoStart={toggleAutoStart}
+          wordWrap={wordWrap}
+          onToggleWordWrap={() => setWordWrap((v) => !v)}
+          lineNumbers={lineNumbers}
+          onToggleLineNumbers={() => setLineNumbers((v) => !v)}
+          sync={cloudSync}
         />
       ) : (
         <div className="content-shell">
           <div
             className={"content-wrap" + (readingMode ? " reading" : "")}
-            style={{
-              fontSize: Math.round((readingMode ? 18 : 15) * zoom) / 100 + "px",
-              lineHeight: readingMode ? 1.95 : 1.65,
-            }}
+            style={{ "--text-size": textSize + "px", "--pitch": pitch + "px" } as React.CSSProperties}
           >
             <ContentArea
               key={activeNote.id}
@@ -1016,14 +966,25 @@ function App() {
               onUpdateSketches={(patches, quiet) => updateSketches(activeNote.id, patches, quiet)}
               onEditSketch={editSketch}
               onDeleteSketch={deleteSketch}
+              lineNumbers={lineNumbers && !readingMode}
+              wordWrap={wordWrap}
+              onToggleWordWrap={() => setWordWrap((v) => !v)}
+              onSelectionInfo={(info) =>
+                setSelectionInfo((prev) =>
+                  prev.selections === info.selections && prev.selectedChars === info.selectedChars
+                    ? prev
+                    : { selections: info.selections, selectedChars: info.selectedChars },
+                )
+              }
             />
           </div>
 
           {isBlankPage && (
             <div className="cy-empty blank-page">
-              <Sprout />
-              <div className="cy-empty-title">Página em branco</div>
-              <div className="cy-empty-hint">Plante a primeira linha e o resto cresce.</div>
+              <div className="cy-empty-title">Nota vazia</div>
+              <div className="cy-empty-hint">
+                Comece a digitar. <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Espaço</kbd> chama o Cynote de qualquer lugar.
+              </div>
             </div>
           )}
 
@@ -1053,34 +1014,25 @@ function App() {
           )}
         </div>
       )}
-      </div>
+      </main>
 
       <StatusBar
         line={caret.line}
         col={caret.col}
+        selections={selectionInfo.selections}
+        selectedChars={selectionInfo.selectedChars}
         charCount={charCount}
         zoom={zoom}
         onZoomIn={() => zoomBy(10)}
         onZoomOut={() => zoomBy(-10)}
+        onZoomReset={() => setZoom(100)}
         readingMode={readingMode}
         onToggleReadingMode={() => setReadingMode((v) => !v)}
-        syncStatus={syncStatus}
-        onSaveNow={saveNow}
+        wordWrap={wordWrap}
+        onToggleWordWrap={() => setWordWrap((v) => !v)}
+        syncStatus={statusBarSync}
+        onSyncClick={onStatusSyncClick}
       />
-      </div>
-
-      {pairingRequests.length > 0 && (
-        <Dialog
-          icon="pair"
-          title="Sincronizar dispositivo"
-          buttons={[
-            { label: "Recusar", onClick: () => respondPairing(pairingRequests[0].deviceId, false) },
-            { label: "Aceitar", kind: "primary", onClick: () => respondPairing(pairingRequests[0].deviceId, true) },
-          ]}
-        >
-          Sincronizar com “{pairingRequests[0].deviceName}”?
-        </Dialog>
-      )}
 
       {closeConfirmTab && (
         <Dialog

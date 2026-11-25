@@ -4,17 +4,13 @@ import "./theme.css";
 import "./dashboard.css";
 import { scanTxtNotes, notePreviews, openNoteInMain, type ScannedNote } from "./dashboardApi";
 import {
-  ArchShape,
+  AppMark,
   BackIcon,
-  Bud,
-  CloseIcon,
-  CornerVignette,
-  Leaf,
-  LogoMedallion,
+  CaptionCloseIcon,
+  ChevronRightIcon,
   MaximizeIcon,
   MinimizeIcon,
   RefreshIcon,
-  Sprout,
 } from "./icons";
 
 function noteSegments(note: ScannedNote): string[] {
@@ -32,20 +28,6 @@ function extOf(note: ScannedNote): string {
  * imported .txt/.md are readable here but stay outside that identity. */
 function isNativeFormat(note: ScannedNote): boolean {
   return extOf(note) === ".cyte";
-}
-
-const LEAF_BY_EXT: Record<string, string> = {
-  ".cyte": "var(--accent)",
-  ".md": "var(--petrol)",
-  ".txt": "var(--gold)",
-};
-
-// Each folder is a stained-glass window in one of four colors, picked from
-// its name so it stays the same between visits.
-function hueOf(name: string): number {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
-  return h % 4;
 }
 
 const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
@@ -90,11 +72,6 @@ function applyTheme() {
   }
   document.documentElement.setAttribute("data-theme", theme);
 }
-
-const GHOSTS = [0, 1, 2, 3, 4];
-// Only the first screenful cascades in; a folder with thousands of notes
-// would otherwise keep the last ones invisible for minutes.
-const CASCADE_MAX = 16;
 
 export default function Dashboard() {
   const [notes, setNotes] = useState<ScannedNote[]>([]);
@@ -201,49 +178,42 @@ export default function Dashboard() {
 
   return (
     <div className="cy-window dash-window">
-      <div className="cy-arch" data-tauri-drag-region>
-        <ArchShape />
-        <div className="cy-lamp" />
-        <div className="cy-arch-strip" data-tauri-drag-region>
-          <div className="cy-brand">
-            <LogoMedallion />
-            <span className="cy-brand-name">Dashnotes</span>
-          </div>
-          <div className="cy-spacer" data-tauri-drag-region />
-          <button className="medallion win" title="Minimizar" onClick={() => getCurrentWindow().minimize()}>
-            <MinimizeIcon />
-          </button>
-          <button className="medallion win" title="Maximizar" onClick={() => getCurrentWindow().toggleMaximize()}>
-            <MaximizeIcon />
-          </button>
-          <button className="medallion win close" title="Fechar" onClick={() => getCurrentWindow().close()}>
-            <CloseIcon />
-          </button>
+      <header className="titlebar" data-tauri-drag-region>
+        <div className="dash-brand" data-tauri-drag-region>
+          <AppMark />
+          <span data-tauri-drag-region>Dashnotes</span>
         </div>
-      </div>
+        <div className="titlebar-drag" data-tauri-drag-region />
+        <button className="win-btn" title="Minimizar" onClick={() => getCurrentWindow().minimize()}>
+          <MinimizeIcon />
+        </button>
+        <button className="win-btn" title="Maximizar" onClick={() => getCurrentWindow().toggleMaximize()}>
+          <MaximizeIcon />
+        </button>
+        <button className="win-btn close" title="Fechar" onClick={() => getCurrentWindow().close()}>
+          <CaptionCloseIcon />
+        </button>
+      </header>
 
-      <div className="cy-body">
+      <div className="cy-page dash-page">
         <div className="dash-nav">
           <button
-            className="medallion dash-back"
+            className="icon-btn"
             title="Voltar"
             disabled={path.length === 0}
             onClick={() => setPath((p) => p.slice(0, -1))}
           >
-            <BackIcon size={14} width={1.7} />
+            <BackIcon />
           </button>
-          <nav className="dash-crumbs">
+          <nav className="dash-crumbs" aria-label="Pastas">
             {crumbs.map((name, i) => {
               const last = i === crumbs.length - 1;
               return (
                 <div key={i} className="dash-crumb-group">
-                  {i > 0 && (
-                    <svg className="dash-crumb-sep" width="14" height="10" viewBox="0 0 14 10">
-                      <path d="M3 5 L7 1.8 L11 5 L7 8.2 Z" />
-                    </svg>
-                  )}
+                  {i > 0 && <ChevronRightIcon size={12} />}
                   <button
                     className={"dash-crumb" + (last ? " current" : "")}
+                    aria-current={last ? "page" : undefined}
                     onClick={() => {
                       if (!last) setPath(path.slice(0, i));
                     }}
@@ -254,127 +224,107 @@ export default function Dashboard() {
               );
             })}
           </nav>
-          <button className="dash-rescan" onClick={scan}>
-            <RefreshIcon />
+          <button className="btn small" onClick={scan} disabled={loading}>
+            <RefreshIcon size={14} />
             Procurar de novo
           </button>
         </div>
 
-        <div className="cy-page">
-          <div className="cy-page-rule" />
-          <CornerVignette corner="tl" />
-          <CornerVignette corner="tr" />
-
-          {loading ? (
-            <div className="dash-loading">
-              <div className="dash-loading-label">
-                <span className="dash-loading-bud">
-                  <Bud size={18} />
-                </span>
-                Procurando notas…
+        {loading ? (
+          <div className="dash-scroll" aria-busy="true">
+            <div className="dash-section">Procurando notas…</div>
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div key={i} className="dash-row dash-ghost">
+                <span className="dash-ghost-bar" style={{ width: 120 + ((i * 53) % 140) }} />
               </div>
-              <div className="dash-folder-grid">
-                {GHOSTS.map((i) => (
-                  <div key={i} className="dash-ghost" style={{ animationDelay: i * 160 + "ms" }} />
+            ))}
+          </div>
+        ) : (
+          <div className="dash-scroll">
+            {folders.length > 0 && (
+              <>
+                <div className="dash-section">Pastas</div>
+                {folders.map((folder) => (
+                  <button
+                    key={folder.name}
+                    className="dash-row dash-folder"
+                    title={folder.name}
+                    onClick={() => setPath([...path, folder.name])}
+                  >
+                    <FolderIcon />
+                    <span className="dash-row-title">{folder.name}</span>
+                    <span className="dash-row-meta">{folder.meta}</span>
+                  </button>
                 ))}
-              </div>
-            </div>
-          ) : (
-            <div className="dash-scroll">
-              {folders.length > 0 && (
-                <>
-                  <div className="dash-section">
-                    <span>Pastas</span>
-                    <div />
-                  </div>
-                  <div className="dash-folder-grid">
-                    {folders.map((folder, i) => {
-                      const hue = hueOf(folder.name);
-                      return (
-                        <button
-                          key={folder.name}
-                          className="dash-folder"
-                          title={folder.name}
-                          style={
-                            {
-                              "--glass": `var(--glass-${hue})`,
-                              "--bead": `var(--glass-${(hue + 1) % 4})`,
-                              animationDelay: Math.min(i, CASCADE_MAX) * 50 + "ms",
-                            } as React.CSSProperties
-                          }
-                          onClick={() => setPath([...path, folder.name])}
-                        >
-                          <span className="dash-folder-shine" />
-                          <span className="dash-folder-mullion v" />
-                          <span className="dash-folder-mullion h" />
-                          <span className="dash-folder-bead" />
-                          <span className="dash-folder-plate">
-                            <span className="dash-folder-name">{folder.name}</span>
-                            <span className="dash-folder-meta">{folder.meta}</span>
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+              </>
+            )}
 
-              {files.length > 0 && (
-                <>
-                  <div className="dash-section">
-                    <span>Notas</span>
-                    <div />
-                  </div>
-                  <div className="dash-note-grid">
-                    {files.map((note, i) => {
-                      const ext = extOf(note);
-                      return (
-                        <button
-                          key={note.fullPath}
-                          className="dash-note"
-                          style={{ animationDelay: Math.min(folders.length + i, CASCADE_MAX) * 45 + "ms" }}
-                          onClick={() => openNote(note)}
-                          disabled={opening === note.fullPath}
-                          title={isNativeFormat(note) ? "Nota Cynote" : "Arquivo de texto importado"}
-                        >
-                          <span className="dash-note-rule" />
-                          <span className="dash-note-top">
-                            <Leaf size={14} color={LEAF_BY_EXT[ext] ?? "var(--gold)"} rotate={40} />
-                            <span className="dash-note-ext">{ext}</span>
-                            <span className="cy-spacer" />
-                            <span className="dash-note-date">{formatDate(note.modifiedMs)}</span>
-                          </span>
-                          <span className="dash-note-title">{note.fileName.replace(NOTE_EXT_RE, "")}</span>
-                          {previews.get(note.fullPath) && (
-                            <span className="dash-note-preview">{previews.get(note.fullPath)}</span>
-                          )}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </>
-              )}
+            {files.length > 0 && (
+              <>
+                <div className="dash-section">Notas</div>
+                {files.map((note) => {
+                  const ext = extOf(note);
+                  const preview = previews.get(note.fullPath);
+                  return (
+                    <button
+                      key={note.fullPath}
+                      className="dash-row dash-note"
+                      onClick={() => openNote(note)}
+                      disabled={opening === note.fullPath}
+                      title={isNativeFormat(note) ? "Nota do Cynote" : "Arquivo de texto"}
+                    >
+                      <NoteFileIcon native={isNativeFormat(note)} />
+                      <span className="dash-row-main">
+                        <span className="dash-row-title">{note.fileName.replace(NOTE_EXT_RE, "")}</span>
+                        {preview && <span className="dash-row-preview">{preview}</span>}
+                      </span>
+                      <span className="dash-row-ext">{ext}</span>
+                      <span className="dash-row-date">{formatDate(note.modifiedMs)}</span>
+                    </button>
+                  );
+                })}
+              </>
+            )}
 
-              {total === 0 && (
-                <div className="cy-empty dash-empty">
-                  <Sprout />
-                  <div className="cy-empty-title">{path.length === 0 ? "Nenhuma nota encontrada" : "Pasta vazia"}</div>
-                  <div className="cy-empty-hint">
-                    {path.length === 0
-                      ? "Notas salvas na Área de Trabalho ou em Documentos aparecem aqui."
-                      : "Notas salvas aqui aparecem sozinhas."}
-                  </div>
+            {total === 0 && (
+              <div className="cy-empty dash-empty">
+                <div className="cy-empty-title">{path.length === 0 ? "Nenhuma nota encontrada" : "Pasta vazia"}</div>
+                <div className="cy-empty-hint">
+                  {path.length === 0
+                    ? "Notas salvas na Área de Trabalho ou em Documentos aparecem aqui."
+                    : "Notas salvas aqui aparecem sozinhas."}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-
-        <div className="dash-footer">
-          <span className="dash-footer-path">{diskPath}</span>
-          <span>{loading ? "Procurando…" : plural(total, "item", "itens")}</span>
-        </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
+      <footer className="status-bar dash-footer">
+        <span className="status-item dash-footer-path" title={diskPath}>
+          {diskPath}
+        </span>
+        <div className="cy-spacer" />
+        <span className="status-item static">{loading ? "Procurando…" : plural(total, "item", "itens")}</span>
+      </footer>
     </div>
+  );
+}
+
+function FolderIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round" aria-hidden="true">
+      <path d="M2 4.5A1.5 1.5 0 0 1 3.5 3h2.8l1.5 1.6h4.7A1.5 1.5 0 0 1 14 6.1v5.4a1.5 1.5 0 0 1-1.5 1.5h-9A1.5 1.5 0 0 1 2 11.5z" />
+    </svg>
+  );
+}
+
+/** A ruled sheet; Cynote's own notes carry the ballpoint line. */
+function NoteFileIcon({ native }: { native: boolean }) {
+  return (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M4 1.8h5.4L12.5 5v8.2a1 1 0 0 1-1 1h-7.5a1 1 0 0 1-1-1V2.8a1 1 0 0 1 1-1z" stroke="currentColor" />
+      <path d="M5.5 8.2h5M5.5 11h5" stroke={native ? "var(--accent)" : "currentColor"} />
+    </svg>
   );
 }

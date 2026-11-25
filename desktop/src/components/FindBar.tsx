@@ -44,6 +44,8 @@ export function FindBar(p: Props) {
             placeholder={`Ir para a linha (1 a ${p.lineCount})`}
             onKeyDown={(e) => {
               if (e.key === "Enter") {
+                // The editor takes focus below; the Enter itself must not follow it there.
+                e.preventDefault();
                 const n = parseInt(e.currentTarget.value, 10);
                 if (!Number.isNaN(n)) p.onGoToLine(Math.max(1, Math.min(p.lineCount, n)));
               } else if (e.key === "Escape") {

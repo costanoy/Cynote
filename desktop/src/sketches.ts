@@ -1,5 +1,5 @@
 import { isInkKey } from "./ink";
-import type { NoteSketch, SketchAnchor, SketchOp, TabData } from "./types";
+import type { NoteSketch, SketchAnchor, SketchOp } from "./types";
 
 const EMBEDDED_IMAGE = /^data:image\/(png|jpeg|webp|gif);base64,/i;
 
@@ -113,15 +113,4 @@ export function shiftSketchAnchors<T extends NoteSketch[] | undefined>(sketches:
     return { ...s, anchor: { ...s.anchor, line: moved } };
   });
   return (changed ? next : sketches) as T;
-}
-
-/** Notes as they're uploaded for internet sync. The strokes stay on this
- * computer: the phone has no drawings at all, and another computer can still
- * show (and draw over) the picture - this keeps the uploads small. */
-export function tabsForSync(tabs: TabData[]): TabData[] {
-  return tabs.map((t) =>
-    t.sketches?.some((s) => s.strokes)
-      ? { ...t, sketches: t.sketches.map(({ strokes: _strokes, naturalWidth: _naturalWidth, ...rest }) => rest) }
-      : t
-  );
 }

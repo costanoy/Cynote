@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import { DrawIcon, PhoneIcon, UpdateIcon } from "../icons";
 
 export type DialogButton = {
   label: string;
@@ -8,30 +7,32 @@ export type DialogButton = {
 };
 
 type Props = {
-  icon: "unsaved" | "pair" | "update";
+  /** Kept for callers; the plain dialog no longer draws an emblem. */
+  icon?: "unsaved" | "pair" | "update";
   title: string;
   children: ReactNode;
   buttons?: DialogButton[];
-  /** Shows the growing green bar instead of buttons, while an update installs. */
+  /** Shows an indeterminate bar instead of buttons, while an update installs. */
   progress?: boolean;
 };
 
-/** A paper plaque over a scrim, crowned by a medallion. */
-export function Dialog({ icon, title, children, buttons = [], progress }: Props) {
+export function Dialog({ title, children, buttons = [], progress }: Props) {
+  const primary = buttons.find((b) => b.kind === "primary");
   return (
     <div className="dialog-scrim">
-      <div className="dialog" role="dialog" aria-modal="true" aria-label={title}>
-        <div className="dialog-halo">
-          <div className="dialog-halo-disc">
-            {icon === "unsaved" && <DrawIcon size={20} width={1.3} />}
-            {icon === "pair" && <PhoneIcon />}
-            {icon === "update" && <UpdateIcon />}
-          </div>
-        </div>
+      <div
+        className="dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && primary && !(e.target instanceof HTMLButtonElement)) primary.onClick();
+        }}
+      >
         <div className="dialog-title">{title}</div>
         <div className="dialog-body">{children}</div>
         {progress && (
-          <div className="dialog-progress">
+          <div className="dialog-progress" role="progressbar" aria-label="Instalando">
             <div />
           </div>
         )}
@@ -40,8 +41,9 @@ export function Dialog({ icon, title, children, buttons = [], progress }: Props)
             {buttons.map((b) => (
               <button
                 key={b.label}
-                className={"pill dialog-btn" + (b.kind ? " " + b.kind : "")}
+                className={"btn" + (b.kind ? " " + b.kind : "")}
                 onClick={b.onClick}
+                autoFocus={b.kind === "primary"}
               >
                 {b.label}
               </button>

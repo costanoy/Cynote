@@ -33,10 +33,7 @@ Future<DeviceIdentity> getDeviceIdentity() async {
     final file = await _identityFile();
     if (await file.exists()) {
       final decoded = jsonDecode(await file.readAsString()) as Map<String, dynamic>;
-      _cached = DeviceIdentity(
-        deviceId: decoded['deviceId'] as String,
-        deviceName: decoded['deviceName'] as String,
-      );
+      _cached = DeviceIdentity(deviceId: decoded['deviceId'] as String, deviceName: decoded['deviceName'] as String);
       return _cached!;
     }
 

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The steno page at night (lib/theme.dart, CyColors.dark.page). -->
+    <color name="cy_page">#18201B</color>
+</resources>

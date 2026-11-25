@@ -6,10 +6,8 @@ class ForkedFrom {
 
   Map<String, dynamic> toJson() => {'deviceId': deviceId, 'noteId': noteId};
 
-  factory ForkedFrom.fromJson(Map<String, dynamic> json) => ForkedFrom(
-        deviceId: json['deviceId'] as String,
-        noteId: json['noteId'] as String,
-      );
+  factory ForkedFrom.fromJson(Map<String, dynamic> json) =>
+      ForkedFrom(deviceId: json['deviceId'] as String, noteId: json['noteId'] as String);
 }
 
 class Note {
@@ -32,34 +30,34 @@ class Note {
   }) : updatedAt = updatedAt ?? DateTime.now().millisecondsSinceEpoch;
 
   Note copyWith({String? title, String? body}) => Note(
-        id: id,
-        title: title ?? this.title,
-        time: time,
-        body: body ?? this.body,
-        updatedAt: DateTime.now().millisecondsSinceEpoch,
-        originDeviceId: originDeviceId,
-        forkedFrom: forkedFrom,
-      );
+    id: id,
+    title: title ?? this.title,
+    time: time,
+    body: body ?? this.body,
+    updatedAt: DateTime.now().millisecondsSinceEpoch,
+    originDeviceId: originDeviceId,
+    forkedFrom: forkedFrom,
+  );
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'title': title,
-        'time': time,
-        'body': body,
-        'updatedAt': updatedAt,
-        'originDeviceId': originDeviceId,
-        if (forkedFrom != null) 'forkedFrom': forkedFrom!.toJson(),
-      };
+    'id': id,
+    'title': title,
+    'time': time,
+    'body': body,
+    'updatedAt': updatedAt,
+    'originDeviceId': originDeviceId,
+    if (forkedFrom != null) 'forkedFrom': forkedFrom!.toJson(),
+  };
 
   factory Note.fromJson(Map<String, dynamic> json) => Note(
-        id: json['id'] as String,
-        title: json['title'] as String,
-        time: json['time'] as String? ?? '',
-        body: json['body'] as String,
-        updatedAt: (json['updatedAt'] as num?)?.toInt(),
-        originDeviceId: json['originDeviceId'] as String? ?? 'seed',
-        forkedFrom: json['forkedFrom'] is Map<String, dynamic>
-            ? ForkedFrom.fromJson(json['forkedFrom'] as Map<String, dynamic>)
-            : null,
-      );
+    id: json['id'] as String,
+    title: json['title'] as String,
+    time: json['time'] as String? ?? '',
+    body: json['body'] as String,
+    updatedAt: (json['updatedAt'] as num?)?.toInt(),
+    originDeviceId: json['originDeviceId'] as String? ?? 'seed',
+    forkedFrom: json['forkedFrom'] is Map<String, dynamic>
+        ? ForkedFrom.fromJson(json['forkedFrom'] as Map<String, dynamic>)
+        : null,
+  );
 }

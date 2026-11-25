@@ -1,0 +1,30 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "sync": {
+      "$code": {
+        ".read": "$code.matches(/^[0-9A-F]{5}-[0-9A-F]{5}-[0-9A-F]{5}-[0-9A-F]{5}$/)",
+        ".write": "$code.matches(/^[0-9A-F]{5}-[0-9A-F]{5}-[0-9A-F]{5}-[0-9A-F]{5}$/)",
+        "v2": {
+          "stamp": {
+            ".validate": "newData.isNumber()"
+          },
+          "notes": {
+            "$id": {
+              ".validate": "$id.matches(/^[A-Za-z0-9_~-]{1,100}$/) && newData.hasChildren(['t', 'b', 'u', 'd'])",
+              "t": { ".validate": "newData.isString() && newData.val().length <= 2000" },
+              "b": { ".validate": "newData.isString() && newData.val().length <= 2000000" },
+              "u": { ".validate": "newData.isNumber()" },
+              "d": { ".validate": "newData.isString() && newData.val().length <= 100" },
+              "p": { ".validate": "newData.isString() && newData.val().length <= 16" },
+              "x": { ".validate": "newData.isBoolean()" },
+              "$other": { ".validate": false }
+            }
+          },
+          "$other": { ".validate": false }
+        }
+      }
+    }
+  }
+}
