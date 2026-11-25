@@ -759,17 +759,6 @@ kbd {
   background: transparent;
   color: var(--ink);
 }
-.cy-cursor-rule {
-  background: var(--accent);
-}
-/* The editor places that rule a twelfth of a pitch up (3px here); the page's
-   rules sit at --off, so the blue one follows them. */
-.try .cy-cursor-rule {
-  translate: 0 calc(var(--off) + 3px);
-}
-.cm-editor:not(.cm-focused) .cy-cursor-rules {
-  visibility: hidden;
-}
 .cm-editor .cm-cursor,
 .cm-editor .cm-dropCursor {
   border-left: 2px solid var(--accent);

@@ -6,9 +6,7 @@ import {
   dropCursor,
   EditorView,
   highlightActiveLineGutter,
-  layer,
   lineNumbers,
-  RectangleMarker,
   rectangularSelection,
   type Panel,
 } from "@codemirror/view";
@@ -152,38 +150,6 @@ export function configEffects(c: EditorCompartments, cfg: EditorConfig): StateEf
   ];
 }
 
-/** The design's signature: the rule under the visual row that holds a cursor
- * turns ballpoint blue. One row, not the whole wrapped line (the phone does the
- * same), drawn as a layer across margin and page, right over that row's rule.
- * Positions are relative to the scroller, which never scrolls itself here. */
-const cursorRules = layer({
-  above: true,
-  class: "cy-cursor-rules",
-  update: (u) => u.selectionSet || u.docChanged || u.viewportChanged || u.geometryChanged || u.focusChanged,
-  markers(view) {
-    const pitch = view.defaultLineHeight;
-    // Same offset as the CSS rules (--rule-offset): just under the descenders.
-    const offset = -Math.round(pitch / 12);
-    const base = view.scrollDOM.getBoundingClientRect();
-    const width = view.scrollDOM.clientWidth;
-    const seen = new Set<number>();
-    const out: RectangleMarker[] = [];
-    for (const r of view.state.selection.ranges) {
-      const c = view.coordsAtPos(r.head, r.head === r.from ? 1 : -1);
-      if (!c) continue;
-      const y = (c.top + c.bottom) / 2 - view.documentTop;
-      const block = view.lineBlockAtHeight(y);
-      const row = Math.max(0, Math.floor((y - block.top) / pitch));
-      const rowBottom = Math.round(block.top + (row + 1) * pitch);
-      if (seen.has(rowBottom)) continue;
-      seen.add(rowBottom);
-      const top = view.documentTop - base.top + rowBottom - 1 + offset;
-      out.push(new RectangleMarker("cy-cursor-rule", 0, top, width, 1));
-    }
-    return out;
-  },
-});
-
 /** Everything that makes the editor behave like VS Code on a plain-text note.
  * Rebuilt for each mount, so a state restored from memory is reconfigured with it. */
 export function buildExtensions(host: EditorHost, cfg: EditorConfig, c: EditorCompartments): Extension {
@@ -198,7 +164,6 @@ export function buildExtensions(host: EditorHost, cfg: EditorConfig, c: EditorCo
     drawSelection({ cursorBlinkRate: 0 }),
     dropCursor(),
     highlightActiveLineGutter(),
-    cursorRules,
     highlightSelectionMatches({ highlightWordAroundCursor: false, minSelectionLength: 1 }),
     // Alt+click adds a cursor (not Ctrl+click); Shift+Alt+drag and the middle button make a column selection.
     EditorView.clickAddsSelectionRange.of((e) => e.altKey && !e.shiftKey),

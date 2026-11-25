@@ -1,7 +1,6 @@
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import '../icons.dart';
 import '../models/note.dart';
@@ -79,19 +78,12 @@ class _EditorScreenState extends State<EditorScreen> {
   // undoes/redoes into that field only, so one pair of buttons works for
   // title and body.
   final UndoHistoryController _undoController = UndoHistoryController();
-  final _pageKey = GlobalKey();
 
-  /// The visual row (wrapped rows count) that holds the caret, while the
-  /// body has focus. Its rule is drawn in the accent.
-  final _caretRow = ValueNotifier<int?>(null);
-  bool _caretRowScheduled = false;
   double _pitch = CyNoteType.pitch;
 
   @override
   void initState() {
     super.initState();
-    _bodyController.addListener(_scheduleCaretRow);
-    _bodyFocus.addListener(_scheduleCaretRow);
     if (widget.autofocusBody) {
       final at = (widget.initialCaret ?? widget.note.body.length).clamp(0, widget.note.body.length);
       _bodyController.selection = TextSelection.collapsed(offset: at);
@@ -108,7 +100,6 @@ class _EditorScreenState extends State<EditorScreen> {
     _titleFocus.dispose();
     _bodyFocus.dispose();
     _undoController.dispose();
-    _caretRow.dispose();
     super.dispose();
   }
 
@@ -129,45 +120,6 @@ class _EditorScreenState extends State<EditorScreen> {
       text: value,
       selection: TextSelection.collapsed(offset: caret),
     );
-  }
-
-  // ------------------------------------------------------- the caret's row
-
-  /// The caret's row is read from the laid-out text, so it is measured after
-  /// the frame that lays out the latest text and selection.
-  void _scheduleCaretRow() {
-    if (_caretRowScheduled) return;
-    _caretRowScheduled = true;
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _caretRowScheduled = false;
-      _updateCaretRow();
-    });
-    WidgetsBinding.instance.ensureVisualUpdate();
-  }
-
-  void _updateCaretRow() {
-    if (!mounted) return;
-    int? row;
-    final selection = _bodyController.selection;
-    final page = _pageKey.currentContext?.findRenderObject();
-    if (_bodyFocus.hasFocus && selection.isValid && page is RenderBox && page.hasSize) {
-      final editable = _findEditable(page);
-      if (editable != null && editable.hasSize) {
-        final caret = editable.getLocalRectForCaret(
-          TextPosition(offset: selection.extentOffset, affinity: selection.affinity),
-        );
-        final y = editable.localToGlobal(caret.center, ancestor: page).dy;
-        row = ((y - _topPad) / _pitch).floor();
-      }
-    }
-    _caretRow.value = row;
-  }
-
-  static RenderEditable? _findEditable(RenderObject node) {
-    if (node is RenderEditable) return node;
-    RenderEditable? found;
-    node.visitChildren((child) => found ??= _findEditable(child));
-    return found;
   }
 
   /// The height of one row of note text at the current text size: the strut
@@ -300,19 +252,15 @@ class _EditorScreenState extends State<EditorScreen> {
         // Enough rows to fill the page, so a tap anywhere lands in the text
         // and the rules run to the bottom edge.
         final rows = math.max(1, ((viewport - _topPad - _bottomPad) / _pitch).floor());
-        _scheduleCaretRow();
         return SingleChildScrollView(
           keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.manual,
           child: ConstrainedBox(
             constraints: BoxConstraints(minHeight: viewport),
             child: CustomPaint(
-              key: _pageKey,
               painter: _RulesPainter(
                 pitch: _pitch,
                 rule: c.rule,
-                current: c.accent,
                 margin: c.margin,
-                caretRow: _caretRow,
                 devicePixelRatio: MediaQuery.devicePixelRatioOf(context),
               ),
               child: Padding(
@@ -344,23 +292,19 @@ class _EditorScreenState extends State<EditorScreen> {
 }
 
 /// The steno page: a rule at the foot of every row of text, all the way down,
-/// the caret's row in the accent, and the red margin rule on the left.
+/// and the red margin rule on the left.
 class _RulesPainter extends CustomPainter {
   final double pitch;
   final Color rule;
-  final Color current;
   final Color margin;
-  final ValueNotifier<int?> caretRow;
   final double devicePixelRatio;
 
   _RulesPainter({
     required this.pitch,
     required this.rule,
-    required this.current,
     required this.margin,
-    required this.caretRow,
     required this.devicePixelRatio,
-  }) : super(repaint: caretRow);
+  });
 
   /// [v] on a whole device pixel, so a 1 dp rule stays crisp.
   double _snap(double v) => (v * devicePixelRatio).round() / devicePixelRatio;
@@ -369,13 +313,12 @@ class _RulesPainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     final ruleHeight = _snap(1).clamp(1 / devicePixelRatio, 2.0);
     final rulePaint = Paint()..color = rule;
-    final caret = caretRow.value;
     // Row i spans [top + i*pitch, top + (i+1)*pitch); its rule is the last
     // pixel of that span, exactly as on the desktop.
     for (var i = 0; ; i++) {
       final y = _snap(_topPad + (i + 1) * pitch - ruleHeight);
       if (y + ruleHeight > size.height) break;
-      canvas.drawRect(Rect.fromLTWH(0, y, size.width, ruleHeight), i == caret ? (Paint()..color = current) : rulePaint);
+      canvas.drawRect(Rect.fromLTWH(0, y, size.width, ruleHeight), rulePaint);
     }
     final x = _snap(_marginX);
     canvas.drawRect(Rect.fromLTWH(x, 0, ruleHeight, size.height), Paint()..color = margin);
@@ -385,9 +328,7 @@ class _RulesPainter extends CustomPainter {
   bool shouldRepaint(_RulesPainter old) =>
       old.pitch != pitch ||
       old.rule != rule ||
-      old.current != current ||
       old.margin != margin ||
-      old.caretRow != caretRow ||
       old.devicePixelRatio != devicePixelRatio;
 }
 

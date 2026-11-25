@@ -19,7 +19,7 @@ class CyColors extends ThemeExtension<CyColors> {
   final Color inkSoft;
   final Color inkFaint;
 
-  /// Ballpoint blue: caret, the current line's rule, focus, selection.
+  /// Ballpoint blue: caret, focus, selection.
   final Color accent;
   final Color onAccent;
   final Color accentSoft;

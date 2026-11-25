@@ -94,17 +94,6 @@
   min-width: max-content;
 }
 
-/* ------------------------------------------------------ the current line */
-
-/* The rule under the cursor's row is a layer (cursorRules in extensions.ts):
-   one visual row, blue, only while the note has focus. */
-.note-body-row .cm-editor .cy-cursor-rule {
-  background: var(--accent);
-}
-.note-body-row .cm-editor:not(.cm-focused) .cy-cursor-rules {
-  visibility: hidden;
-}
-
 /* --------------------------------------------------------------- margin */
 
 .note-body-row .cm-editor .cm-gutters {
